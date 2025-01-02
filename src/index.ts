@@ -57,7 +57,11 @@ export default class PluginSample extends Plugin {
 </symbol>
 <symbol id="iconSaving" viewBox="0 0 32 32">
 <path d="M20 13.333c0-0.733 0.6-1.333 1.333-1.333s1.333 0.6 1.333 1.333c0 0.733-0.6 1.333-1.333 1.333s-1.333-0.6-1.333-1.333zM10.667 12h6.667v-2.667h-6.667v2.667zM29.333 10v9.293l-3.76 1.253-2.24 7.453h-7.333v-2.667h-2.667v2.667h-7.333c0 0-3.333-11.28-3.333-15.333s3.28-7.333 7.333-7.333h6.667c1.213-1.613 3.147-2.667 5.333-2.667 1.107 0 2 0.893 2 2 0 0.28-0.053 0.533-0.16 0.773-0.187 0.453-0.347 0.973-0.427 1.533l3.027 3.027h2.893zM26.667 12.667h-1.333l-4.667-4.667c0-0.867 0.12-1.72 0.347-2.547-1.293 0.333-2.347 1.293-2.787 2.547h-8.227c-2.573 0-4.667 2.093-4.667 4.667 0 2.507 1.627 8.867 2.68 12.667h2.653v-2.667h8v2.667h2.68l2.067-6.867 3.253-1.093v-4.707z"></path>
-</symbol>`);
+</symbol>
+<symbol id="iconSmallNote" viewBox="0 0 1024 1024"><path d="M525.489 551.877c26.867-40.836 125.288-187.583 162.151-219.15-47.001 111.956-139.59 227.146-194.992 336.989 102.353 34.68 148.738-6.429 205.211-54.28l-55.957-10.735c71.059-23.289 66.096-14.656 90.981-49.064 19.741-27.271 36.126-64.094 42.13-102.545l-46.244 5.751c14.758-8.592 47.618-23.683 52.834-32.103 13.959-22.5 50.621-237.738 51.045-282.476-141.319 1.304-367.1 296.536-383.434 437.633-16.435 141.855-177.9 356.214 76.274-30.031v0.011z m210.649 79.762c42.15 25.128 67.218 57.585 67.218 93.761 0 195.113-612.005 195.113-612.005 0 0-89.607 139.024-129.786 211.043-140.793-1.698 12.049-5.398 24.35-10.239 36.924-49.499 9.057-166.013 42.544-166.013 103.869 0 147.384 542.422 147.384 542.422 0 0-25.866-23.299-50.55-61.79-70.381 9.856-7.177 19.519-15.102 29.364-23.38z"/></symbol>
++       <symbol id="iconExportNew" viewBox="0 0 1024 1024">
++           <path d="M894.6 532.3c-17.5 0-31.7 14.2-31.7 31.7v251c0 23.3-19 42.3-42.3 42.3H203.7c-23.3 0-42.3-19-42.3-42.3V233.7c0-23.3 19-42.3 42.3-42.3h270.7c17.5 0 31.7-14.2 31.7-31.7S492 128 474.4 128H203.7C145.4 128 98 175.4 98 233.7V815c0 58.3 47.4 105.7 105.7 105.7h616.9c58.3 0 105.7-47.4 105.7-105.7V564c0-17.5-14.2-31.7-31.7-31.7z M253.1 688.9c98.5-93.2 197.9-237.3 373.7-228 12.4 0.7 22.1 10.4 22.1 22.9v61c-0.1 19.2 22.2 29.9 37.1 17.8l227.9-184.3c11.3-9.1 11.3-26.4-0.1-35.5L687 138.8c-14.9-12-38.1-1.4-38.2 17.7v61.8c0 11.6-7.9 20-19.3 22.6-302.5 69-379 423.6-376.4 448z"/>
++       </symbol>`);
 
         // 初始化 dock 数据
         this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || { 
@@ -72,7 +76,7 @@ export default class PluginSample extends Plugin {
 
         // 添加顶部栏按钮
         const topBarElement = this.addTopBar({
-            icon: "iconAdd",
+            icon: "iconSmallNote",
             title: this.i18n.note.title,
             position: "right",
             callback: () => {
@@ -112,7 +116,7 @@ export default class PluginSample extends Plugin {
             config: {
                 position: "RightTop",
                 size: { width: 300, height: 0 },
-                icon: "iconSaving",
+                icon: "iconSmallNote",
                 title: this.i18n.note.title,
             },
             data: {
@@ -122,36 +126,39 @@ export default class PluginSample extends Plugin {
             init: (dock) => {
                 this.dock = dock;
                 const renderDock = (showAll: boolean = false) => {
-                    if (this.isMobile) {
+                if (this.isMobile) {
                         dock.element.innerHTML = `
                             <div class="toolbar toolbar--border toolbar--dark">
-                                <svg class="toolbar__icon"><use xlink:href="#iconEmoji"></use></svg>
+                                <svg class="toolbar__icon"><use xlink:href="#iconSmallNote"></use></svg>
                                 <div class="toolbar__text">${this.i18n.note.title}</div>
-                            </div>
+                    </div>
                             <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
                                 <div style="min-height: 200px; flex-shrink: 0; padding: 16px;">
                                     ${this.getEditorTemplate()}
                                 </div>
                                 <div class="fn__flex-1 history-list" style="overflow: auto; padding: 0 16px;">
                                     ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
-                                </div>
-                            </div>`;
-                    } else {
+                    </div>
+                    </div>`;
+                } else {
                         dock.element.innerHTML = `
                             <div class="fn__flex-1 fn__flex-column">
-                                <div class="block__icons">
-                                    <div class="block__logo">
-                                        <svg class="block__logoicon"><use xlink:href="#iconEmoji"></use></svg>
-                                        ${this.i18n.note.title}
-                                    </div>
-                                    <span class="fn__flex-1 fn__space"></span>
+                    <div class="block__icons">
+                        <div class="block__logo">
+                            <svg class="block__logoicon"><use xlink:href="#iconSmallNote"></use></svg>
+                            ${this.i18n.note.title}
+                        </div>
+                        <span class="fn__flex-1 fn__space"></span>
                                     <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
                                         <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
+                                    </span>
+                                    <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
+                                        <svg class="block__logoicon"><use xlink:href="#iconExportNew"></use></svg>
                                     </span>
                                     <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
                                         <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
                                     </span>
-                                </div>
+                    </div>
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
                                     <div style="min-height: 200px; flex-shrink: 0; padding: 16px;">
                                         ${this.getEditorTemplate()}
@@ -159,9 +166,9 @@ export default class PluginSample extends Plugin {
                                     <div class="fn__flex-1 history-list" style="overflow: auto; padding: 0 16px;">
                                         ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
                                     </div>
-                                </div>
-                            </div>`;
-                    }
+                    </div>
+                    </div>`;
+                }
 
                     // 绑定事件监听器
                     const textarea = dock.element.querySelector('textarea');
@@ -180,9 +187,9 @@ export default class PluginSample extends Plugin {
                                     // 清空标签
                                     dock.element.querySelector('.tags-list').innerHTML = '';
                                     dock.renderDock(false);
-                                }
-                            }
-                        });
+                }
+            }
+        });
 
                         // 实时保存输入内容
                         textarea.oninput = (e) => {
@@ -227,6 +234,9 @@ export default class PluginSample extends Plugin {
                                         textarea.value = '';
                                         dock.data.text = '';
                                         showMessage('内容已清空');
+                                        break;
+                                    case 'export':
+                                        this.showExportDialog();
                                         break;
                                 }
                             };
@@ -284,131 +294,131 @@ export default class PluginSample extends Plugin {
         this.settingUtils = new SettingUtils({
             plugin: this, name: STORAGE_NAME
         });
-        this.settingUtils.addItem({
-            key: "Input",
-            value: "",
-            type: "textinput",
-            title: "Readonly text",
-            description: "Input description",
-            action: {
-                // Called when focus is lost and content changes
-                callback: () => {
-                    // Return data and save it in real time
-                    let value = this.settingUtils.takeAndSave("Input");
-                    console.log(value);
-                }
-            }
-        });
-        this.settingUtils.addItem({
-            key: "InputArea",
-            value: "",
-            type: "textarea",
-            title: "Readonly text",
-            description: "Input description",
-            // Called when focus is lost and content changes
-            action: {
-                callback: () => {
-                    // Read data in real time
-                    let value = this.settingUtils.take("InputArea");
-                    console.log(value);
-                }
-            }
-        });
-        this.settingUtils.addItem({
-            key: "Check",
-            value: true,
-            type: "checkbox",
-            title: "Checkbox text",
-            description: "Check description",
-            action: {
-                callback: () => {
-                    // Return data and save it in real time
-                    let value = !this.settingUtils.get("Check");
-                    this.settingUtils.set("Check", value);
-                    console.log(value);
-                }
-            }
-        });
-        this.settingUtils.addItem({
-            key: "Select",
-            value: 1,
-            type: "select",
-            title: "Select",
-            description: "Select description",
-            options: {
-                1: "Option 1",
-                2: "Option 2"
-            },
-            action: {
-                callback: () => {
-                    // Read data in real time
-                    let value = this.settingUtils.take("Select");
-                    console.log(value);
-                }
-            }
-        });
-        this.settingUtils.addItem({
-            key: "Slider",
-            value: 50,
-            type: "slider",
-            title: "Slider text",
-            description: "Slider description",
-            direction: "column",
-            slider: {
-                min: 0,
-                max: 100,
-                step: 1,
-            },
-            action:{
-                callback: () => {
-                    // Read data in real time
-                    let value = this.settingUtils.take("Slider");
-                    console.log(value);
-                }
-            }
-        });
-        this.settingUtils.addItem({
-            key: "Btn",
-            value: "",
-            type: "button",
-            title: "Button",
-            description: "Button description",
-            button: {
-                label: "Button",
-                callback: () => {
-                    showMessage("Button clicked");
-                }
-            }
-        });
-        this.settingUtils.addItem({
-            key: "Custom Element",
-            value: "",
-            type: "custom",
-            direction: "row",
-            title: "Custom Element",
-            description: "Custom Element description",
-            //Any custom element must offer the following methods
-            createElement: (currentVal: any) => {
-                let div = document.createElement('div');
-                div.style.border = "1px solid var(--b3-theme-primary)";
-                div.contentEditable = "true";
-                div.textContent = currentVal;
-                return div;
-            },
-            getEleVal: (ele: HTMLElement) => {
-                return ele.textContent;
-            },
-            setEleVal: (ele: HTMLElement, val: any) => {
-                ele.textContent = val;
-            }
-        });
-        this.settingUtils.addItem({
-            key: "Hint",
-            value: "",
-            type: "hint",
-            title: this.i18n.hintTitle,
-            description: this.i18n.hintDesc,
-        });
+        // this.settingUtils.addItem({
+        //     key: "Input",
+        //     value: "",
+        //     type: "textinput",
+        //     title: "Readonly text",
+        //     description: "Input description",
+        //     action: {
+        //         // Called when focus is lost and content changes
+        //         callback: () => {
+        //             // Return data and save it in real time
+        //             let value = this.settingUtils.takeAndSave("Input");
+        //             console.log(value);
+        //         }
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "InputArea",
+        //     value: "",
+        //     type: "textarea",
+        //     title: "Readonly text",
+        //     description: "Input description",
+        //     // Called when focus is lost and content changes
+        //     action: {
+        //         callback: () => {
+        //             // Read data in real time
+        //             let value = this.settingUtils.take("InputArea");
+        //             console.log(value);
+        //         }
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "Check",
+        //     value: true,
+        //     type: "checkbox",
+        //     title: "Checkbox text",
+        //     description: "Check description",
+        //     action: {
+        //         callback: () => {
+        //             // Return data and save it in real time
+        //             let value = !this.settingUtils.get("Check");
+        //             this.settingUtils.set("Check", value);
+        //             console.log(value);
+        //         }
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "Select",
+        //     value: 1,
+        //     type: "select",
+        //     title: "Select",
+        //     description: "Select description",
+        //     options: {
+        //         1: "Option 1",
+        //         2: "Option 2"
+        //     },
+        //     action: {
+        //         callback: () => {
+        //             // Read data in real time
+        //             let value = this.settingUtils.take("Select");
+        //             console.log(value);
+        //         }
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "Slider",
+        //     value: 50,
+        //     type: "slider",
+        //     title: "Slider text",
+        //     description: "Slider description",
+        //     direction: "column",
+        //     slider: {
+        //         min: 0,
+        //         max: 100,
+        //         step: 1,
+        //     },
+        //     action:{
+        //         callback: () => {
+        //             // Read data in real time
+        //             let value = this.settingUtils.take("Slider");
+        //             console.log(value);
+        //         }
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "Btn",
+        //     value: "",
+        //     type: "button",
+        //     title: "Button",
+        //     description: "Button description",
+        //     button: {
+        //         label: "Button",
+        //         callback: () => {
+        //             showMessage("Button clicked");
+        //         }
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "Custom Element",
+        //     value: "",
+        //     type: "custom",
+        //     direction: "row",
+        //     title: "Custom Element",
+        //     description: "Custom Element description",
+        //     //Any custom element must offer the following methods
+        //     createElement: (currentVal: any) => {
+        //         let div = document.createElement('div');
+        //         div.style.border = "1px solid var(--b3-theme-primary)";
+        //         div.contentEditable = "true";
+        //         div.textContent = currentVal;
+        //         return div;
+        //     },
+        //     getEleVal: (ele: HTMLElement) => {
+        //         return ele.textContent;
+        //     },
+        //     setEleVal: (ele: HTMLElement, val: any) => {
+        //         ele.textContent = val;
+        //     }
+        // });
+        // this.settingUtils.addItem({
+        //     key: "Hint",
+        //     value: "",
+        //     type: "hint",
+        //     title: this.i18n.hintTitle,
+        //     description: this.i18n.hintDesc,
+        // });
 
         try {
             this.settingUtils.load();
@@ -1122,9 +1132,6 @@ export default class PluginSample extends Plugin {
                     <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;" title="${this.i18n.note.sort}">
                         <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconSort"></use></svg>
                     </button>
-                    <button class="export-btn" style="border: none; background: none; padding: 4px; cursor: pointer;" title="${this.i18n.note.export}">
-                        <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconExport"></use></svg>
-                    </button>
                 </div>
                 <div class="filter-panel" style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
                     <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
@@ -1136,13 +1143,14 @@ export default class PluginSample extends Plugin {
                             .map(tag => {
                                 const isSelected = this.selectedTags.includes(tag);
                                 return `
-                                    <span class="b3-chip b3-chip--middle filter-tag" 
+                                    <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
                                         style="cursor: pointer; 
                                             background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
                                             color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
                                             border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
                                             transition: all 0.2s ease;" 
                                         data-tag="${tag}"
+                                        aria-label="${tag}"
                                         data-selected="${isSelected}">
                                         <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
                                         <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
@@ -1215,28 +1223,37 @@ export default class PluginSample extends Plugin {
 
     // 渲染笔记内容
     private renderNoteContent(item: {text: string, timestamp: number, tags?: string[]}) {
+        const displayText = item.text;
+        const encodeText = (text: string) => {
+            return text.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#039;');
+        };
+
         return `
-            <div class="text-content" data-text="${item.text}">
+            <div class="text-content" data-text="${encodeText(displayText)}">
                 ${item.text.length > MAX_TEXT_LENGTH ? 
-                    `<span class="collapsed-text" style="color: var(--b3-theme-on-surface);">
-                        ${item.text.substring(0, MAX_TEXT_LENGTH)}
-                    </span>
-                    <span class="expanded-text" style="display: none; color: var(--b3-theme-on-surface);">
-                        ${item.text}
-                    </span>
-                    <button class="b3-button b3-button--text toggle-text" 
-                        style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
-                        ${this.i18n.note.expand}
-                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
-                            <use xlink:href="#iconDown"></use>
-                        </svg>
-                    </button>` 
-                    : `<span style="color: var(--b3-theme-on-surface);">${item.text}</span>`}
+                    `<div style="word-break: break-word;">
+                        <span class="collapsed-text" style="color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText.substring(0, MAX_TEXT_LENGTH))}...</span>
+                        <span class="expanded-text" style="display: none; color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText)}</span>
+                        <button class="b3-button b3-button--text toggle-text" 
+                            style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                            ${this.i18n.note.expand}
+                            <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                                <use xlink:href="#iconDown"></use>
+                            </svg>
+                        </button>
+                    </div>` 
+                    : `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`}
             </div>
             ${item.tags && item.tags.length > 0 ? `
                 <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
                     ${item.tags.map(tag => `
-                        <span class="b3-chip b3-chip--small" style="padding: 0 6px; height: 18px; font-size: 10px;">
+                        <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
+                            style="padding: 0 6px; height: 18px; font-size: 10px;"
+                            aria-label="${tag}">
                             <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
                         </span>
                     `).join('')}
@@ -1341,6 +1358,11 @@ export default class PluginSample extends Plugin {
     // 编辑历史记录
     private async editHistoryItem(dock: any, timestamp: number, oldText: string) {
         try {
+            // 获取当前记录项
+            const currentItem = this.data[DOCK_STORAGE_NAME].history.find(
+                item => item.timestamp === timestamp
+            );
+
             return new Promise((resolve) => {
                 const dialog = new Dialog({
                     title: this.i18n.note.edit,
@@ -1364,7 +1386,7 @@ export default class PluginSample extends Plugin {
                 if (saveBtn && textarea) {
                     saveBtn.onclick = async () => {
                         const newText = textarea.value;
-                        if (newText.trim() && newText !== oldText) {
+                        if (newText.trim()) {
                             const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
                                 .map(tag => tag.getAttribute('data-tag'));
                             
@@ -1378,7 +1400,7 @@ export default class PluginSample extends Plugin {
                                 showMessage(this.i18n.note.saveSuccess);
                                 dialog.destroy();
                                 resolve(true);
-                                this.dock.renderDock(false);
+                                dock.renderDock(false);
                                 return;
                             }
                         }
@@ -1388,6 +1410,30 @@ export default class PluginSample extends Plugin {
 
                 // 设置标签功能
                 this.setupTagsFeature(dialog.element);
+
+                // 添加已有标签
+                if (currentItem?.tags?.length) {
+                    const tagsList = dialog.element.querySelector('.tags-list');
+                    currentItem.tags.forEach(tagText => {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                        tagElement.setAttribute('data-tag', tagText);
+                        tagElement.setAttribute('aria-label', tagText);
+                        tagElement.style.cursor = 'default';
+                        tagElement.innerHTML = `
+                            <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
+                            <svg class="b3-chip__close" style="cursor: pointer;">
+                                <use xlink:href="#iconClose"></use>
+                            </svg>
+                        `;
+                        tagsList.appendChild(tagElement);
+
+                        // 添加删除标签的事件
+                        tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                            tagElement.remove();
+                        });
+                    });
+                }
             });
         } catch (error) {
             console.error('Error editing history item:', error);
@@ -1531,8 +1577,9 @@ export default class PluginSample extends Plugin {
                         
                         if (!existingTags.includes(tagText)) {
                             const tagElement = document.createElement('span');
-                            tagElement.className = 'tag-item b3-chip b3-chip--middle';
+                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
                             tagElement.setAttribute('data-tag', tagText);
+                            tagElement.setAttribute('aria-label', tagText);
                             tagElement.style.cursor = 'default';
                             tagElement.innerHTML = `
                                 <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
@@ -1871,5 +1918,212 @@ export default class PluginSample extends Plugin {
                 }
             };
         }
+    }
+
+    private async showExportDialog() {
+        // 获取所有标签
+        const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+            ?.flatMap(item => item.tags || []) || []));
+
+        const dialog = new Dialog({
+            title: this.i18n.note.export,
+            content: `
+                <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
+                    <div style="margin-bottom: 16px;">
+                        <div style="margin-bottom: 8px; font-weight: 500;">${this.i18n.note.exportFilter}</div>
+                        <div class="fn__flex-column" style="gap: 16px;">
+                            <div>
+                                <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.dateRange}</div>
+                                <div class="fn__flex" style="gap: 8px;">
+                                    <input type="date" class="b3-text-field fn__flex-1 export-start-date">
+                                    <span style="line-height: 28px;">-</span>
+                                    <input type="date" class="b3-text-field fn__flex-1 export-end-date">
+                                </div>
+                            </div>
+                            <div>
+                                <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.selectTags}</div>
+                                <div class="export-tags-container" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 28px; padding: 4px 8px; border: 1px solid var(--b3-border-color); border-radius: 4px; background: var(--b3-theme-background);">
+                                    ${allTags.map(tag => `
+                                        <span class="b3-chip b3-chip--middle export-tag-item b3-tooltips b3-tooltips__n" 
+                                            data-tag="${tag}"
+                                            aria-label="${tag}"
+                                            style="cursor: pointer; 
+                                                background-color: var(--b3-theme-surface);
+                                                color: var(--b3-theme-on-surface);
+                                                border: 1px solid var(--b3-border-color);
+                                                transition: all 0.2s ease;">
+                                            <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                ${tag}
+                                            </span>
+                                            <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                                ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                            </span>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.exportFormat}</div>
+                                <div class="fn__flex" style="gap: 8px;">
+                                    <label class="fn__flex" style="align-items: center; gap: 4px;">
+                                        <input type="radio" name="export-format" value="csv" class="b3-radio" checked>
+                                        <span>${this.i18n.note.formatCSV}</span>
+                                    </label>
+                                    <label class="fn__flex" style="align-items: center; gap: 4px;">
+                                        <input type="radio" name="export-format" value="md" class="b3-radio">
+                                        <span>${this.i18n.note.formatMD}</span>
+                                    </label>
+                                    <label class="fn__flex" style="align-items: center; gap: 4px;">
+                                        <input type="radio" name="export-format" value="json" class="b3-radio">
+                                        <span>${this.i18n.note.formatJSON}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fn__flex" style="gap: 8px;">
+                        <label class="fn__flex" style="align-items: center; gap: 4px;">
+                            <input type="checkbox" class="b3-checkbox export-pinned-only">
+                            <span>${this.i18n.note.exportPinnedOnly}</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="b3-dialog__action">
+                    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+                    <button class="b3-button b3-button--text" data-type="confirm">${this.i18n.note.export}</button>
+                </div>`,
+            width: "520px",
+        });
+
+        // 设置默认日期范围（最近一个月）
+        const startDateInput = dialog.element.querySelector('.export-start-date') as HTMLInputElement;
+        const endDateInput = dialog.element.querySelector('.export-end-date') as HTMLInputElement;
+        const now = new Date();
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDateInput.value = oneMonthAgo.toISOString().split('T')[0];
+        endDateInput.value = now.toISOString().split('T')[0];
+
+        // 设置标签点击事件
+        const tagItems = dialog.element.querySelectorAll('.export-tag-item');
+        tagItems.forEach(tag => {
+            tag.addEventListener('click', () => {
+                const isSelected = tag.getAttribute('data-selected') === 'true';
+                tag.setAttribute('data-selected', (!isSelected).toString());
+                
+                if (!isSelected) {
+                    tag.style.backgroundColor = 'var(--b3-theme-primary)';
+                    tag.style.color = 'var(--b3-theme-on-primary)';
+                    tag.style.border = '1px solid var(--b3-theme-primary)';
+                } else {
+                    tag.style.backgroundColor = 'var(--b3-theme-surface)';
+                    tag.style.color = 'var(--b3-theme-on-surface)';
+                    tag.style.border = '1px solid var(--b3-border-color)';
+                }
+            });
+        });
+
+        // 绑定按钮事件
+        const btns = dialog.element.querySelectorAll('.b3-button');
+        btns[0].addEventListener('click', () => {
+            dialog.destroy();
+        });
+        btns[1].addEventListener('click', () => {
+            const startDate = new Date(startDateInput.value).getTime();
+            const endDate = new Date(endDateInput.value).setHours(23, 59, 59, 999);
+            const selectedTags = Array.from(dialog.element.querySelectorAll('.export-tag-item[data-selected="true"]'))
+                .map(tag => tag.getAttribute('data-tag'));
+            const pinnedOnly = (dialog.element.querySelector('.export-pinned-only') as HTMLInputElement).checked;
+
+            // 过滤数据
+            const filteredData = this.data[DOCK_STORAGE_NAME].history.filter(item => {
+                const matchDate = (!startDate || item.timestamp >= startDate) && 
+                                (!endDate || item.timestamp <= endDate);
+                const matchTags = selectedTags.length === 0 || 
+                                selectedTags.some(tag => item.tags?.includes(tag));
+                const matchPinned = !pinnedOnly || item.isPinned;
+                return matchDate && matchTags && matchPinned;
+            });
+
+            if (filteredData.length === 0) {
+                showMessage(this.i18n.note.noDataToExport);
+                return;
+            }
+
+            // 获取选择的导出格式
+            const format = dialog.element.querySelector('input[name="export-format"]:checked').value;
+
+            // 导出过滤后的数据
+            this.exportData(filteredData, format);
+            dialog.destroy();
+        });
+    }
+
+    private exportData(data: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>, format: string) {
+        try {
+            let content: string;
+            let filename: string;
+            let mimeType: string;
+
+            switch (format) {
+                case 'md':
+                    content = this.generateMarkdown(data);
+                    filename = `小记导出_${new Date().toLocaleDateString()}.md`;
+                    mimeType = 'text/markdown';
+                    break;
+                case 'json':
+                    content = JSON.stringify(data, null, 2);
+                    filename = `小记导出_${new Date().toLocaleDateString()}.json`;
+                    mimeType = 'application/json';
+                    break;
+                default: // csv
+                    content = this.generateCSV(data);
+                    filename = `小记导出_${new Date().toLocaleDateString()}.csv`;
+                    mimeType = 'text/csv;charset=utf-8';
+                    break;
+            }
+
+            const blob = new Blob(['\ufeff' + content], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showMessage(this.i18n.note.exportSuccess);
+        } catch (error) {
+            console.error('Export failed:', error);
+            showMessage('导出失败');
+        }
+    }
+
+    private generateCSV(data: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
+        const headers = ['内容', '标签', '时间', '状态'];
+        const rows = data.map(item => ({
+            '内容': item.text,
+            '标签': (item.tags || []).join(', '),
+            '时间': new Date(item.timestamp).toLocaleString(),
+            '状态': item.isPinned ? '已置顶' : '未置顶'
+        }));
+
+        return [
+            headers.join(','),
+            ...rows.map(row => 
+                headers.map(header => 
+                    JSON.stringify(row[header] || '')
+                ).join(',')
+            )
+        ].join('\n');
+    }
+
+    private generateMarkdown(data: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
+        return `# 小记导出
+导出时间：${new Date().toLocaleString()}
+
+${data.map(item => `## ${new Date(item.timestamp).toLocaleString()}${item.isPinned ? ' 📌' : ''}
+${item.text}
+
+${item.tags?.length ? `标签：${item.tags.map(tag => `\`${tag}\``).join(' ')}` : ''}`).join('\n\n---\n\n')}`;
     }
 }

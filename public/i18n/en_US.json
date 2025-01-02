@@ -39,6 +39,16 @@
         "pinned": "Pinned",
         "expand": "Expand",
         "collapse": "Collapse",
+        "export": "Export",
+        "exportFilter": "Export Filter",
+        "dateRange": "Date Range",
+        "selectTags": "Select Tags",
+        "exportPinnedOnly": "Export Pinned Only",
+        "exportFormat": "Export Format",
+        "formatCSV": "CSV Table",
+        "formatMD": "Markdown Document",
+        "formatJSON": "JSON Data",
+        "noDataToExport": "No data matches the filter criteria",
         "exportSuccess": "Export successful"
     }
 }
