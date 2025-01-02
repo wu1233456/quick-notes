@@ -1432,40 +1432,62 @@ export default class PluginSample extends Plugin {
         const addTagBtn = container.querySelector('.add-tag-btn');
 
         if (tagsList && addTagBtn) {
-            addTagBtn.onclick = () => {
-                const dialog = new Dialog({
-                    title: this.i18n.note.addTag,
-                    content: `
-                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
-                            <div class="fn__flex" style="margin-bottom: 12px;">
-                                <input type="text" 
-                                    class="b3-text-field fn__flex-1 tag-input" 
-                                    placeholder="${this.i18n.note.addTag}..."
-                                    style="margin-right: 8px;">
-                                <button class="b3-button b3-button--outline confirm-tag-btn">${this.i18n.note.save}</button>
-                            </div>
-                            <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
-                                ${this.i18n.note.existingTags}
-                            </div>
-                            <div class="history-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
-                                    ?.flatMap(item => item.tags || []) || []))
-                                    .map(tag => `
-                                        <span class="b3-chip b3-chip--middle history-tag" 
-                                            style="cursor: pointer;" 
-                                            data-tag="${tag}">
-                                            <span class="b3-chip__content">${tag}</span>
-                                        </span>
-                                    `).join('')}
-                            </div>
-                        </div>`,
-                    width: "520px",
-                    height: "320px",
-                });
+            addTagBtn.onclick = (e) => {
+                e.stopPropagation();
+                
+                // 创建标签选择面板
+                const tagPanel = document.createElement('div');
+                tagPanel.className = 'tag-panel';
+                tagPanel.style.cssText = `
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    width: 200px;
+                    max-height: 300px;
+                    background: var(--b3-theme-background);
+                    border: 1px solid var(--b3-border-color);
+                    border-radius: 4px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    padding: 8px;
+                    margin-bottom: 8px;
+                    overflow: auto;
+                    z-index: 999;
+                `;
 
-                const tagInput = dialog.element.querySelector('.tag-input') as HTMLInputElement;
-                const confirmBtn = dialog.element.querySelector('.confirm-tag-btn');
-                const historyTags = dialog.element.querySelector('.history-tags');
+                // 添加输入框
+                tagPanel.innerHTML = `
+                    <div class="fn__flex" style="margin-bottom: 8px;">
+                        <input type="text" 
+                            class="b3-text-field fn__flex-1 tag-input" 
+                            placeholder="${this.i18n.note.addTag}..."
+                            style="margin-right: 8px;">
+                    </div>
+                    <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                        ${this.i18n.note.existingTags}
+                    </div>
+                    <div class="history-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                            ?.flatMap(item => item.tags || []) || []))
+                            .map(tag => `
+                                <span class="b3-chip b3-chip--middle history-tag" 
+                                    style="cursor: pointer;" 
+                                    data-tag="${tag}">
+                                    <span class="b3-chip__content">${tag}</span>
+                                    <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                        ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                    </span>
+                                </span>
+                            `).join('')}
+                    </div>`;
+
+                // 将面板添加到按钮的父容器中
+                const btnContainer = addTagBtn.parentElement;
+                btnContainer.style.position = 'relative';
+                btnContainer.appendChild(tagPanel);
+
+                // 获取输入框元素
+                const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
+                tagInput.focus();
 
                 // 添加标签的函数
                 const addTag = (tagText: string) => {
@@ -1492,7 +1514,10 @@ export default class PluginSample extends Plugin {
                                 tagElement.remove();
                             });
                         }
-                        dialog.destroy();
+                        tagInput.value = '';
+                        // 添加标签后关闭面板
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
                 };
 
@@ -1504,13 +1529,8 @@ export default class PluginSample extends Plugin {
                     }
                 });
 
-                // 点击确认按钮添加标签
-                confirmBtn.addEventListener('click', () => {
-                    addTag(tagInput.value);
-                });
-
                 // 点击历史标签直接添加
-                historyTags.addEventListener('click', (e) => {
+                tagPanel.addEventListener('click', (e) => {
                     const target = e.target as HTMLElement;
                     const tagChip = target.closest('.history-tag') as HTMLElement;
                     if (tagChip) {
@@ -1519,8 +1539,18 @@ export default class PluginSample extends Plugin {
                     }
                 });
 
-                // 自动聚焦输入框
-                setTimeout(() => tagInput.focus(), 100);
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
+                    }
+                };
+                
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
             };
         }
     }
