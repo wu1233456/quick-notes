@@ -2,7 +2,6 @@
 
 > A SiYuan plugin similar to Yuque's quick notes feature. After migrating from Yuque to SiYuan, I found that SiYuan lacked a convenient quick notes function like Yuque's. So I created this plugin to help record quick thoughts and ideas. As this is the first version, there may be bugs - please use with caution!
 
-![Quick Notes Preview](image.png)
 
 ## Features
 
