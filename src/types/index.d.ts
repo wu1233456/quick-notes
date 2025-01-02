@@ -104,3 +104,13 @@ interface Window {
     };
     Lute: any;
 }
+
+interface IDockData {
+    text: string;
+    history: Array<{
+        text: string;
+        timestamp: number;
+        isPinned?: boolean;
+        tags?: string[];
+    }>;
+}

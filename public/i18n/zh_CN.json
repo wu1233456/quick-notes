@@ -16,5 +16,29 @@
         "makesure": "使用这个模板之前，请阅读<a href=\"https://github.com/siyuan-note/plugin-sample\">官方教程</a>, 确保自己已经理解了插件的基本开发流程。"
     },
     "hintTitle": "关于",
-    "hintDesc": "<a href='https://github.com/siyuan-note/plugin-sample-vite-svelte'>🔗 plugin-sample-vite-svelte</a><br>💻 @frostime<br>💻 @88250<br>💻 @zxkmm"
+    "hintDesc": "<a href='https://github.com/siyuan-note/plugin-sample-vite-svelte'>🔗 plugin-sample-vite-svelte</a><br>💻 @frostime<br>💻 @88250<br>💻 @zxkmm",
+    "note": {
+        "title": "小记",
+        "new": "新建小记",
+        "edit": "编辑小记",
+        "delete": "删除",
+        "deleteConfirm": "确认删除这条小记吗？",
+        "deleteSuccess": "删除成功",
+        "save": "保存",
+        "saveSuccess": "保存成功",
+        "addTag": "添加标签",
+        "existingTags": "已有标签",
+        "tagFilter": "标签筛选",
+        "search": "搜索",
+        "loadMore": "加载更多",
+        "showing": "显示 ${shown}/${total} 条",
+        "noMore": "没有更多了",
+        "total": "共 ${count} 条记录",
+        "pin": "置顶",
+        "unpin": "取消置顶",
+        "pinned": "已置顶",
+        "expand": "展开",
+        "collapse": "收起",
+        "exportSuccess": "导出成功"
+    }
 }

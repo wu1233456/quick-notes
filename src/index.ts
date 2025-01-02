@@ -28,7 +28,10 @@ import { svelteDialog } from "./libs/dialog";
 
 const STORAGE_NAME = "menu-config";
 const TAB_TYPE = "custom_tab";
-const DOCK_TYPE = "dock_tab";
+const DOCK_TYPE = "small_notes_dock";
+const DOCK_STORAGE_NAME = "dock-content";
+const ITEMS_PER_PAGE = 10; // 每次加载10条记录
+const MAX_TEXT_LENGTH = 50; // 超过这个长度的文本会被折叠
 
 export default class PluginSample extends Plugin {
 
@@ -36,6 +39,10 @@ export default class PluginSample extends Plugin {
     private isMobile: boolean;
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
     private settingUtils: SettingUtils;
+    private isDescending: boolean = true; // 添加排序状态属性
+    private dock: any; // 添加 dock 属性
+    private currentDisplayCount: number = ITEMS_PER_PAGE;
+    private selectedTags: string[] = [];
 
     async onload() {
         this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
@@ -52,24 +59,33 @@ export default class PluginSample extends Plugin {
 <path d="M20 13.333c0-0.733 0.6-1.333 1.333-1.333s1.333 0.6 1.333 1.333c0 0.733-0.6 1.333-1.333 1.333s-1.333-0.6-1.333-1.333zM10.667 12h6.667v-2.667h-6.667v2.667zM29.333 10v9.293l-3.76 1.253-2.24 7.453h-7.333v-2.667h-2.667v2.667h-7.333c0 0-3.333-11.28-3.333-15.333s3.28-7.333 7.333-7.333h6.667c1.213-1.613 3.147-2.667 5.333-2.667 1.107 0 2 0.893 2 2 0 0.28-0.053 0.533-0.16 0.773-0.187 0.453-0.347 0.973-0.427 1.533l3.027 3.027h2.893zM26.667 12.667h-1.333l-4.667-4.667c0-0.867 0.12-1.72 0.347-2.547-1.293 0.333-2.347 1.293-2.787 2.547h-8.227c-2.573 0-4.667 2.093-4.667 4.667 0 2.507 1.627 8.867 2.68 12.667h2.653v-2.667h8v2.667h2.68l2.067-6.867 3.253-1.093v-4.707z"></path>
 </symbol>`);
 
+        // 初始化 dock 数据
+        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || { 
+            text: "",
+            history: []
+        };
+
+        // 确保 history 是数组
+        if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
+            this.data[DOCK_STORAGE_NAME].history = [];
+        }
+
+        // 添加顶部栏按钮
         const topBarElement = this.addTopBar({
-            icon: "iconFace",
-            title: this.i18n.addTopBarIcon,
+            icon: "iconAdd",
+            title: this.i18n.note.title,
             position: "right",
             callback: () => {
-                if (this.isMobile) {
-                    this.addMenu();
-                } else {
-                    let rect = topBarElement.getBoundingClientRect();
-                    // 如果被隐藏，则使用更多按钮
-                    if (rect.width === 0) {
-                        rect = document.querySelector("#barMore").getBoundingClientRect();
-                    }
-                    if (rect.width === 0) {
-                        rect = document.querySelector("#barPlugins").getBoundingClientRect();
-                    }
-                    this.addMenu(rect);
-                }
+                this.createNewNote(this.dock);
+            }
+        });
+
+        // 添加快捷键命令
+        this.addCommand({
+            langKey: "createNewSmallNote",
+            hotkey: "⇧⌘Y",
+            callback: () => {
+                this.createNewNote(this.dock);
             }
         });
 
@@ -91,73 +107,169 @@ export default class PluginSample extends Plugin {
             element: statusIconTemp.content.firstElementChild as HTMLElement,
         });
 
-        this.addCommand({
-            langKey: "showDialog",
-            hotkey: "⇧⌘O",
-            callback: () => {
-                this.showDialog();
-            },
-            fileTreeCallback: (file: any) => {
-                console.log(file, "fileTreeCallback");
-            },
-            editorCallback: (protyle: any) => {
-                console.log(protyle, "editorCallback");
-            },
-            dockCallback: (element: HTMLElement) => {
-                console.log(element, "dockCallback");
-            },
-        });
-        this.addCommand({
-            langKey: "getTab",
-            hotkey: "⇧⌘M",
-            globalCallback: () => {
-                console.log(this.getOpenedTab());
-            },
-        });
-
-        this.addDock({
+        // 创建 dock 时读取保存的位置
+        this.dock = this.addDock({
             config: {
-                position: "LeftBottom",
-                size: { width: 200, height: 0 },
+                position: "RightTop",
+                size: { width: 300, height: 0 },
                 icon: "iconSaving",
-                title: "Custom Dock",
-                hotkey: "⌥⌘W",
+                title: this.i18n.note.title,
             },
             data: {
-                text: "This is my custom dock"
+                text: "",
             },
             type: DOCK_TYPE,
-            resize() {
-                console.log(DOCK_TYPE + " resize");
-            },
-            update() {
-                console.log(DOCK_TYPE + " update");
-            },
             init: (dock) => {
-                if (this.isMobile) {
-                    dock.element.innerHTML = `<div class="toolbar toolbar--border toolbar--dark">
-                    <svg class="toolbar__icon"><use xlink:href="#iconEmoji"></use></svg>
-                        <div class="toolbar__text">Custom Dock</div>
-                    </div>
-                    <div class="fn__flex-1 plugin-sample__custom-dock">
-                        ${dock.data.text}
-                    </div>
-                    </div>`;
-                } else {
-                    dock.element.innerHTML = `<div class="fn__flex-1 fn__flex-column">
-                    <div class="block__icons">
-                        <div class="block__logo">
-                            <svg class="block__logoicon"><use xlink:href="#iconEmoji"></use></svg>
-                            Custom Dock
-                        </div>
-                        <span class="fn__flex-1 fn__space"></span>
-                        <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}"><svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg></span>
-                    </div>
-                    <div class="fn__flex-1 plugin-sample__custom-dock">
-                        ${dock.data.text}
-                    </div>
-                    </div>`;
+                this.dock = dock;
+                const renderDock = (showAll: boolean = false) => {
+                    if (this.isMobile) {
+                        dock.element.innerHTML = `
+                            <div class="toolbar toolbar--border toolbar--dark">
+                                <svg class="toolbar__icon"><use xlink:href="#iconEmoji"></use></svg>
+                                <div class="toolbar__text">${this.i18n.note.title}</div>
+                            </div>
+                            <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
+                                <div style="min-height: 200px; flex-shrink: 0; padding: 16px;">
+                                    ${this.getEditorTemplate()}
+                                </div>
+                                <div class="fn__flex-1 history-list" style="overflow: auto; padding: 0 16px;">
+                                    ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
+                                </div>
+                            </div>`;
+                    } else {
+                        dock.element.innerHTML = `
+                            <div class="fn__flex-1 fn__flex-column">
+                                <div class="block__icons">
+                                    <div class="block__logo">
+                                        <svg class="block__logoicon"><use xlink:href="#iconEmoji"></use></svg>
+                                        ${this.i18n.note.title}
+                                    </div>
+                                    <span class="fn__flex-1 fn__space"></span>
+                                    <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
+                                        <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
+                                    </span>
+                                </div>
+                                <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
+                                    <div style="min-height: 200px; flex-shrink: 0; padding: 16px;">
+                                        ${this.getEditorTemplate()}
+                                    </div>
+                                    <div class="fn__flex-1 history-list" style="overflow: auto; padding: 0 16px;">
+                                        ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+
+                    // 绑定事件监听器
+                    const textarea = dock.element.querySelector('textarea');
+                    if (textarea) {
+                        // 添加快捷键保存功能
+                        textarea.addEventListener('keydown', async (e) => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                if (textarea.value.trim()) {
+                                    const tags = Array.from(dock.element.querySelectorAll('.tag-item'))
+                                        .map(tag => tag.getAttribute('data-tag'));
+                                    await this.saveContent(dock, textarea.value, tags);
+                                    showMessage(this.i18n.note.saveSuccess);
+                                    textarea.value = '';
+                                    dock.data.text = '';
+                                    // 清空标签
+                                    dock.element.querySelector('.tags-list').innerHTML = '';
+                                    dock.renderDock(false);
+                                }
+                            }
+                        });
+
+                        // 实时保存输入内容
+                        textarea.oninput = (e) => {
+                            dock.data.text = (e.target as HTMLTextAreaElement).value;
+                        };
+                    }
+
+                    // 修改标签输入相关的 HTML 和事件处理
+                    this.setupTagsFeature(dock.element);
+
+                    // 修改保存按钮的处理逻辑
+                    dock.element.querySelectorAll('button').forEach(button => {
+                        const type = button.getAttribute('data-type');
+                        if (type) {
+                            button.onclick = async () => {
+                                switch(type) {
+                                    case 'save':
+                                        if (textarea.value.trim()) {
+                                            const tags = Array.from(dock.element.querySelectorAll('.tag-item')).map(tag => 
+                                                tag.getAttribute('data-tag')
+                                            );
+                                            await this.saveContent(dock, textarea.value, tags);
+                                            showMessage(this.i18n.note.saveSuccess);
+                                            textarea.value = '';
+                                            dock.data.text = '';
+                                            // 清空标签
+                                            dock.element.querySelector('.tags-list').innerHTML = '';
+                                            renderDock();
+                                        }
+                                        break;
+                                    case 'refresh':
+                                        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
+                                            text: '',
+                                            history: []
+                                        };
+                                        renderDock();
+                                        showMessage('已刷新历史记录');
+                                        break;
+                                    case 'clear':
+                                        textarea.value = '';
+                                        dock.data.text = '';
+                                        showMessage('内容已清空');
+                                        break;
+                                }
+                            };
+                        }
+                    });
+
+                    // 处理加载更多按钮点击事件
+                    const loadMoreBtn = dock.element.querySelector('.load-more-btn');
+                    if (loadMoreBtn) {
+                        loadMoreBtn.onclick = () => {
+                            this.currentDisplayCount += ITEMS_PER_PAGE;
+                            renderDock(true);
+                        };
+                    }
+
+                    // 监听历史记录点击事件
+                    const historyList = dock.element.querySelector('.history-list');
+                    if (historyList) {
+                        this.setupHistoryListEvents(historyList, renderDock, showAll);
+                    }
+
+                    // 设置搜索功能
+                    this.setupSearchFeature(dock.element);
+
+                    // 设置排序功能
+                    this.setupSortFeature(dock.element, renderDock);
+
+                    // 设置标签过滤功能
+                    this.setupFilterFeature(dock.element, renderDock);
+
+                    // 设置导出功能
+                    this.setupExportFeature(dock.element);
+                };
+
+                // 将 renderDock 函数添加到 dock 对象上
+                dock.renderDock = renderDock;
+
+                // 初始渲染时应用当前排序
+                if (this.data[DOCK_STORAGE_NAME]?.history) {
+                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) => {
+                        return this.isDescending ? 
+                            b.timestamp - a.timestamp : 
+                            a.timestamp - b.timestamp;
+                    });
                 }
+
+                // 初始渲染
+                renderDock(false);
             },
             destroy() {
                 console.log("destroy dock:", DOCK_TYPE);
@@ -344,7 +456,7 @@ export default class PluginSample extends Plugin {
         console.log(this.i18n.helloPlugin);
     }
 
-    onLayoutReady() {
+    async onLayoutReady() {
         // this.loadData(STORAGE_NAME);
         this.settingUtils.load();
         console.log(`frontend: ${getFrontend()}; backend: ${getBackend()}`);
@@ -376,12 +488,20 @@ export default class PluginSample extends Plugin {
                 console.log("destroy tab:", TAB_TYPE);
             }
         });
+
+        // 加载小记数据
+        const savedData = await this.loadData(DOCK_STORAGE_NAME);
+        if (savedData) {
+            this.data[DOCK_STORAGE_NAME] = savedData;
+            // 如果 dock 已经初始化，重新渲染
+            if (this.dock?.renderDock) {
+                this.dock.renderDock(false);
+            }
+        }
     }
 
     async onunload() {
         console.log(this.i18n.byePlugin);
-        showMessage("Goodbye SiYuan Plugin");
-        console.log("onunload");
     }
 
     uninstall() {
@@ -938,6 +1058,813 @@ export default class PluginSample extends Plugin {
                 y: rect.bottom,
                 isLeft: true,
             });
+        }
+    }
+
+    // 渲染历史记录列表
+    private renderHistory(history: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}> = [], showAll: boolean = false) {
+        // 首先根据标签过滤历史记录
+        const filteredHistory = this.selectedTags.length > 0 
+            ? history.filter(item => 
+                this.selectedTags.some(tag => item.tags?.includes(tag))
+            )
+            : history;
+
+        // 分离置顶和非置顶记录
+        const pinnedHistory = filteredHistory.filter(item => item.isPinned);
+        const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
+        
+        let html = `
+            <div style="border-bottom: 1px solid var(--b3-border-color);">
+                <div class="fn__flex fn__flex-center" style="padding: 8px;">
+                    <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                        ${this.i18n.note.total.replace('${count}', history.length.toString())}
+                    </div>
+                </div>
+                <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
+                    <div class="search-container fn__flex">
+                        <div class="search-wrapper" style="position: relative;">
+                            <input type="text" 
+                                class="search-input b3-text-field" 
+                                placeholder="${this.i18n.note.search}" 
+                                style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
+                            <button class="search-btn" style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
+                                <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconSearch"></use></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="filter-btn" 
+                        style="border: none; 
+                            background: none; 
+                            padding: 4px; 
+                            cursor: pointer;
+                            color: ${this.selectedTags.length > 0 ? 'var(--b3-theme-primary)' : 'inherit'};
+                            position: relative;" 
+                        title="${this.i18n.note.tagFilter}">
+                        <svg class="b3-button__icon" style="height: 16px; width: 16px;">
+                            <use xlink:href="#iconFilter"></use>
+                        </svg>
+                        ${this.selectedTags.length > 0 ? `
+                            <div style="position: absolute; 
+                                top: 0; 
+                                right: 0; 
+                                width: 6px; 
+                                height: 6px; 
+                                border-radius: 50%; 
+                                background-color: var(--b3-theme-primary);"></div>
+                        ` : ''}
+                    </button>
+                    <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;" title="${this.i18n.note.sort}">
+                        <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconSort"></use></svg>
+                    </button>
+                    <button class="export-btn" style="border: none; background: none; padding: 4px; cursor: pointer;" title="${this.i18n.note.export}">
+                        <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconExport"></use></svg>
+                    </button>
+                </div>
+                <div class="filter-panel" style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
+                    <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                        ${this.i18n.note.tagFilter}
+                    </div>
+                    <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                            ?.flatMap(item => item.tags || []) || []))
+                            .map(tag => {
+                                const isSelected = this.selectedTags.includes(tag);
+                                return `
+                                    <span class="b3-chip b3-chip--middle filter-tag" 
+                                        style="cursor: pointer; 
+                                            background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
+                                            color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
+                                            border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
+                                            transition: all 0.2s ease;" 
+                                        data-tag="${tag}"
+                                        data-selected="${isSelected}">
+                                        <span class="b3-chip__content">${tag}</span>
+                                        <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                            ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                        </span>
+                                    </span>
+                                `;
+                            }).join('')}
+                    </div>
+                </div>
+            </div>`;
+
+        // 渲染置顶记录
+        if (pinnedHistory.length > 0) {
+            html += this.renderPinnedHistory(pinnedHistory);
+        }
+
+        // 渲染非置顶记录
+        const displayHistory = showAll ? 
+            unpinnedHistory.slice(0, this.currentDisplayCount) : 
+            unpinnedHistory.slice(0, ITEMS_PER_PAGE);
+
+        if (displayHistory.length > 0) {
+            html += this.renderUnpinnedHistory(displayHistory, pinnedHistory.length > 0);
+        }
+
+        // 添加加载更多按钮
+        if (unpinnedHistory.length > displayHistory.length) {
+            html += this.renderLoadMoreButton(displayHistory.length, unpinnedHistory.length);
+        } else if (unpinnedHistory.length > 0) {
+            html += this.renderNoMoreItems();
+        }
+
+        return html;
+    }
+
+    // 渲染置顶记录
+    private renderPinnedHistory(pinnedHistory: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
+        return `<div class="pinned-records" style="margin-top: 8px;">
+            ${pinnedHistory.map(item => `
+                <div class="history-item" style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--b3-theme-primary); border-radius: 4px; background: var(--b3-theme-background); transition: all 0.2s ease; cursor: pointer; position: relative;" 
+                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'" 
+                    onmouseout="this.style.boxShadow='none'">
+                    <div class="fn__flex" style="align-items: center; margin-bottom: 4px;">
+                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                            <use xlink:href="#iconPin"></use>
+                        </svg>
+                        <span style="margin-left: 4px; font-size: 12px; color: var(--b3-theme-primary);">
+                            ${this.i18n.note.pinned}
+                        </span>
+                    </div>
+                    ${this.renderNoteContent(item)}
+                </div>
+            `).join('')}
+        </div>`;
+    }
+
+    // 渲染非置顶记录
+    private renderUnpinnedHistory(displayHistory: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>, hasPinned: boolean) {
+        return `<div style="margin-top: ${hasPinned ? '16px' : '8px'}">
+            ${displayHistory.map(item => `
+                <div class="history-item" style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--b3-border-color); border-radius: 4px; transition: all 0.2s ease; cursor: pointer; position: relative;" 
+                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; this.style.borderColor='var(--b3-theme-primary-light)'" 
+                    onmouseout="this.style.boxShadow='none'; this.style.borderColor='var(--b3-border-color)'">
+                    ${this.renderNoteContent(item)}
+                </div>
+            `).join('')}
+        </div>`;
+    }
+
+    // 渲染笔记内容
+    private renderNoteContent(item: {text: string, timestamp: number, tags?: string[]}) {
+        return `
+            <div class="text-content" data-text="${item.text}">
+                ${item.text.length > MAX_TEXT_LENGTH ? 
+                    `<span class="collapsed-text" style="color: var(--b3-theme-on-surface);">
+                        ${item.text.substring(0, MAX_TEXT_LENGTH)}
+                    </span>
+                    <span class="expanded-text" style="display: none; color: var(--b3-theme-on-surface);">
+                        ${item.text}
+                    </span>
+                    <button class="b3-button b3-button--text toggle-text" 
+                        style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                        ${this.i18n.note.expand}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>
+                    </button>` 
+                    : `<span style="color: var(--b3-theme-on-surface);">${item.text}</span>`}
+            </div>
+            ${item.tags && item.tags.length > 0 ? `
+                <div class="fn__flex" style="gap: 4px; margin-top: 4px;">
+                    ${item.tags.map(tag => `
+                        <span class="b3-chip b3-chip--small" style="padding: 0 6px; height: 18px; font-size: 10px;">
+                            <span class="b3-chip__content">${tag}</span>
+                        </span>
+                    `).join('')}
+                </div>
+            ` : ''}
+            <div class="fn__flex" style="margin-top: 4px; justify-content: space-between; align-items: center;">
+                <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                    ${new Date(item.timestamp).toLocaleString()}
+                </div>
+                <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
+                    style="padding: 4px; height: 20px; width: 20px;">
+                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                        <use xlink:href="#iconMore"></use>
+                    </svg>
+                </button>
+            </div>`;
+    }
+
+    // 渲染加载更多按钮
+    private renderLoadMoreButton(shown: number, total: number) {
+        return `
+            <div class="fn__flex-center" style="padding: 8px 8px 0;">
+                <button class="b3-button b3-button--outline load-more-btn">
+                    ${this.i18n.note.loadMore} (${this.i18n.note.showing
+                        .replace('${shown}', shown.toString())
+                        .replace('${total}', total.toString())})
+                </button>
+            </div>`;
+    }
+
+    // 渲染没有更多内容提示
+    private renderNoMoreItems() {
+        return `
+            <div class="fn__flex-center" style="padding: 16px 0; color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                ${this.i18n.note.noMore}
+            </div>`;
+    }
+
+    // 创建新笔记
+    private async createNewNote(dock: any) {
+        try {
+            return new Promise((resolve) => {
+                const dialog = new Dialog({
+                    title: this.i18n.note.new,
+                    content: `
+                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
+                            ${this.getEditorTemplate()}
+                        </div>`,
+                    width: "520px",
+                    height: "320px",
+                    transparent: false,
+                    disableClose: false,
+                    disableAnimation: false,
+                    destroyCallback: () => {
+                        resolve(false);
+                    }
+                });
+
+                // 绑定保存按钮事件
+                const saveBtn = dialog.element.querySelector('[data-type="save"]');
+                const textarea = dialog.element.querySelector('textarea');
+                if (saveBtn && textarea) {
+                    saveBtn.onclick = async () => {
+                        const text = textarea.value;
+                        const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
+                        
+                        if (text.trim()) {
+                            if (!this.data[DOCK_STORAGE_NAME]) {
+                                this.data[DOCK_STORAGE_NAME] = { text: '', history: [] };
+                            }
+                            if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
+                                this.data[DOCK_STORAGE_NAME].history = [];
+                            }
+                            
+                            this.data[DOCK_STORAGE_NAME].history.unshift({
+                                text: text,
+                                timestamp: Date.now(),
+                                tags: tags
+                            });
+                            
+                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            showMessage(this.i18n.note.saveSuccess);
+                            dialog.destroy();
+                            resolve(true);
+                            this.dock.renderDock(false);
+                            return;
+                        }
+                        resolve(false);
+                    };
+                }
+
+                // 设置标签功能
+                this.setupTagsFeature(dialog.element);
+            });
+        } catch (error) {
+            console.error('Error creating new note:', error);
+            return false;
+        }
+    }
+
+    // 编辑历史记录
+    private async editHistoryItem(dock: any, timestamp: number, oldText: string) {
+        try {
+            return new Promise((resolve) => {
+                const dialog = new Dialog({
+                    title: this.i18n.note.edit,
+                    content: `
+                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
+                            ${this.getEditorTemplate(oldText)}
+                        </div>`,
+                    width: "520px",
+                    height: "320px",
+                    transparent: false,
+                    disableClose: false,
+                    disableAnimation: false,
+                    destroyCallback: () => {
+                        resolve(false);
+                    }
+                });
+
+                // 绑定保存按钮事件
+                const saveBtn = dialog.element.querySelector('[data-type="save"]');
+                const textarea = dialog.element.querySelector('textarea');
+                if (saveBtn && textarea) {
+                    saveBtn.onclick = async () => {
+                        const newText = textarea.value;
+                        if (newText.trim() && newText !== oldText) {
+                            const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                                .map(tag => tag.getAttribute('data-tag'));
+                            
+                            const index = this.data[DOCK_STORAGE_NAME].history.findIndex(
+                                item => item.timestamp === timestamp
+                            );
+                            if (index !== -1) {
+                                this.data[DOCK_STORAGE_NAME].history[index].text = newText;
+                                this.data[DOCK_STORAGE_NAME].history[index].tags = tags;
+                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                showMessage(this.i18n.note.saveSuccess);
+                                dialog.destroy();
+                                resolve(true);
+                                this.dock.renderDock(false);
+                                return;
+                            }
+                        }
+                        resolve(false);
+                    };
+                }
+
+                // 设置标签功能
+                this.setupTagsFeature(dialog.element);
+            });
+        } catch (error) {
+            console.error('Error editing history item:', error);
+            return false;
+        }
+    }
+
+    // 删除历史记录
+    private async deleteHistoryItem(dock: any, timestamp: number) {
+        try {
+            // 找到并删除指定的历史记录
+            this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history.filter(
+                item => item.timestamp !== timestamp
+            );
+            
+            // 立即保存数据
+            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+            
+            // 更新视图
+            if (dock.renderDock) {
+                dock.renderDock(false);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error deleting history item:', error);
+            return false;
+        }
+    }
+
+    // 保存内容并更新历史记录
+    private async saveContent(dock: any, content: string, tags: string[] = []) {
+        try {
+            const timestamp = Date.now();
+            dock.data.text = content;
+            
+            if (!this.data[DOCK_STORAGE_NAME]) {
+                this.data[DOCK_STORAGE_NAME] = { text: content, history: [] };
+            }
+            if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
+                this.data[DOCK_STORAGE_NAME].history = [];
+            }
+            
+            this.data[DOCK_STORAGE_NAME].history.unshift({
+                text: content,
+                timestamp,
+                tags
+            });
+            
+            // 立即保存数据
+            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+            
+            // 更新视图
+            if (dock.renderDock) {
+                dock.renderDock(false);
+            }
+        } catch (error) {
+            console.error('Error saving content:', error);
+            showMessage('保存失败');
+        }
+    }
+
+    // 创建编辑器模板
+    private getEditorTemplate(text: string = '', placeholder: string = '在这里输入你的想法...') {
+        return `
+            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <textarea class="fn__flex-1" 
+                    placeholder="${placeholder}"
+                    style="width: 100%; 
+                    height: 160px; 
+                    resize: none; 
+                    padding: 12px; 
+                    background-color: var(--b3-theme-background);
+                    color: var(--b3-theme-on-background);
+                    border: none;
+                    box-sizing: border-box;"
+                    onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); }"
+                >${text}</textarea>
+                <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="fn__flex" style="gap: 8px; align-items: center;">
+                        <button class="b3-button b3-button--text add-tag-btn" style="padding: 4px;">
+                            <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
+                            <span style="margin-left: 4px; font-size: 12px;">${this.i18n.note.addTag}</span>
+                        </button>
+                        <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+                    </div>
+                    <button class="b3-button b3-button--text" data-type="save">
+                        <svg class="b3-button__icon"><use xlink:href="#iconSave"></use></svg>
+                        ${this.i18n.note.save}
+                    </button>
+                </div>
+            </div>`;
+    }
+
+    // 设置标签功能
+    private setupTagsFeature(container: HTMLElement) {
+        const tagsList = container.querySelector('.tags-list');
+        const addTagBtn = container.querySelector('.add-tag-btn');
+
+        if (tagsList && addTagBtn) {
+            addTagBtn.onclick = () => {
+                const dialog = new Dialog({
+                    title: this.i18n.note.addTag,
+                    content: `
+                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
+                            <div class="fn__flex" style="margin-bottom: 12px;">
+                                <input type="text" 
+                                    class="b3-text-field fn__flex-1 tag-input" 
+                                    placeholder="${this.i18n.note.addTag}..."
+                                    style="margin-right: 8px;">
+                                <button class="b3-button b3-button--outline confirm-tag-btn">${this.i18n.note.save}</button>
+                            </div>
+                            <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                                ${this.i18n.note.existingTags}
+                            </div>
+                            <div class="history-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                                    ?.flatMap(item => item.tags || []) || []))
+                                    .map(tag => `
+                                        <span class="b3-chip b3-chip--middle history-tag" 
+                                            style="cursor: pointer;" 
+                                            data-tag="${tag}">
+                                            <span class="b3-chip__content">${tag}</span>
+                                        </span>
+                                    `).join('')}
+                            </div>
+                        </div>`,
+                    width: "520px",
+                    height: "320px",
+                });
+
+                const tagInput = dialog.element.querySelector('.tag-input') as HTMLInputElement;
+                const confirmBtn = dialog.element.querySelector('.confirm-tag-btn');
+                const historyTags = dialog.element.querySelector('.history-tags');
+
+                // 添加标签的函数
+                const addTag = (tagText: string) => {
+                    if (tagText.trim()) {
+                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
+                        
+                        if (!existingTags.includes(tagText)) {
+                            const tagElement = document.createElement('span');
+                            tagElement.className = 'tag-item b3-chip b3-chip--middle';
+                            tagElement.setAttribute('data-tag', tagText);
+                            tagElement.style.cursor = 'default';
+                            tagElement.innerHTML = `
+                                <span class="b3-chip__content">${tagText}</span>
+                                <svg class="b3-chip__close" style="cursor: pointer;">
+                                    <use xlink:href="#iconClose"></use>
+                                </svg>
+                            `;
+                            tagsList.appendChild(tagElement);
+
+                            // 添加删除标签的事件
+                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                tagElement.remove();
+                            });
+                        }
+                        dialog.destroy();
+                    }
+                };
+
+                // 回车添加标签
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag(tagInput.value);
+                    }
+                });
+
+                // 点击确认按钮添加标签
+                confirmBtn.addEventListener('click', () => {
+                    addTag(tagInput.value);
+                });
+
+                // 点击历史标签直接添加
+                historyTags.addEventListener('click', (e) => {
+                    const target = e.target as HTMLElement;
+                    const tagChip = target.closest('.history-tag') as HTMLElement;
+                    if (tagChip) {
+                        const tagText = tagChip.getAttribute('data-tag');
+                        addTag(tagText);
+                    }
+                });
+
+                // 自动聚焦输入框
+                setTimeout(() => tagInput.focus(), 100);
+            };
+        }
+    }
+
+    // 设置历史列表事件
+    private setupHistoryListEvents(historyList: HTMLElement, renderDock: (showAll: boolean) => void, showAll: boolean) {
+        historyList.onclick = async (e) => {
+            const target = e.target as HTMLElement;
+            const moreBtn = target.closest('.more-btn') as HTMLElement;
+            
+            if (moreBtn) {
+                e.stopPropagation();
+                const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
+                const rect = moreBtn.getBoundingClientRect();
+                
+                // 获取当前记录项
+                const currentItem = this.data[DOCK_STORAGE_NAME].history.find(
+                    item => item.timestamp === timestamp
+                );
+                
+                const menu = new Menu("historyItemMenu");
+                menu.addItem({
+                    icon: "iconPin",
+                    label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
+                    click: async () => {
+                        const index = this.data[DOCK_STORAGE_NAME].history.findIndex(
+                            i => i.timestamp === timestamp
+                        );
+                        if (index !== -1) {
+                            // 切换置顶状态
+                            this.data[DOCK_STORAGE_NAME].history[index].isPinned = !this.data[DOCK_STORAGE_NAME].history[index].isPinned;
+                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            renderDock(showAll);
+                        }
+                    }
+                });
+                menu.addItem({
+                    icon: "iconEdit",
+                    label: this.i18n.note.edit,
+                    click: async () => {
+                        const textContainer = moreBtn.closest('.history-item').querySelector('[data-text]');
+                        if (textContainer) {
+                            const text = textContainer.getAttribute('data-text') || '';
+                            if (await this.editHistoryItem(this.dock, timestamp, text)) {
+                                renderDock(false);
+                            }
+                        }
+                    }
+                });
+                menu.addItem({
+                    icon: "iconTrashcan",
+                    label: this.i18n.note.delete,
+                    click: () => {
+                        confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
+                            if (await this.deleteHistoryItem(this.dock, timestamp)) {
+                                showMessage(this.i18n.note.deleteSuccess);
+                                renderDock(false);
+                            } else {
+                                showMessage('删除失败');
+                            }
+                        });
+                    }
+                });
+
+                menu.open({
+                    x: rect.right,
+                    y: rect.bottom,
+                    isLeft: true,
+                });
+            }
+        };
+
+        // 添加双击复制功能
+        historyList.ondblclick = async (e) => {
+            const target = e.target as HTMLElement;
+            const historyItem = target.closest('.history-item') as HTMLElement;
+            if (historyItem && !target.closest('.more-btn')) {
+                const textContainer = historyItem.querySelector('[data-text]');
+                if (textContainer) {
+                    const text = textContainer.getAttribute('data-text') || '';
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        showMessage('已复制到剪贴板');
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        showMessage('复制失败');
+                    }
+                }
+            }
+        };
+
+        // 处理展开/折叠按钮
+        historyList.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            const toggleBtn = target.closest('.toggle-text');
+            if (toggleBtn) {
+                const textContent = toggleBtn.closest('.text-content');
+                const collapsedText = textContent.querySelector('.collapsed-text');
+                const expandedText = textContent.querySelector('.expanded-text');
+                
+                if (collapsedText.style.display !== 'none') {
+                    // 展开
+                    collapsedText.style.display = 'none';
+                    expandedText.style.display = 'inline';
+                    toggleBtn.innerHTML = `${this.i18n.note.collapse}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(180deg); transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>`;
+                } else {
+                    // 折叠
+                    collapsedText.style.display = 'inline';
+                    expandedText.style.display = 'none';
+                    toggleBtn.innerHTML = `${this.i18n.note.expand}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(0deg); transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>`;
+                }
+                e.stopPropagation();
+            }
+        });
+    }
+
+    // 设置搜索功能
+    private setupSearchFeature(container: HTMLElement) {
+        const searchBtn = container.querySelector('.search-btn');
+        const searchInput = container.querySelector('.search-input') as HTMLInputElement;
+        const searchWrapper = container.querySelector('.search-wrapper');
+
+        if (searchBtn && searchInput && searchWrapper) {
+            searchBtn.onclick = () => {
+                searchInput.style.width = '200px';
+                searchInput.style.opacity = '1';
+                searchBtn.style.display = 'none';
+                searchInput.focus();
+            };
+
+            searchInput.onblur = () => {
+                if (!searchInput.value) {
+                    searchInput.style.width = '0';
+                    searchInput.style.opacity = '0';
+                    setTimeout(() => {
+                        searchBtn.style.display = 'block';
+                    }, 300);
+                }
+            };
+
+            searchInput.oninput = () => {
+                const searchText = searchInput.value.toLowerCase();
+                const historyItems = container.querySelectorAll('.history-item');
+                
+                historyItems.forEach((item: HTMLElement) => {
+                    const textElement = item.querySelector('[data-text]');
+                    if (textElement) {
+                        const text = textElement.getAttribute('data-text').toLowerCase();
+                        if (text.includes(searchText)) {
+                            item.style.display = 'block';
+                            // 高亮匹配文本
+                            const displayText = item.querySelector('[style*="color: var(--b3-theme-on-surface)"]');
+                            if (displayText) {
+                                const highlightedText = text.replace(
+                                    new RegExp(searchText, 'gi'),
+                                    match => `<span style="background-color: var(--b3-theme-primary-light);">${match}</span>`
+                                );
+                                displayText.innerHTML = highlightedText;
+                            }
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    }
+                });
+            };
+
+            searchInput.onkeydown = (e) => {
+                if (e.key === 'Escape') {
+                    searchInput.value = '';
+                    searchInput.blur();
+                }
+            };
+        }
+    }
+
+    // 设置排序功能
+    private setupSortFeature(container: HTMLElement, renderDock: (showAll: boolean) => void) {
+        const sortBtn = container.querySelector('.sort-btn');
+        if (sortBtn) {
+            const sortIcon = sortBtn.querySelector('svg');
+            if (sortIcon) {
+                sortIcon.style.transform = this.isDescending ? 'rotate(0deg)' : 'rotate(180deg)';
+                sortIcon.style.transition = 'transform 0.3s ease';
+            }
+
+            sortBtn.onclick = () => {
+                this.isDescending = !this.isDescending;
+                this.data[DOCK_STORAGE_NAME].history.sort((a, b) => {
+                    return this.isDescending ? 
+                        b.timestamp - a.timestamp : 
+                        a.timestamp - b.timestamp;
+                });
+                if (sortIcon) {
+                    sortIcon.style.transform = this.isDescending ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+                renderDock(true);
+            };
+        }
+    }
+
+    // 设置标签过滤功能
+    private setupFilterFeature(container: HTMLElement, renderDock: (showAll: boolean) => void) {
+        const filterBtn = container.querySelector('.filter-btn');
+        const filterPanel = container.querySelector('.filter-panel');
+        if (filterBtn && filterPanel) {
+            let isFilterPanelOpen = false;
+
+            filterBtn.onclick = () => {
+                isFilterPanelOpen = !isFilterPanelOpen;
+                filterPanel.style.display = isFilterPanelOpen ? 'block' : 'none';
+                filterBtn.style.color = isFilterPanelOpen ? 'var(--b3-theme-primary)' : '';
+            };
+
+            const filterTags = filterPanel.querySelectorAll('.filter-tag');
+            filterTags.forEach(tag => {
+                tag.addEventListener('click', () => {
+                    const isSelected = tag.getAttribute('data-selected') === 'true';
+                    tag.setAttribute('data-selected', (!isSelected).toString());
+                    
+                    if (!isSelected) {
+                        tag.style.backgroundColor = 'var(--b3-theme-primary)';
+                        tag.style.color = 'var(--b3-theme-on-primary)';
+                        tag.style.border = '1px solid var(--b3-theme-primary)';
+                    } else {
+                        tag.style.backgroundColor = 'var(--b3-theme-surface)';
+                        tag.style.color = 'var(--b3-theme-on-surface)';
+                        tag.style.border = '1px solid var(--b3-border-color)';
+                    }
+
+                    this.selectedTags = Array.from(filterPanel.querySelectorAll('.filter-tag[data-selected="true"]'))
+                        .map(tag => tag.getAttribute('data-tag'));
+
+                    this.currentDisplayCount = ITEMS_PER_PAGE;
+                    
+                    const filterPanelDisplay = filterPanel.style.display;
+                    const filterBtnColor = filterBtn.style.color;
+                    
+                    renderDock(true);
+                    
+                    const newFilterPanel = container.querySelector('.filter-panel');
+                    const newFilterBtn = container.querySelector('.filter-btn');
+                    if (newFilterPanel && newFilterBtn) {
+                        newFilterPanel.style.display = filterPanelDisplay;
+                        newFilterBtn.style.color = filterBtnColor;
+                    }
+                });
+            });
+        }
+    }
+
+    // 设置导出功能
+    private setupExportFeature(container: HTMLElement) {
+        const exportBtn = container.querySelector('.export-btn');
+        if (exportBtn) {
+            exportBtn.onclick = () => {
+                try {
+                    const exportData = this.data[DOCK_STORAGE_NAME].history.map(item => ({
+                        '内容': item.text,
+                        '标签': (item.tags || []).join(', '),
+                        '时间': new Date(item.timestamp).toLocaleString(),
+                        '状态': item.isPinned ? '已置顶' : '未置顶'
+                    }));
+
+                    const headers = ['内容', '标签', '时间', '状态'];
+                    const csvContent = [
+                        headers.join(','),
+                        ...exportData.map(row => 
+                            headers.map(header => 
+                                JSON.stringify(row[header] || '')
+                            ).join(',')
+                        )
+                    ].join('\n');
+
+                    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `小记导出_${new Date().toLocaleDateString()}.csv`;
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showMessage(this.i18n.note.exportSuccess);
+                } catch (error) {
+                    console.error('Export failed:', error);
+                    showMessage('导出失败');
+                }
+            };
         }
     }
 }
