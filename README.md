@@ -23,12 +23,14 @@
 - Search by content
 - Sort by time (ascending/descending)
 - Filter by tags
+- Support activity records and archived content switching
 
 ### 5. Data Export
 - Export to multiple formats (CSV/Markdown/JSON)
 - Select export time range
 - Filter export content by tags
 - Option to export only pinned content
+- Option to include archived content
 
 ## Usage Instructions
 
@@ -39,6 +41,14 @@
 5. Press Ctrl+Shift+y globally to bring up Quick Notes
 
 ## Changelog
+
+
+### v1.0.2 (2025-01-02)
+- Added archive feature, allowing unused records to be archived
+- Support switching between activity records and archived content
+- Search and sort functions support archived content
+- Export option to include archived content
+
 
 ### v1.0 (2025-01-02)
 - Initial release
