@@ -69,6 +69,8 @@
         "archivedView": "归档记录",
         "archiveSuccess": "归档成功",
         "unarchiveSuccess": "已恢复",
-        "status": "状态"
+        "status": "状态",
+        "noSearchResults": "未找到匹配的内容",
+        "exportIncludeArchived": "包含已归档内容"
     }
 }

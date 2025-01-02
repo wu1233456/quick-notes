@@ -69,6 +69,8 @@
         "archivedView": "Archived Records",
         "archiveSuccess": "Archived successfully",
         "unarchiveSuccess": "Restored successfully",
-        "status": "Status"
+        "status": "Status",
+        "noSearchResults": "No matching results found",
+        "exportIncludeArchived": "Include Archived Content"
     }
 }

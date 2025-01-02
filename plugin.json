@@ -2,7 +2,7 @@
   "name": "quick-notes",
   "author": "wuchunlin",
   "url": "https://github.com/wu1233456/quick-notes",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
