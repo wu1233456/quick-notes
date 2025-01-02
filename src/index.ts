@@ -31,7 +31,7 @@ const TAB_TYPE = "custom_tab";
 const DOCK_TYPE = "small_notes_dock";
 const DOCK_STORAGE_NAME = "dock-content";
 const ITEMS_PER_PAGE = 10; // 每次加载10条记录
-const MAX_TEXT_LENGTH = 50; // 超过这个长度的文本会被折叠
+const MAX_TEXT_LENGTH = 250; // 超过这个长度的文本会被折叠
 
 export default class PluginSample extends Plugin {
 
@@ -173,7 +173,7 @@ export default class PluginSample extends Plugin {
                     // 绑定事件监听器
                     const textarea = dock.element.querySelector('textarea');
                     if (textarea) {
-                        // 添加快捷键保存功能
+                        // 添加快捷键保存功能和待办转换功能
                         textarea.addEventListener('keydown', async (e) => {
                             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                                 e.preventDefault();
@@ -187,9 +187,12 @@ export default class PluginSample extends Plugin {
                                     // 清空标签
                                     dock.element.querySelector('.tags-list').innerHTML = '';
                                     dock.renderDock(false);
-                }
-            }
-        });
+                                }
+                            } else if (e.key === ' ' && textarea.value.endsWith('-')) {
+                                e.preventDefault();
+                                textarea.value = textarea.value.slice(0, -1) + '• ';
+                            }
+                        });
 
                         // 实时保存输入内容
                         textarea.oninput = (e) => {
@@ -290,135 +293,6 @@ export default class PluginSample extends Plugin {
                 console.log("destroy dock:", DOCK_TYPE);
             }
         });
-
-        this.settingUtils = new SettingUtils({
-            plugin: this, name: STORAGE_NAME
-        });
-        // this.settingUtils.addItem({
-        //     key: "Input",
-        //     value: "",
-        //     type: "textinput",
-        //     title: "Readonly text",
-        //     description: "Input description",
-        //     action: {
-        //         // Called when focus is lost and content changes
-        //         callback: () => {
-        //             // Return data and save it in real time
-        //             let value = this.settingUtils.takeAndSave("Input");
-        //             console.log(value);
-        //         }
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "InputArea",
-        //     value: "",
-        //     type: "textarea",
-        //     title: "Readonly text",
-        //     description: "Input description",
-        //     // Called when focus is lost and content changes
-        //     action: {
-        //         callback: () => {
-        //             // Read data in real time
-        //             let value = this.settingUtils.take("InputArea");
-        //             console.log(value);
-        //         }
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "Check",
-        //     value: true,
-        //     type: "checkbox",
-        //     title: "Checkbox text",
-        //     description: "Check description",
-        //     action: {
-        //         callback: () => {
-        //             // Return data and save it in real time
-        //             let value = !this.settingUtils.get("Check");
-        //             this.settingUtils.set("Check", value);
-        //             console.log(value);
-        //         }
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "Select",
-        //     value: 1,
-        //     type: "select",
-        //     title: "Select",
-        //     description: "Select description",
-        //     options: {
-        //         1: "Option 1",
-        //         2: "Option 2"
-        //     },
-        //     action: {
-        //         callback: () => {
-        //             // Read data in real time
-        //             let value = this.settingUtils.take("Select");
-        //             console.log(value);
-        //         }
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "Slider",
-        //     value: 50,
-        //     type: "slider",
-        //     title: "Slider text",
-        //     description: "Slider description",
-        //     direction: "column",
-        //     slider: {
-        //         min: 0,
-        //         max: 100,
-        //         step: 1,
-        //     },
-        //     action:{
-        //         callback: () => {
-        //             // Read data in real time
-        //             let value = this.settingUtils.take("Slider");
-        //             console.log(value);
-        //         }
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "Btn",
-        //     value: "",
-        //     type: "button",
-        //     title: "Button",
-        //     description: "Button description",
-        //     button: {
-        //         label: "Button",
-        //         callback: () => {
-        //             showMessage("Button clicked");
-        //         }
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "Custom Element",
-        //     value: "",
-        //     type: "custom",
-        //     direction: "row",
-        //     title: "Custom Element",
-        //     description: "Custom Element description",
-        //     //Any custom element must offer the following methods
-        //     createElement: (currentVal: any) => {
-        //         let div = document.createElement('div');
-        //         div.style.border = "1px solid var(--b3-theme-primary)";
-        //         div.contentEditable = "true";
-        //         div.textContent = currentVal;
-        //         return div;
-        //     },
-        //     getEleVal: (ele: HTMLElement) => {
-        //         return ele.textContent;
-        //     },
-        //     setEleVal: (ele: HTMLElement, val: any) => {
-        //         ele.textContent = val;
-        //     }
-        // });
-        // this.settingUtils.addItem({
-        //     key: "Hint",
-        //     value: "",
-        //     type: "hint",
-        //     title: this.i18n.hintTitle,
-        //     description: this.i18n.hintDesc,
-        // });
 
         try {
             this.settingUtils.load();
@@ -1191,7 +1065,14 @@ export default class PluginSample extends Plugin {
     private renderPinnedHistory(pinnedHistory: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
         return `<div class="pinned-records" style="margin-top: 8px;">
             ${pinnedHistory.map(item => `
-                <div class="history-item" style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--b3-theme-primary); border-radius: 4px; background: var(--b3-theme-background); transition: all 0.2s ease; cursor: pointer; position: relative;" 
+                <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
+                    border: 1px solid var(--b3-theme-primary); 
+                    border-radius: 4px; 
+                    background: var(--b3-theme-background); 
+                    transition: all 0.2s ease; 
+                    cursor: text;
+                    user-select: text;
+                    position: relative;" 
                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'" 
                     onmouseout="this.style.boxShadow='none'">
                     <div class="fn__flex" style="align-items: center; margin-bottom: 4px;">
@@ -1212,7 +1093,13 @@ export default class PluginSample extends Plugin {
     private renderUnpinnedHistory(displayHistory: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>, hasPinned: boolean) {
         return `<div style="margin-top: ${hasPinned ? '16px' : '8px'}">
             ${displayHistory.map(item => `
-                <div class="history-item" style="margin-bottom: 8px; padding: 8px; border: 1px solid var(--b3-border-color); border-radius: 4px; transition: all 0.2s ease; cursor: pointer; position: relative;" 
+                <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
+                    border: 1px solid var(--b3-border-color); 
+                    border-radius: 4px; 
+                    transition: all 0.2s ease; 
+                    cursor: text;
+                    user-select: text;
+                    position: relative;" 
                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; this.style.borderColor='var(--b3-theme-primary-light)'" 
                     onmouseout="this.style.boxShadow='none'; this.style.borderColor='var(--b3-border-color)'">
                     ${this.renderNoteContent(item)}
@@ -1510,7 +1397,13 @@ export default class PluginSample extends Plugin {
                     color: var(--b3-theme-on-background);
                     border: none;
                     box-sizing: border-box;"
-                    onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); }"
+                    onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { 
+                        event.preventDefault(); 
+                        this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); 
+                    } else if(event.key === ' ' && this.value.endsWith('-')) {
+                        event.preventDefault();
+                        this.value = this.value.slice(0, -1) + '• ';
+                    }"
                 >${text}</textarea>
                 <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px;">
                     <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
