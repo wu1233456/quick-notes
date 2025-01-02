@@ -71,6 +71,8 @@
         "unarchiveSuccess": "已恢复",
         "status": "状态",
         "noSearchResults": "未找到匹配的内容",
-        "exportIncludeArchived": "包含已归档内容"
+        "exportIncludeArchived": "包含已归档内容",
+        "showEditor": "显示编辑框",
+        "hideEditor": "隐藏编辑框"
     }
 }

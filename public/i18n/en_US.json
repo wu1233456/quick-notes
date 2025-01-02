@@ -71,6 +71,8 @@
         "unarchiveSuccess": "Restored successfully",
         "status": "Status",
         "noSearchResults": "No matching results found",
-        "exportIncludeArchived": "Include Archived Content"
+        "exportIncludeArchived": "Include Archived Content",
+        "showEditor": "Show Editor",
+        "hideEditor": "Hide Editor"
     }
 }

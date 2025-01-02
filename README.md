@@ -18,6 +18,7 @@
 - Edit and delete existing notes
 - Auto-fold long text, click to expand
 - Support text copy and selection
+- Toggle editor visibility
 
 ### 4. Search and Filter
 - Search by content
@@ -41,6 +42,11 @@
 5. Press Ctrl+Shift+y globally to bring up Quick Notes
 
 ## Changelog
+
+
+### v1.0.3 (2025-01-03)
+- Added editor toggle button
+- Improved editor visibility control
 
 
 ### v1.0.2 (2025-01-02)

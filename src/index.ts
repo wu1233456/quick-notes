@@ -166,15 +166,18 @@ export default class PluginSample extends Plugin {
                             ${this.i18n.note.title}
                         </div>
                         <span class="fn__flex-1 fn__space"></span>
-                                    <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
-                                        <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
-                                    </span>
-                                    <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
-                                        <svg class="block__logoicon"><use xlink:href="#iconExportNew"></use></svg>
-                                    </span>
-                                    <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
-                                        <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
-                                    </span>
+                        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Toggle Editor">
+                            <svg class="block__logoicon"><use xlink:href="#iconEdit"></use></svg>
+                        </span>
+                        <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
+                            <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
+                        </span>
+                        <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
+                            <svg class="block__logoicon"><use xlink:href="#iconExportNew"></use></svg>
+                        </span>
+                        <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
+                            <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
+                        </span>
                     </div>
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
                                     <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%;">
@@ -254,6 +257,20 @@ export default class PluginSample extends Plugin {
                                         break;
                                     case 'export':
                                         this.showExportDialog();
+                                        break;
+                                    case 'toggle-editor':
+                                        const editorContainer = dock.element.querySelector('[style*="min-height: 200px"]');
+                                        if (editorContainer) {
+                                            const isVisible = editorContainer.style.display !== 'none';
+                                            editorContainer.style.display = isVisible ? 'none' : 'block';
+                                            // 更新按钮图标
+                                            const icon = button.querySelector('use');
+                                            if (icon) {
+                                                icon.setAttribute('xlink:href', isVisible ? '#iconEdit' : '#iconPreview');
+                                            }
+                                            // 更新提示文本
+                                            button.setAttribute('aria-label', isVisible ? this.i18n.note.showEditor : this.i18n.note.hideEditor);
+                                        }
                                         break;
                                 }
                             };
