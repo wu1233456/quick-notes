@@ -49,6 +49,15 @@
         "formatMD": "Markdown Document",
         "formatJSON": "JSON Data",
         "noDataToExport": "No data matches the filter criteria",
-        "exportSuccess": "Export successful"
+        "exportSuccess": "Export successful",
+        "batchSelect": "Batch Select",
+        "selectAll": "Select All",
+        "deselectAll": "Deselect All",
+        "batchDelete": "Delete",
+        "cancelSelect": "Cancel",
+        "noItemSelected": "Please select at least one item",
+        "batchDeleteConfirm": "Are you sure you want to delete the selected items? This action cannot be undone.",
+        "batchDeleteSuccess": "Batch delete successful",
+        "batchDeleteFailed": "Batch delete failed"
     }
 }

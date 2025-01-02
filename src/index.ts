@@ -947,46 +947,65 @@ export default class PluginSample extends Plugin {
                     <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
                         ${this.i18n.note.total.replace('${count}', history.length.toString())}
                     </div>
+                    <span class="fn__flex-1"></span>
+                    <button class="b3-button b3-button--text batch-select-btn" style="padding: 4px 8px; font-size: 12px;">
+                        ${this.i18n.note.batchSelect}
+                    </button>
                 </div>
                 <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
-                    <div class="search-container fn__flex">
-                        <div class="search-wrapper" style="position: relative;">
-                            <input type="text" 
-                                class="search-input b3-text-field" 
-                                placeholder="${this.i18n.note.search}" 
-                                style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
-                            <button class="search-btn" style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
-                                <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                    <use xlink:href="#iconSearch"></use>
-                                </svg>
-                            </button>
-                        </div>
+                    <!-- 批量操作工具栏，默认隐藏 -->
+                    <div class="batch-toolbar fn__none fn__flex" style="gap: 8px; margin-right: auto;">
+                        <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
+                            ${this.i18n.note.selectAll}
+                        </button>
+                        <button class="b3-button b3-button--error batch-delete-btn" style="padding: 4px 8px; font-size: 12px;">
+                            ${this.i18n.note.batchDelete}
+                        </button>
+                        <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
+                            ${this.i18n.note.cancelSelect}
+                        </button>
                     </div>
-                    <button class="filter-btn" 
-                        style="border: none; 
-                            background: none; 
-                            padding: 4px; 
-                            cursor: pointer;
-                            position: relative;" 
-                        title="${this.i18n.note.tagFilter}">
-                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                            <use xlink:href="#iconFilter"></use>
-                        </svg>
-                        ${this.selectedTags.length > 0 ? `
-                            <div style="position: absolute; 
-                                top: 0; 
-                                right: 0; 
-                                width: 6px; 
-                                height: 6px; 
-                                border-radius: 50%; 
-                                background-color: var(--b3-theme-primary);"></div>
-                        ` : ''}
-                    </button>
-                    <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;" title="${this.i18n.note.sort}">
-                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                            <use xlink:href="#iconSort"></use>
-                        </svg>
-                    </button>
+                    <!-- 原有的搜索、过滤、排序按钮 -->
+                    <div class="normal-toolbar fn__flex" style="gap: 8px;">
+                        <div class="search-container fn__flex">
+                            <div class="search-wrapper" style="position: relative;">
+                                <input type="text" 
+                                    class="search-input b3-text-field" 
+                                    placeholder="${this.i18n.note.search}" 
+                                    style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
+                                <button class="search-btn" style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
+                                    <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                        <use xlink:href="#iconSearch"></use>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="filter-btn" 
+                            style="border: none; 
+                                background: none; 
+                                padding: 4px; 
+                                cursor: pointer;
+                                position: relative;" 
+                            title="${this.i18n.note.tagFilter}">
+                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                <use xlink:href="#iconFilter"></use>
+                            </svg>
+                            ${this.selectedTags.length > 0 ? `
+                                <div style="position: absolute; 
+                                    top: 0; 
+                                    right: 0; 
+                                    width: 6px; 
+                                    height: 6px; 
+                                    border-radius: 50%; 
+                                    background-color: var(--b3-theme-primary);"></div>
+                            ` : ''}
+                        </button>
+                        <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;" title="${this.i18n.note.sort}">
+                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                <use xlink:href="#iconSort"></use>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="filter-panel" style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
                     <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
@@ -1101,42 +1120,50 @@ export default class PluginSample extends Plugin {
         };
 
         return `
-            <div class="text-content" data-text="${encodeText(displayText)}">
-                ${item.text.length > MAX_TEXT_LENGTH ? 
-                    `<div style="word-break: break-word;">
-                        <span class="collapsed-text" style="color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText.substring(0, MAX_TEXT_LENGTH))}...</span>
-                        <span class="expanded-text" style="display: none; color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText)}</span>
-                        <button class="b3-button b3-button--text toggle-text" 
-                            style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
-                            ${this.i18n.note.expand}
-                            <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
-                                <use xlink:href="#iconDown"></use>
+            <div class="fn__flex" style="gap: 8px;">
+                <!-- 添加复选框，默认隐藏 -->
+                <div class="batch-checkbox fn__none" style="padding-top: 2px;">
+                    <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
+                </div>
+                <div class="fn__flex-1">
+                    <div class="text-content" data-text="${encodeText(displayText)}">
+                        ${item.text.length > MAX_TEXT_LENGTH ? 
+                            `<div style="word-break: break-word;">
+                                <span class="collapsed-text" style="color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText.substring(0, MAX_TEXT_LENGTH))}...</span>
+                                <span class="expanded-text" style="display: none; color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText)}</span>
+                                <button class="b3-button b3-button--text toggle-text" 
+                                    style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                                    ${this.i18n.note.expand}
+                                    <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                                        <use xlink:href="#iconDown"></use>
+                                    </svg>
+                                </button>
+                            </div>` 
+                            : `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`}
+                    </div>
+                    ${item.tags && item.tags.length > 0 ? `
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                            ${item.tags.map(tag => `
+                                <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
+                                    style="padding: 0 6px; height: 18px; font-size: 10px;"
+                                    aria-label="${tag}">
+                                    <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                </span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="fn__flex" style="margin-top: 4px; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </div>
+                        <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconMore"></use>
                             </svg>
                         </button>
-                    </div>` 
-                    : `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`}
-            </div>
-            ${item.tags && item.tags.length > 0 ? `
-                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                    ${item.tags.map(tag => `
-                        <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
-                            style="padding: 0 6px; height: 18px; font-size: 10px;"
-                            aria-label="${tag}">
-                            <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
-                        </span>
-                    `).join('')}
+                    </div>
                 </div>
-            ` : ''}
-            <div class="fn__flex" style="margin-top: 4px; justify-content: space-between; align-items: center;">
-                <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
-                    ${new Date(item.timestamp).toLocaleString()}
-                </div>
-                <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
-                    style="padding: 4px; height: 20px; width: 20px;">
-                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                        <use xlink:href="#iconMore"></use>
-                    </svg>
-                </button>
             </div>`;
     }
 
@@ -1614,6 +1641,79 @@ export default class PluginSample extends Plugin {
                 e.stopPropagation();
             }
         });
+
+        // 添加批量选择相关的事件处理
+        const container = historyList.closest('.fn__flex-1.plugin-sample__custom-dock');
+        if (container) {
+            const batchSelectBtn = container.querySelector('.batch-select-btn') as HTMLButtonElement;
+            const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
+            const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
+            const selectAllBtn = container.querySelector('.select-all-btn') as HTMLButtonElement;
+            const batchDeleteBtn = container.querySelector('.batch-delete-btn') as HTMLButtonElement;
+            const cancelSelectBtn = container.querySelector('.cancel-select-btn') as HTMLButtonElement;
+            const checkboxes = container.querySelectorAll('.batch-checkbox') as NodeListOf<HTMLElement>;
+
+            if (batchSelectBtn && batchToolbar && normalToolbar && checkboxes) {
+                // 切换批量选择模式
+                batchSelectBtn.onclick = () => {
+                    batchToolbar.classList.remove('fn__none');
+                    normalToolbar.classList.add('fn__none');
+                    checkboxes.forEach(checkbox => checkbox.classList.remove('fn__none'));
+                    batchSelectBtn.classList.add('fn__none');
+                };
+
+                // 取消选择
+                cancelSelectBtn.onclick = () => {
+                    batchToolbar.classList.add('fn__none');
+                    normalToolbar.classList.remove('fn__none');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.classList.add('fn__none');
+                        const input = checkbox.querySelector('input');
+                        if (input) input.checked = false;
+                    });
+                    batchSelectBtn.classList.remove('fn__none');
+                };
+
+                // 全选/取消全选
+                selectAllBtn.onclick = () => {
+                    const inputs = container.querySelectorAll('.batch-checkbox input') as NodeListOf<HTMLInputElement>;
+                    const allChecked = Array.from(inputs).every(input => input.checked);
+                    inputs.forEach(input => input.checked = !allChecked);
+                    selectAllBtn.textContent = allChecked ? this.i18n.note.selectAll : this.i18n.note.deselectAll;
+                };
+
+                // 批量删除
+                batchDeleteBtn.onclick = async () => {
+                    const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                        .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
+
+                    if (selectedTimestamps.length === 0) {
+                        showMessage(this.i18n.note.noItemSelected);
+                        return;
+                    }
+
+                    confirm(this.i18n.note.batchDelete, this.i18n.note.batchDeleteConfirm, async () => {
+                        try {
+                            // 过滤掉要删除的项
+                            this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
+                                .filter(item => !selectedTimestamps.includes(item.timestamp));
+                            
+                            // 保存更新后的数据
+                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            
+                            // 退出批量选择模式并重新渲染
+                            cancelSelectBtn.click();
+                            renderDock(false);
+                            
+                            showMessage(this.i18n.note.batchDeleteSuccess);
+                        } catch (error) {
+                            console.error('Batch delete failed:', error);
+                            showMessage(this.i18n.note.batchDeleteFailed);
+                        }
+                    });
+                };
+            }
+        }
     }
 
     // 设置搜索功能
