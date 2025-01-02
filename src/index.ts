@@ -1473,7 +1473,7 @@ export default class PluginSample extends Plugin {
                             <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
                             <span style="margin-left: 4px; font-size: 12px;">${this.i18n.note.addTag}</span>
                         </button>
-                        <button class="b3-button b3-button--text" data-type="save">
+                        <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n" data-type="save" aria-label="${adaptHotkey('⌘Enter')}">
                             <svg class="b3-button__icon"><use xlink:href="#iconSave"></use></svg>
                             ${this.i18n.note.save}
                         </button>
