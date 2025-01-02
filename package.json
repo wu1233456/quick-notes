@@ -1,11 +1,11 @@
 {
-  "name": "plugin-sample-vite-svelte",
-  "version": "0.3.6",
+  "name": "quick-notes",
+  "version": "1.0.0",
   "type": "module",
-  "description": "This is a sample plugin based on vite and svelte for Siyuan (https://b3log.org/siyuan)",
-  "repository": "",
-  "homepage": "",
-  "author": "frostime",
+  "description": "Quick Recording function like that of Yuque.",
+  "repository": "https://github.com/wu1233456/quick-notes",
+  "homepage": "https://github.com/wu1233456",
+  "author": "wuchunlin",
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development VITE_SOURCEMAP=inline vite build --watch",

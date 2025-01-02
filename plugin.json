@@ -1,32 +1,27 @@
 {
-  "name": "small-notes",
-  "author": "frostime",
-  "url": "https://github.com/siyuan-note/plugin-sample-vite-svelte",
-  "version": "0.3.6",
+  "name": "quick-notes",
+  "author": "wuchunlin",
+  "url": "https://github.com/wu1233456/quick-notes",
+  "version": "1.0.0",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
     "linux",
     "darwin",
-    "ios",
-    "android",
-    "harmony",
     "docker"
   ],
   "frontends": [
     "desktop",
-    "mobile",
     "browser-desktop",
-    "browser-mobile",
     "desktop-window"
   ],
   "displayName": {
-    "en_US": "Plugin sample with vite and svelte",
-    "zh_CN": "插件样例 vite + svelte 版"
+    "en_US": "Quick Notes",
+    "zh_CN": "小记"
   },
   "description": {
-    "en_US": "SiYuan plugin sample with vite and svelte",
-    "zh_CN": "使用 vite 和 svelte 开发的思源插件样例"
+    "en_US": "Quick Recording function like that of Yuque.",
+    "zh_CN": "类似于语雀中的小记"
   },
   "readme": {
     "en_US": "README.md",
@@ -38,8 +33,8 @@
     ]
   },
   "keywords": [
-    "plugin",
-    "sample",
-    "插件样例"
+    "quick",
+    "note",
+    "小记"
   ]
 }

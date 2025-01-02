@@ -23,7 +23,6 @@ import "@/index.scss";
 import HelloExample from "@/hello.svelte";
 import SettingExample from "@/setting-example.svelte";
 
-import { SettingUtils } from "./libs/setting-utils";
 import { svelteDialog } from "./libs/dialog";
 
 const STORAGE_NAME = "menu-config";
@@ -38,7 +37,6 @@ export default class PluginSample extends Plugin {
     customTab: () => IModel;
     private isMobile: boolean;
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
-    private settingUtils: SettingUtils;
     private isDescending: boolean = true; // 添加排序状态属性
     private dock: any; // 添加 dock 属性
     private currentDisplayCount: number = ITEMS_PER_PAGE;
@@ -93,23 +91,23 @@ export default class PluginSample extends Plugin {
             }
         });
 
-        const statusIconTemp = document.createElement("template");
-        statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
-    <svg>
-        <use xlink:href="#iconTrashcan"></use>
-    </svg>
-</div>`;
-        statusIconTemp.content.firstElementChild.addEventListener("click", () => {
-            confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
-                this.removeData(STORAGE_NAME).then(() => {
-                    this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
-                    showMessage(`[${this.name}]: ${this.i18n.removedData}`);
-                });
-            });
-        });
-        this.addStatusBar({
-            element: statusIconTemp.content.firstElementChild as HTMLElement,
-        });
+    //     const statusIconTemp = document.createElement("template");
+    //     statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
+    // <svg>
+    //     <use xlink:href="#iconTrashcan"></use>
+    // </svg>
+// </div>`;
+//         statusIconTemp.content.firstElementChild.addEventListener("click", () => {
+//             confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
+//                 this.removeData(STORAGE_NAME).then(() => {
+//                     this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
+//                     showMessage(`[${this.name}]: ${this.i18n.removedData}`);
+//                 });
+//             });
+//         });
+//         this.addStatusBar({
+//             element: statusIconTemp.content.firstElementChild as HTMLElement,
+//         });
 
         // 创建 dock 时读取保存的位置
         this.dock = this.addDock({
@@ -188,9 +186,6 @@ export default class PluginSample extends Plugin {
                                     dock.element.querySelector('.tags-list').innerHTML = '';
                                     dock.renderDock(false);
                                 }
-                            } else if (e.key === ' ' && textarea.value.endsWith('-')) {
-                                e.preventDefault();
-                                textarea.value = textarea.value.slice(0, -1) + '• ';
                             }
                         });
 
@@ -294,12 +289,6 @@ export default class PluginSample extends Plugin {
             }
         });
 
-        try {
-            this.settingUtils.load();
-        } catch (error) {
-            console.error("Error loading settings storage, probably empty config json:", error);
-        }
-
 
         this.protyleSlash = [{
             filter: ["insert emoji 😊", "插入表情 😊", "crbqwx"],
@@ -346,17 +335,6 @@ export default class PluginSample extends Plugin {
     }
 
     async onLayoutReady() {
-        // this.loadData(STORAGE_NAME);
-        this.settingUtils.load();
-        console.log(`frontend: ${getFrontend()}; backend: ${getBackend()}`);
-
-        console.log(
-            "Official settings value calling example:\n" +
-            this.settingUtils.get("InputArea") + "\n" +
-            this.settingUtils.get("Slider") + "\n" +
-            this.settingUtils.get("Select") + "\n"
-        );
-
         let tabDiv = document.createElement("div");
         new HelloExample({
             target: tabDiv,
@@ -1400,9 +1378,6 @@ export default class PluginSample extends Plugin {
                     onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { 
                         event.preventDefault(); 
                         this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); 
-                    } else if(event.key === ' ' && this.value.endsWith('-')) {
-                        event.preventDefault();
-                        this.value = this.value.slice(0, -1) + '• ';
                     }"
                 >${text}</textarea>
                 <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px;">
