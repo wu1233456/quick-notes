@@ -166,8 +166,8 @@ export default class PluginSample extends Plugin {
                             ${this.i18n.note.title}
                         </div>
                         <span class="fn__flex-1 fn__space"></span>
-                        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Toggle Editor">
-                            <svg class="block__logoicon"><use xlink:href="#iconEdit"></use></svg>
+                        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="${this.i18n.note.hideEditor}">
+                            <svg class="block__logoicon"><use xlink:href="#iconPreview"></use></svg>
                         </span>
                         <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
                             <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
@@ -1624,22 +1624,29 @@ export default class PluginSample extends Plugin {
                 const rect = moreBtn.getBoundingClientRect();
                 
                 // 获取当前记录项
-                const currentItem = this.data[DOCK_STORAGE_NAME].history.find(
-                    item => item.timestamp === timestamp
-                );
+                const currentItem = this.showArchived ? 
+                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.find(
+                        item => item.timestamp === timestamp
+                    ) :
+                    this.data[DOCK_STORAGE_NAME].history.find(
+                        item => item.timestamp === timestamp
+                    );
                 
                 const menu = new Menu("historyItemMenu");
                 menu.addItem({
                     icon: "iconPin",
                     label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
                     click: async () => {
-                        const index = this.data[DOCK_STORAGE_NAME].history.findIndex(
+                        // 根据当前状态选择正确的数据源
+                        const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
+                        const index = this.data[storageKey].history.findIndex(
                             i => i.timestamp === timestamp
                         );
+                        
                         if (index !== -1) {
                             // 切换置顶状态
-                            this.data[DOCK_STORAGE_NAME].history[index].isPinned = !this.data[DOCK_STORAGE_NAME].history[index].isPinned;
-                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            this.data[storageKey].history[index].isPinned = !this.data[storageKey].history[index].isPinned;
+                            await this.saveData(storageKey, this.data[storageKey]);
                             renderDock(showAll);
                         }
                     }
@@ -1663,20 +1670,8 @@ export default class PluginSample extends Plugin {
                                 showMessage(this.i18n.note.unarchiveSuccess);
                             }
                         } else {
-                            // 归档到存档
-                            const index = this.data[DOCK_STORAGE_NAME].history.findIndex(
-                                i => i.timestamp === timestamp
-                            );
-                            if (index !== -1) {
-                                const item = this.data[DOCK_STORAGE_NAME].history.splice(index, 1)[0];
-                                if (!Array.isArray(this.data[PluginSample.ARCHIVE_STORAGE_NAME].history)) {
-                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history = [];
-                                }
-                                this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.unshift(item);
-                                await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
-                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                showMessage(this.i18n.note.archiveSuccess);
-                            }
+                            // 使用新的归档方法
+                            await this.archiveItem(timestamp, renderDock);
                         }
                         this.dock.renderDock(true);
                     }
@@ -2413,5 +2408,35 @@ ${data.map(item => `## ${new Date(item.timestamp).toLocaleString()}${item.isPinn
 ${item.text}
 
 ${item.tags?.length ? `标签：${item.tags.map(tag => `\`${tag}\``).join(' ')}` : ''}`).join('\n\n---\n\n')}`;
+    }
+
+    // 修改归档功能的处理逻辑
+    private async archiveItem(timestamp: number, renderDock: (showAll: boolean) => void) {
+        // 初始化归档存储
+        if (!this.data[PluginSample.ARCHIVE_STORAGE_NAME]) {
+            this.data[PluginSample.ARCHIVE_STORAGE_NAME] = { history: [] };
+        }
+
+        // 找到要归档的项目
+        const itemIndex = this.data[DOCK_STORAGE_NAME].history.findIndex(item => item.timestamp === timestamp);
+        if (itemIndex !== -1) {
+            const item = this.data[DOCK_STORAGE_NAME].history[itemIndex];
+            
+            // 取消置顶状态
+            if (item.isPinned) {
+                item.isPinned = false;
+            }
+
+            // 移动到归档
+            this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.push(item);
+            this.data[DOCK_STORAGE_NAME].history.splice(itemIndex, 1);
+
+            // 保存更改
+            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+            await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
+
+            showMessage(this.i18n.note.archiveSuccess);
+            renderDock(false);
+        }
     }
 }
