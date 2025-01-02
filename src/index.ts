@@ -25,6 +25,7 @@ import SettingExample from "@/setting-example.svelte";
 
 import { svelteDialog } from "./libs/dialog";
 
+// 移除外部的静态属性声明
 const STORAGE_NAME = "menu-config";
 const TAB_TYPE = "custom_tab";
 const DOCK_TYPE = "small_notes_dock";
@@ -33,14 +34,17 @@ const ITEMS_PER_PAGE = 10; // 每次加载10条记录
 const MAX_TEXT_LENGTH = 250; // 超过这个长度的文本会被折叠
 
 export default class PluginSample extends Plugin {
+    // 将静态属性移到类内部
+    private static readonly ARCHIVE_STORAGE_NAME = "archive-content";
 
     customTab: () => IModel;
     private isMobile: boolean;
     private blockIconEventBindThis = this.blockIconEvent.bind(this);
-    private isDescending: boolean = true; // 添加排序状态属性
-    private dock: any; // 添加 dock 属性
+    private isDescending: boolean = true;
+    private dock: any;
     private currentDisplayCount: number = ITEMS_PER_PAGE;
     private selectedTags: string[] = [];
+    private showArchived: boolean = false;
 
     async onload() {
         this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
@@ -56,10 +60,16 @@ export default class PluginSample extends Plugin {
 <symbol id="iconSaving" viewBox="0 0 32 32">
 <path d="M20 13.333c0-0.733 0.6-1.333 1.333-1.333s1.333 0.6 1.333 1.333c0 0.733-0.6 1.333-1.333 1.333s-1.333-0.6-1.333-1.333zM10.667 12h6.667v-2.667h-6.667v2.667zM29.333 10v9.293l-3.76 1.253-2.24 7.453h-7.333v-2.667h-2.667v2.667h-7.333c0 0-3.333-11.28-3.333-15.333s3.28-7.333 7.333-7.333h6.667c1.213-1.613 3.147-2.667 5.333-2.667 1.107 0 2 0.893 2 2 0 0.28-0.053 0.533-0.16 0.773-0.187 0.453-0.347 0.973-0.427 1.533l3.027 3.027h2.893zM26.667 12.667h-1.333l-4.667-4.667c0-0.867 0.12-1.72 0.347-2.547-1.293 0.333-2.347 1.293-2.787 2.547h-8.227c-2.573 0-4.667 2.093-4.667 4.667 0 2.507 1.627 8.867 2.68 12.667h2.653v-2.667h8v2.667h2.68l2.067-6.867 3.253-1.093v-4.707z"></path>
 </symbol>
-<symbol id="iconSmallNote" viewBox="0 0 1024 1024"><path d="M525.489 551.877c26.867-40.836 125.288-187.583 162.151-219.15-47.001 111.956-139.59 227.146-194.992 336.989 102.353 34.68 148.738-6.429 205.211-54.28l-55.957-10.735c71.059-23.289 66.096-14.656 90.981-49.064 19.741-27.271 36.126-64.094 42.13-102.545l-46.244 5.751c14.758-8.592 47.618-23.683 52.834-32.103 13.959-22.5 50.621-237.738 51.045-282.476-141.319 1.304-367.1 296.536-383.434 437.633-16.435 141.855-177.9 356.214 76.274-30.031v0.011z m210.649 79.762c42.15 25.128 67.218 57.585 67.218 93.761 0 195.113-612.005 195.113-612.005 0 0-89.607 139.024-129.786 211.043-140.793-1.698 12.049-5.398 24.35-10.239 36.924-49.499 9.057-166.013 42.544-166.013 103.869 0 147.384 542.422 147.384 542.422 0 0-25.866-23.299-50.55-61.79-70.381 9.856-7.177 19.519-15.102 29.364-23.38z"/></symbol>
-+       <symbol id="iconExportNew" viewBox="0 0 1024 1024">
-+           <path d="M894.6 532.3c-17.5 0-31.7 14.2-31.7 31.7v251c0 23.3-19 42.3-42.3 42.3H203.7c-23.3 0-42.3-19-42.3-42.3V233.7c0-23.3 19-42.3 42.3-42.3h270.7c17.5 0 31.7-14.2 31.7-31.7S492 128 474.4 128H203.7C145.4 128 98 175.4 98 233.7V815c0 58.3 47.4 105.7 105.7 105.7h616.9c58.3 0 105.7-47.4 105.7-105.7V564c0-17.5-14.2-31.7-31.7-31.7z M253.1 688.9c98.5-93.2 197.9-237.3 373.7-228 12.4 0.7 22.1 10.4 22.1 22.9v61c-0.1 19.2 22.2 29.9 37.1 17.8l227.9-184.3c11.3-9.1 11.3-26.4-0.1-35.5L687 138.8c-14.9-12-38.1-1.4-38.2 17.7v61.8c0 11.6-7.9 20-19.3 22.6-302.5 69-379 423.6-376.4 448z"/>
-+       </symbol>`);
+<symbol id="iconSmallNote" viewBox="0 0 1024 1024">
+    <path d="M525.489 551.877c26.867-40.836 125.288-187.583 162.151-219.15-47.001 111.956-139.59 227.146-194.992 336.989 102.353 34.68 148.738-6.429 205.211-54.28l-55.957-10.735c71.059-23.289 66.096-14.656 90.981-49.064 19.741-27.271 36.126-64.094 42.13-102.545l-46.244 5.751c14.758-8.592 47.618-23.683 52.834-32.103 13.959-22.5 50.621-237.738 51.045-282.476-141.319 1.304-367.1 296.536-383.434 437.633-16.435 141.855-177.9 356.214 76.274-30.031v0.011z m210.649 79.762c42.15 25.128 67.218 57.585 67.218 93.761 0 195.113-612.005 195.113-612.005 0 0-89.607 139.024-129.786 211.043-140.793-1.698 12.049-5.398 24.35-10.239 36.924-49.499 9.057-166.013 42.544-166.013 103.869 0 147.384 542.422 147.384 542.422 0 0-25.866-23.299-50.55-61.79-70.381 9.856-7.177 19.519-15.102 29.364-23.38z"/>
+</symbol>
+<symbol id="iconStatus" viewBox="0 0 24 24">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.88-11.71L10 14.17l-1.88-1.88a.996.996 0 1 0-1.41 1.41l2.59 2.59c.39.39 1.02.39 1.41 0L17.3 9.7a.996.996 0 0 0 0-1.41c-.39-.39-1.03-.39-1.42 0z"/>
+</symbol>
+<symbol id="iconArchive" viewBox="0 0 1024 1024">
+    <path d="M865.3 506.3V184.1c0-64.8-52.7-117.5-117.5-117.5H281c-64.8 0-117.5 52.7-117.5 117.5v322.2c-46.4 5.8-82.4 45.5-82.4 93.5v257.8c0 52 42.3 94.2 94.2 94.2h678.2c52 0 94.2-42.3 94.2-94.2V599.8c0-47.9-36-87.6-82.4-93.5zM233.5 184.1c0-26.2 21.3-47.5 47.5-47.5h466.8c26.2 0 47.5 21.3 47.5 47.5v321.5H669.9v87.6c0 3.3-2.7 6-6 6H365c-3.3 0-6-2.7-6-6v-87.6H233.5V184.1z m644.2 673.6c0 13.4-10.9 24.2-24.2 24.2H175.3c-13.4 0-24.2-10.9-24.2-24.2V599.8c0-13.4 10.9-24.2 24.2-24.2H289v17.6c0 41.9 34.1 76 76 76h298.8c41.9 0 76-34.1 76-76v-17.6H853.4c13.4 0 24.2 10.9 24.2 24.2v257.9z"/>
+    <path d="M513.2 520.3l140.6-140.6-49.5-49.5-57.3 57.4V194.5h-70v190.6l-54.9-54.9-49.5 49.5 91.1 91.1z"/>
+</symbol>`);
 
         // 初始化 dock 数据
         this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || { 
@@ -90,6 +100,11 @@ export default class PluginSample extends Plugin {
                 this.createNewNote(this.dock);
             }
         });
+
+        // 初始化归档数据
+        this.data[PluginSample.ARCHIVE_STORAGE_NAME] = await this.loadData(PluginSample.ARCHIVE_STORAGE_NAME) || {
+            history: []
+        };
 
     //     const statusIconTemp = document.createElement("template");
     //     statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
@@ -930,12 +945,17 @@ export default class PluginSample extends Plugin {
 
     // 渲染历史记录列表
     private renderHistory(history: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}> = [], showAll: boolean = false) {
+        // 根据当前模式选择显示的数据
+        const sourceData = this.showArchived ? 
+            this.data[PluginSample.ARCHIVE_STORAGE_NAME].history :
+            this.data[DOCK_STORAGE_NAME].history;
+
         // 首先根据标签过滤历史记录
         const filteredHistory = this.selectedTags.length > 0 
-            ? history.filter(item => 
+            ? sourceData.filter(item => 
                 this.selectedTags.some(tag => item.tags?.includes(tag))
             )
-            : history;
+            : sourceData;
 
         // 分离置顶和非置顶记录
         const pinnedHistory = filteredHistory.filter(item => item.isPinned);
@@ -945,11 +965,13 @@ export default class PluginSample extends Plugin {
             <div style="border-bottom: 1px solid var(--b3-border-color);">
                 <div class="fn__flex fn__flex-center" style="padding: 8px;">
                     <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
-                        ${this.i18n.note.total.replace('${count}', history.length.toString())}
+                        ${this.i18n.note.total.replace('${count}', sourceData.length.toString())}
                     </div>
                     <span class="fn__flex-1"></span>
-                    <button class="b3-button b3-button--text batch-select-btn" style="padding: 4px 8px; font-size: 12px;">
-                        ${this.i18n.note.batchSelect}
+                    <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
+                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                            <use xlink:href="#iconFilter"></use>
+                        </svg>
                     </button>
                 </div>
                 <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
@@ -988,7 +1010,7 @@ export default class PluginSample extends Plugin {
                                 position: relative;" 
                             title="${this.i18n.note.tagFilter}">
                             <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                <use xlink:href="#iconFilter"></use>
+                                <use xlink:href="#iconTags"></use>
                             </svg>
                             ${this.selectedTags.length > 0 ? `
                                 <div style="position: absolute; 
@@ -1012,7 +1034,7 @@ export default class PluginSample extends Plugin {
                         ${this.i18n.note.tagFilter}
                     </div>
                     <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                        ${Array.from(new Set(sourceData
                             ?.flatMap(item => item.tags || []) || []))
                             .map(tag => {
                                 const isSelected = this.selectedTags.includes(tag);
@@ -1028,7 +1050,7 @@ export default class PluginSample extends Plugin {
                                         data-selected="${isSelected}">
                                         <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
                                         <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
-                                            ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                            ${sourceData.filter(item => item.tags?.includes(tag)).length}
                                         </span>
                                     </span>
                                 `;
@@ -1056,6 +1078,18 @@ export default class PluginSample extends Plugin {
             html += this.renderLoadMoreButton(displayHistory.length, unpinnedHistory.length);
         } else if (unpinnedHistory.length > 0) {
             html += this.renderNoMoreItems();
+        }
+
+        // 在顶部添加归档状态指示
+        if (this.showArchived) {
+            html = `
+                <div class="fn__flex-center" style="padding: 8px; background: var(--b3-theme-surface); color: var(--b3-theme-on-surface); font-size: 12px;">
+                    <svg class="b3-button__icon" style="height: 14px; width: 14px; margin-right: 4px;">
+                        <use xlink:href="#iconArchive"></use>
+                    </svg>
+                    ${this.i18n.note.archivedView}
+                </div>
+            ` + html;
         }
 
         return html;
@@ -1587,6 +1621,44 @@ export default class PluginSample extends Plugin {
                         }
                     }
                 });
+
+                // 添加归档/取消归档选项
+                menu.addItem({
+                    icon: "iconArchive",
+                    label: this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
+                    click: async () => {
+                        if (this.showArchived) {
+                            // 从归档中恢复
+                            const index = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.findIndex(
+                                i => i.timestamp === timestamp
+                            );
+                            if (index !== -1) {
+                                const item = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.splice(index, 1)[0];
+                                this.data[DOCK_STORAGE_NAME].history.unshift(item);
+                                await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
+                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                showMessage(this.i18n.note.unarchiveSuccess);
+                            }
+                        } else {
+                            // 归档到存档
+                            const index = this.data[DOCK_STORAGE_NAME].history.findIndex(
+                                i => i.timestamp === timestamp
+                            );
+                            if (index !== -1) {
+                                const item = this.data[DOCK_STORAGE_NAME].history.splice(index, 1)[0];
+                                if (!Array.isArray(this.data[PluginSample.ARCHIVE_STORAGE_NAME].history)) {
+                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history = [];
+                                }
+                                this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.unshift(item);
+                                await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
+                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                showMessage(this.i18n.note.archiveSuccess);
+                            }
+                        }
+                        this.dock.renderDock(true);
+                    }
+                });
+
                 menu.addItem({
                     icon: "iconEdit",
                     label: this.i18n.note.edit,
@@ -1675,23 +1747,90 @@ export default class PluginSample extends Plugin {
         // 添加批量选择相关的事件处理
         const container = historyList.closest('.fn__flex-1.plugin-sample__custom-dock');
         if (container) {
-            const batchSelectBtn = container.querySelector('.batch-select-btn') as HTMLButtonElement;
+            const filterMenuBtn = container.querySelector('.filter-menu-btn');
             const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
             const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
+            const checkboxes = container.querySelectorAll('.batch-checkbox') as NodeListOf<HTMLElement>;
+
+            if (filterMenuBtn) {
+                filterMenuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const rect = filterMenuBtn.getBoundingClientRect();
+                    const menu = new Menu("filterMenu");
+                    
+                    // 添加批量选择选项
+                    menu.addItem({
+                        icon: "iconCheck",
+                        label: this.i18n.note.batchSelect,
+                        click: () => {
+                            batchToolbar.classList.remove('fn__none');
+                            normalToolbar.classList.add('fn__none');
+                            checkboxes.forEach(checkbox => checkbox.classList.remove('fn__none'));
+                        }
+                    });
+
+                    menu.addSeparator();
+
+                    // 修改为状态过滤选项
+                    menu.addItem({
+                        icon: "iconStatus",
+                        label: this.i18n.note.status,
+                        type: "submenu",
+                        submenu: [{
+                            icon: !this.showArchived ? "iconSelect" : "",
+                            label: this.i18n.note.showActive,
+                            click: () => {
+                                this.showArchived = false;
+                                renderDock(true);
+                            }
+                        }, {
+                            icon: this.showArchived ? "iconSelect" : "",
+                            label: this.i18n.note.showArchived,
+                            click: () => {
+                                this.showArchived = true;
+                                renderDock(true);
+                            }
+                        }]
+                    });
+
+                    // 添加其他过滤选项
+                    menu.addItem({
+                        icon: "iconSort",
+                        label: this.i18n.note.sort,
+                        type: "submenu",
+                        submenu: [{
+                            icon: this.isDescending ? "iconSelect" : "",
+                            label: this.i18n.note.sortByTimeDesc,
+                            click: () => {
+                                this.isDescending = true;
+                                this.data[DOCK_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
+                                renderDock(true);
+                            }
+                        }, {
+                            icon: !this.isDescending ? "iconSelect" : "",
+                            label: this.i18n.note.sortByTimeAsc,
+                            click: () => {
+                                this.isDescending = false;
+                                this.data[DOCK_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
+                                renderDock(true);
+                            }
+                        }]
+                    });
+
+                    menu.open({
+                        x: rect.right,
+                        y: rect.bottom,
+                        isLeft: true,
+                    });
+                });
+            }
+
+            // 批量选择相关的事件处理保持不变
             const selectAllBtn = container.querySelector('.select-all-btn') as HTMLButtonElement;
             const batchDeleteBtn = container.querySelector('.batch-delete-btn') as HTMLButtonElement;
             const cancelSelectBtn = container.querySelector('.cancel-select-btn') as HTMLButtonElement;
-            const checkboxes = container.querySelectorAll('.batch-checkbox') as NodeListOf<HTMLElement>;
 
-            if (batchSelectBtn && batchToolbar && normalToolbar && checkboxes) {
-                // 切换批量选择模式
-                batchSelectBtn.onclick = () => {
-                    batchToolbar.classList.remove('fn__none');
-                    normalToolbar.classList.add('fn__none');
-                    checkboxes.forEach(checkbox => checkbox.classList.remove('fn__none'));
-                    batchSelectBtn.classList.add('fn__none');
-                };
-
+            if (selectAllBtn && batchDeleteBtn && cancelSelectBtn) {
                 // 取消选择
                 cancelSelectBtn.onclick = () => {
                     batchToolbar.classList.add('fn__none');
@@ -1701,7 +1840,6 @@ export default class PluginSample extends Plugin {
                         const input = checkbox.querySelector('input');
                         if (input) input.checked = false;
                     });
-                    batchSelectBtn.classList.remove('fn__none');
                 };
 
                 // 全选/取消全选
@@ -1724,14 +1862,11 @@ export default class PluginSample extends Plugin {
 
                     confirm(this.i18n.note.batchDelete, this.i18n.note.batchDeleteConfirm, async () => {
                         try {
-                            // 过滤掉要删除的项
                             this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
                                 .filter(item => !selectedTimestamps.includes(item.timestamp));
                             
-                            // 保存更新后的数据
                             await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
                             
-                            // 退出批量选择模式并重新渲染
                             cancelSelectBtn.click();
                             renderDock(false);
                             

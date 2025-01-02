@@ -58,6 +58,17 @@
         "noItemSelected": "Please select at least one item",
         "batchDeleteConfirm": "Are you sure you want to delete the selected items? This action cannot be undone.",
         "batchDeleteSuccess": "Batch delete successful",
-        "batchDeleteFailed": "Batch delete failed"
+        "batchDeleteFailed": "Batch delete failed",
+        "sort": "Sort",
+        "sortByTimeDesc": "Sort by Time (Newest First)",
+        "sortByTimeAsc": "Sort by Time (Oldest First)",
+        "archive": "Archive",
+        "unarchive": "Unarchive",
+        "showArchived": "Archived",
+        "showActive": "Active",
+        "archivedView": "Archived Records",
+        "archiveSuccess": "Archived successfully",
+        "unarchiveSuccess": "Restored successfully",
+        "status": "Status"
     }
 }
