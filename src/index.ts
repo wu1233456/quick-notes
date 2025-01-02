@@ -145,6 +145,9 @@ export default class PluginSample extends Plugin {
                                         ${this.i18n.note.title}
                                     </div>
                                     <span class="fn__flex-1 fn__space"></span>
+                                    <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
+                                        <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
+                                    </span>
                                     <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
                                         <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
                                     </span>
@@ -191,11 +194,21 @@ export default class PluginSample extends Plugin {
                     this.setupTagsFeature(dock.element);
 
                     // 修改保存按钮的处理逻辑
-                    dock.element.querySelectorAll('button').forEach(button => {
+                    dock.element.querySelectorAll('button, .block__icon').forEach(button => {
                         const type = button.getAttribute('data-type');
                         if (type) {
                             button.onclick = async () => {
                                 switch(type) {
+                                    case 'refresh':
+                                        // 重新加载数据
+                                        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
+                                            text: '',
+                                            history: []
+                                        };
+                                        // 重新渲染
+                                        renderDock(false);
+                                        showMessage('已刷新');
+                                        break;
                                     case 'save':
                                         if (textarea.value.trim()) {
                                             const tags = Array.from(dock.element.querySelectorAll('.tag-item')).map(tag => 
@@ -209,14 +222,6 @@ export default class PluginSample extends Plugin {
                                             dock.element.querySelector('.tags-list').innerHTML = '';
                                             renderDock();
                                         }
-                                        break;
-                                    case 'refresh':
-                                        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
-                                            text: '',
-                                            history: []
-                                        };
-                                        renderDock();
-                                        showMessage('已刷新历史记录');
                                         break;
                                     case 'clear':
                                         textarea.value = '';
@@ -1139,7 +1144,7 @@ export default class PluginSample extends Plugin {
                                             transition: all 0.2s ease;" 
                                         data-tag="${tag}"
                                         data-selected="${isSelected}">
-                                        <span class="b3-chip__content">${tag}</span>
+                                        <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
                                         <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
                                             ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
                                         </span>
@@ -1229,10 +1234,10 @@ export default class PluginSample extends Plugin {
                     : `<span style="color: var(--b3-theme-on-surface);">${item.text}</span>`}
             </div>
             ${item.tags && item.tags.length > 0 ? `
-                <div class="fn__flex" style="gap: 4px; margin-top: 4px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
                     ${item.tags.map(tag => `
                         <span class="b3-chip b3-chip--small" style="padding: 0 6px; height: 18px; font-size: 10px;">
-                            <span class="b3-chip__content">${tag}</span>
+                            <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
                         </span>
                     `).join('')}
                 </div>
@@ -1461,18 +1466,18 @@ export default class PluginSample extends Plugin {
                     box-sizing: border-box;"
                     onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); }"
                 >${text}</textarea>
-                <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div class="fn__flex" style="gap: 8px; align-items: center;">
+                <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px;">
+                    <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
+                    <div class="fn__flex" style="justify-content: space-between; align-items: center;">
                         <button class="b3-button b3-button--text add-tag-btn" style="padding: 4px;">
                             <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
                             <span style="margin-left: 4px; font-size: 12px;">${this.i18n.note.addTag}</span>
                         </button>
-                        <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+                        <button class="b3-button b3-button--text" data-type="save">
+                            <svg class="b3-button__icon"><use xlink:href="#iconSave"></use></svg>
+                            ${this.i18n.note.save}
+                        </button>
                     </div>
-                    <button class="b3-button b3-button--text" data-type="save">
-                        <svg class="b3-button__icon"><use xlink:href="#iconSave"></use></svg>
-                        ${this.i18n.note.save}
-                    </button>
                 </div>
             </div>`;
     }
@@ -1530,7 +1535,7 @@ export default class PluginSample extends Plugin {
                             tagElement.setAttribute('data-tag', tagText);
                             tagElement.style.cursor = 'default';
                             tagElement.innerHTML = `
-                                <span class="b3-chip__content">${tagText}</span>
+                                <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
                                 <svg class="b3-chip__close" style="cursor: pointer;">
                                     <use xlink:href="#iconClose"></use>
                                 </svg>
