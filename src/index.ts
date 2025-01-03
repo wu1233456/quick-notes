@@ -1179,8 +1179,7 @@ export default class PluginSample extends Plugin {
         // 使用 Lute 渲染 Markdown
         let renderedContent = '';
         try {
-            const lute = (window as any).Lute.New();
-            renderedContent = lute.Md2HTML(displayText);
+            renderedContent = window.Lute.New().Md2HTML(displayText);
         } catch (error) {
             console.error('Markdown rendering failed:', error);
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
@@ -1197,7 +1196,7 @@ export default class PluginSample extends Plugin {
                         ${item.text.length > MAX_TEXT_LENGTH ? 
                             `<div style="word-break: break-word;">
                                 <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
-                                    ${lute.Md2HTML(displayText.substring(0, MAX_TEXT_LENGTH))}...
+                                    ${window.Lute.New().Md2HTML(displayText.substring(0, MAX_TEXT_LENGTH))}...
                                 </div>
                                 <div class="expanded-text markdown-content" style="display: none; color: var(--b3-theme-on-surface);">
                                     ${renderedContent}
