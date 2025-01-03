@@ -43,18 +43,19 @@
 
 ## Changelog
 
+### v1.0.4 (2025-01-03)
+- Fixed archived notes not updating after editing
+- Improved archive content management
 
 ### v1.0.3 (2025-01-03)
 - Added editor toggle button
 - Improved editor visibility control
-
 
 ### v1.0.2 (2025-01-02)
 - Added archive feature, allowing unused records to be archived
 - Support switching between activity records and archived content
 - Search and sort functions support archived content
 - Export option to include archived content
-
 
 ### v1.0 (2025-01-02)
 - Initial release
