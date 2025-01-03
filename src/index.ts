@@ -1310,8 +1310,11 @@ export default class PluginSample extends Plugin {
     // 编辑历史记录
     private async editHistoryItem(dock: any, timestamp: number, oldText: string) {
         try {
+            // 根据当前状态选择正确的数据源
+            const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
+            
             // 获取当前记录项
-            const currentItem = this.data[DOCK_STORAGE_NAME].history.find(
+            const currentItem = this.data[storageKey].history.find(
                 item => item.timestamp === timestamp
             );
 
@@ -1342,13 +1345,13 @@ export default class PluginSample extends Plugin {
                             const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
                                 .map(tag => tag.getAttribute('data-tag'));
                             
-                            const index = this.data[DOCK_STORAGE_NAME].history.findIndex(
+                            const index = this.data[storageKey].history.findIndex(
                                 item => item.timestamp === timestamp
                             );
                             if (index !== -1) {
-                                this.data[DOCK_STORAGE_NAME].history[index].text = newText;
-                                this.data[DOCK_STORAGE_NAME].history[index].tags = tags;
-                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                this.data[storageKey].history[index].text = newText;
+                                this.data[storageKey].history[index].tags = tags;
+                                await this.saveData(storageKey, this.data[storageKey]);
                                 showMessage(this.i18n.note.saveSuccess);
                                 dialog.destroy();
                                 resolve(true);
@@ -1693,13 +1696,22 @@ export default class PluginSample extends Plugin {
                 menu.addItem({
                     icon: "iconTrashcan",
                     label: this.i18n.note.delete,
-                    click: () => {
+                    click: async () => {
                         confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
-                            if (await this.deleteHistoryItem(this.dock, timestamp)) {
+                            // 根据当前状态选择正确的数据源
+                            const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
+                            
+                            // 从对应的数据源中删除
+                            const index = this.data[storageKey].history.findIndex(
+                                i => i.timestamp === timestamp
+                            );
+                            
+                            if (index !== -1) {
+                                this.data[storageKey].history.splice(index, 1);
+                                await this.saveData(storageKey, this.data[storageKey]);
                                 showMessage(this.i18n.note.deleteSuccess);
-                                renderDock(false);
-                            } else {
-                                showMessage('删除失败');
+                                // 使用 this.dock.renderDock 而不是 renderDock
+                                this.dock.renderDock(false);
                             }
                         });
                     }
