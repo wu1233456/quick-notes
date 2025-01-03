@@ -26,6 +26,9 @@
         "deleteSuccess": "Delete successful",
         "save": "Save",
         "saveSuccess": "Save successful",
+        "copy": "Copy",
+        "copySuccess": "Copied to clipboard",
+        "copyFailed": "Failed to copy",
         "addTag": "Add Tag",
         "existingTags": "Existing Tags",
         "tagFilter": "Filter by Tags",
@@ -73,6 +76,7 @@
         "noSearchResults": "No matching results found",
         "exportIncludeArchived": "Include Archived Content",
         "showEditor": "Show Editor",
-        "hideEditor": "Hide Editor"
+        "hideEditor": "Hide Editor",
+        "quickNotes": "Quick Open Notes"
     }
 }

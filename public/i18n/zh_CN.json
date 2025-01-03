@@ -26,6 +26,9 @@
         "deleteSuccess": "删除成功",
         "save": "保存",
         "saveSuccess": "保存成功",
+        "copy": "复制",
+        "copySuccess": "复制成功",
+        "copyFailed": "复制失败",
         "addTag": "添加标签",
         "existingTags": "已有标签",
         "tagFilter": "标签筛选",
@@ -73,6 +76,7 @@
         "noSearchResults": "未找到匹配的内容",
         "exportIncludeArchived": "包含已归档内容",
         "showEditor": "显示编辑框",
-        "hideEditor": "隐藏编辑框"
+        "hideEditor": "隐藏编辑框",
+        "quickNotes": "快速打开小记"
     }
 }

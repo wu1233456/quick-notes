@@ -1176,6 +1176,16 @@ export default class PluginSample extends Plugin {
                       .replace(/'/g, '&#039;');
         };
 
+        // 使用 Lute 渲染 Markdown
+        let renderedContent = '';
+        try {
+            const lute = (window as any).Lute.New();
+            renderedContent = lute.Md2HTML(displayText);
+        } catch (error) {
+            console.error('Markdown rendering failed:', error);
+            renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
+        }
+
         return `
             <div class="fn__flex" style="gap: 8px;">
                 <!-- 添加复选框，默认隐藏 -->
@@ -1183,42 +1193,62 @@ export default class PluginSample extends Plugin {
                     <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
                 </div>
                 <div class="fn__flex-1">
-            <div class="text-content" data-text="${encodeText(displayText)}">
-                ${item.text.length > MAX_TEXT_LENGTH ? 
-                    `<div style="word-break: break-word;">
-                        <span class="collapsed-text" style="color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText.substring(0, MAX_TEXT_LENGTH))}...</span>
-                        <span class="expanded-text" style="display: none; color: var(--b3-theme-on-surface); white-space: pre-wrap;">${encodeText(displayText)}</span>
-                        <button class="b3-button b3-button--text toggle-text" 
-                            style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
-                            ${this.i18n.note.expand}
-                            <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
-                                <use xlink:href="#iconDown"></use>
-                            </svg>
-                        </button>
-                    </div>` 
-                    : `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`}
-            </div>
-            ${item.tags && item.tags.length > 0 ? `
-                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                    ${item.tags.map(tag => `
-                        <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
-                            style="padding: 0 6px; height: 18px; font-size: 10px;"
-                            aria-label="${tag}">
-                            <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
-                        </span>
-                    `).join('')}
-                </div>
-            ` : ''}
-            <div class="fn__flex" style="margin-top: 4px; justify-content: space-between; align-items: center;">
-                <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
-                    ${new Date(item.timestamp).toLocaleString()}
-                </div>
-                <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
-                    style="padding: 4px; height: 20px; width: 20px;">
-                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                        <use xlink:href="#iconMore"></use>
-                    </svg>
-                </button>
+                    <div class="text-content" data-text="${encodeText(displayText)}">
+                        ${item.text.length > MAX_TEXT_LENGTH ? 
+                            `<div style="word-break: break-word;">
+                                <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
+                                    ${lute.Md2HTML(displayText.substring(0, MAX_TEXT_LENGTH))}...
+                                </div>
+                                <div class="expanded-text markdown-content" style="display: none; color: var(--b3-theme-on-surface);">
+                                    ${renderedContent}
+                                </div>
+                                <button class="b3-button b3-button--text toggle-text" 
+                                    style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                                    ${this.i18n.note.expand}
+                                    <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                                        <use xlink:href="#iconDown"></use>
+                                    </svg>
+                                </button>
+                            </div>` 
+                            : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                                ${renderedContent}
+                            </div>`}
+                    </div>
+                    ${item.tags && item.tags.length > 0 ? `
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                            ${item.tags.map(tag => `
+                                <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
+                                    style="padding: 0 6px; height: 18px; font-size: 10px;"
+                                    aria-label="${tag}">
+                                    <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                </span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="fn__flex" style="margin-top: 4px; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </div>
+                        <div class="fn__flex" style="gap: 4px;">
+                            <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                    <use xlink:href="#iconCopy"></use>
+                                </svg>
+                            </button>
+                            <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                    <use xlink:href="#iconEdit"></use>
+                                </svg>
+                            </button>
+                            <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                    <use xlink:href="#iconMore"></use>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -1263,6 +1293,14 @@ export default class PluginSample extends Plugin {
                         resolve(false);
                     }
                 });
+
+                // 在对话框创建后立即聚焦到文本框
+                setTimeout(() => {
+                    const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
+                    if (textarea) {
+                        textarea.focus();
+                    }
+                }, 100);
 
                 // 绑定保存按钮事件
                 const saveBtn = dialog.element.querySelector('[data-type="save"]');
@@ -1473,13 +1511,11 @@ export default class PluginSample extends Plugin {
                 <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px;">
                     <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
                     <div class="fn__flex" style="justify-content: space-between; align-items: center;">
-                        <button class="b3-button b3-button--text add-tag-btn" style="padding: 4px;">
+                        <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.addTag}">
                             <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
-                            <span style="margin-left: 4px; font-size: 12px;">${this.i18n.note.addTag}</span>
                         </button>
-                        <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n" data-type="save" aria-label="${adaptHotkey('⌘Enter')}">
-                            <svg class="b3-button__icon"><use xlink:href="#iconSave"></use></svg>
-                            ${this.i18n.note.save}
+                        <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center" data-type="save" aria-label="${adaptHotkey('⌘Enter')}" style="padding: 4px 8px; gap: 4px;">
+                            <span>${this.i18n.note.save}</span>
                         </button>
                     </div>
                 </div>
@@ -1620,8 +1656,33 @@ export default class PluginSample extends Plugin {
         historyList.onclick = async (e) => {
             const target = e.target as HTMLElement;
             const moreBtn = target.closest('.more-btn') as HTMLElement;
+            const copyBtn = target.closest('.copy-btn') as HTMLElement;
+            const editBtn = target.closest('.edit-btn') as HTMLElement;
             
-            if (moreBtn) {
+            if (copyBtn) {
+                e.stopPropagation();
+                const textContainer = copyBtn.closest('.history-item').querySelector('[data-text]');
+                if (textContainer) {
+                    const text = textContainer.getAttribute('data-text') || '';
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        showMessage(this.i18n.note.copySuccess);
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        showMessage(this.i18n.note.copyFailed);
+                    }
+                }
+            } else if (editBtn) {
+                e.stopPropagation();
+                const timestamp = Number(editBtn.getAttribute('data-timestamp'));
+                const textContainer = editBtn.closest('.history-item').querySelector('[data-text]');
+                if (textContainer) {
+                    const text = textContainer.getAttribute('data-text') || '';
+                    if (await this.editHistoryItem(this.dock, timestamp, text)) {
+                        renderDock(false);
+                    }
+                }
+            } else if (moreBtn) {
                 e.stopPropagation();
                 const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
                 const rect = moreBtn.getBoundingClientRect();
@@ -1680,19 +1741,6 @@ export default class PluginSample extends Plugin {
                     }
                 });
 
-                menu.addItem({
-                    icon: "iconEdit",
-                    label: this.i18n.note.edit,
-                    click: async () => {
-                        const textContainer = moreBtn.closest('.history-item').querySelector('[data-text]');
-                        if (textContainer) {
-                            const text = textContainer.getAttribute('data-text') || '';
-                            if (await this.editHistoryItem(this.dock, timestamp, text)) {
-                                renderDock(false);
-                            }
-                        }
-                    }
-                });
                 menu.addItem({
                     icon: "iconTrashcan",
                     label: this.i18n.note.delete,
