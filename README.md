@@ -43,6 +43,7 @@
 
 ## Changelog
 
+
 ### v1.0.5 (2025-01-04)
 - Added Markdown rendering support for note content
 - Fixed cursor focus issue when opening Quick Notes with hotkey
