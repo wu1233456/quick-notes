@@ -43,6 +43,14 @@
 
 ## Changelog
 
+### v1.0.5 (2025-01-04)
+- Added Markdown rendering support for note content
+- Fixed cursor focus issue when opening Quick Notes with hotkey
+- Improved overall user experience
+  - Optimized button layouts
+  - Added tooltips for better usability
+  - Improved copy and edit functionality
+
 ### v1.0.4 (2025-01-03)
 - Fixed archived notes not updating after editing
 - Improved archive content management
