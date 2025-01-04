@@ -42,7 +42,10 @@
 5. Press Ctrl+Shift+y globally to bring up Quick Notes
 
 ## Changelog
-
+### v1.0.7 (2025-01-04)
+- Optimize the issue of global shortcut keys. Previously, they could only be activated within the SiYuan window. Now, even when you are in a non-SiYuan window, pressing "Ctrl + Shift + Y" will switch back to the SiYuan window and pop up the "New Quick Note" option. (The "New Quick Note" is not an independent window, so it will still jump back to the SiYuan application.)
+- Optimize the scrolling experience. When scrolling through the history of quick notes, the editing box and toolbar will be fixed in place.
+- Optimize the display experience. For the history of quick notes, the copy and edit buttons will only be shown when the mouse hovers over them, making the interface cleaner.
 
 ### v1.0.5 (2025-01-04)
 - Added Markdown rendering support for note content

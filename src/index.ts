@@ -119,23 +119,6 @@ export default class PluginSample extends Plugin {
             history: []
         };
 
-        //     const statusIconTemp = document.createElement("template");
-        //     statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
-        // <svg>
-        //     <use xlink:href="#iconTrashcan"></use>
-        // </svg>
-        // </div>`;
-        //         statusIconTemp.content.firstElementChild.addEventListener("click", () => {
-        //             confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
-        //                 this.removeData(STORAGE_NAME).then(() => {
-        //                     this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
-        //                     showMessage(`[${this.name}]: ${this.i18n.removedData}`);
-        //                 });
-        //             });
-        //         });
-        //         this.addStatusBar({
-        //             element: statusIconTemp.content.firstElementChild as HTMLElement,
-        //         });
 
         // 创建 dock 时读取保存的位置
         this.dock = this.addDock({
@@ -143,6 +126,7 @@ export default class PluginSample extends Plugin {
                 position: "RightTop",
                 size: { width: 300, height: 0 },
                 icon: "iconSmallNote",
+                hotkey: '⇧⌘U',
                 title: this.i18n.note.title,
             },
             data: {
@@ -196,7 +180,7 @@ export default class PluginSample extends Plugin {
                                     <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[DOCK_STORAGE_NAME].editorVisible ? 'block' : 'none'};">
                                         ${this.getEditorTemplate()}
                                     </div>
-                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0;">
+                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width:95%;">
                                         <div class="fn__flex fn__flex-center" style="padding: 8px;">
                                             <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
                                                 ${this.i18n.note.total.replace('${count}', (this.data[DOCK_STORAGE_NAME]?.history || []).length.toString())}
