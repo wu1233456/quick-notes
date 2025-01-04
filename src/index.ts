@@ -76,7 +76,7 @@ export default class PluginSample extends Plugin {
 </symbol>`);
 
         // 初始化 dock 数据
-        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || { 
+        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
             text: "",
             history: [],
             editorVisible: true  // 添加编辑框显示状态
@@ -111,23 +111,23 @@ export default class PluginSample extends Plugin {
             history: []
         };
 
-    //     const statusIconTemp = document.createElement("template");
-    //     statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
-    // <svg>
-    //     <use xlink:href="#iconTrashcan"></use>
-    // </svg>
-// </div>`;
-//         statusIconTemp.content.firstElementChild.addEventListener("click", () => {
-//             confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
-//                 this.removeData(STORAGE_NAME).then(() => {
-//                     this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
-//                     showMessage(`[${this.name}]: ${this.i18n.removedData}`);
-//                 });
-//             });
-//         });
-//         this.addStatusBar({
-//             element: statusIconTemp.content.firstElementChild as HTMLElement,
-//         });
+        //     const statusIconTemp = document.createElement("template");
+        //     statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
+        // <svg>
+        //     <use xlink:href="#iconTrashcan"></use>
+        // </svg>
+        // </div>`;
+        //         statusIconTemp.content.firstElementChild.addEventListener("click", () => {
+        //             confirm("⚠️", this.i18n.confirmRemove.replace("${name}", this.name), () => {
+        //                 this.removeData(STORAGE_NAME).then(() => {
+        //                     this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
+        //                     showMessage(`[${this.name}]: ${this.i18n.removedData}`);
+        //                 });
+        //             });
+        //         });
+        //         this.addStatusBar({
+        //             element: statusIconTemp.content.firstElementChild as HTMLElement,
+        //         });
 
         // 创建 dock 时读取保存的位置
         this.dock = this.addDock({
@@ -144,9 +144,9 @@ export default class PluginSample extends Plugin {
             init: (dock) => {
                 this.dock = dock;
                 const renderDock = (showAll: boolean = false) => {
-                if (this.isMobile) {
+                    if (this.isMobile) {
                         dock.element.innerHTML = `
-                            <div class="toolbar toolbar--border toolbar--dark">
+                            <div class="toolbar toolbar--border toolbar--dark" style="height: 100%;">
                                 <svg class="toolbar__icon"><use xlink:href="#iconSmallNote"></use></svg>
                                 <div class="toolbar__text">${this.i18n.note.title}</div>
                     </div>
@@ -158,41 +158,141 @@ export default class PluginSample extends Plugin {
                                     ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
                     </div>
                     </div>`;
-                } else {
+                    } else {
                         dock.element.innerHTML = `
-                            <div class="fn__flex-1 fn__flex-column">
-                    <div class="block__icons">
-                        <div class="block__logo">
-                            <svg class="block__logoicon"><use xlink:href="#iconSmallNote"></use></svg>
-                            ${this.i18n.note.title}
-                        </div>
-                        <span class="fn__flex-1 fn__space"></span>
-                        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" 
-                            aria-label="${this.data[DOCK_STORAGE_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
-                            <svg class="block__logoicon">
-                                <use xlink:href="${this.data[DOCK_STORAGE_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
-                            </svg>
-                        </span>
-                        <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
-                            <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
-                        </span>
-                        <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
-                            <svg class="block__logoicon"><use xlink:href="#iconExportNew"></use></svg>
-                        </span>
-                        <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
-                            <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
-                        </span>
-                    </div>
+                            <div class="fn__flex-1 fn__flex-column" style="height: 100%;">
+
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
+                                                        <div class="block__icons">
+                                    <div class="block__logo">
+                                        <svg class="block__logoicon"><use xlink:href="#iconSmallNote"></use></svg>
+                                        ${this.i18n.note.title}
+                                    </div>
+                                    <span class="fn__flex-1 fn__space"></span>
+                                    <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" 
+                                        aria-label="${this.data[DOCK_STORAGE_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
+                                        <svg class="block__logoicon">
+                                            <use xlink:href="${this.data[DOCK_STORAGE_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
+                                        </svg>
+                                    </span>
+                                    <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
+                                        <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
+                                    </span>
+                                    <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
+                                        <svg class="block__logoicon"><use xlink:href="#iconExportNew"></use></svg>
+                                    </span>
+                                    <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
+                                        <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
+                                    </span>
+                                </div>
                                     <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[DOCK_STORAGE_NAME].editorVisible ? 'block' : 'none'};">
                                         ${this.getEditorTemplate()}
                                     </div>
-                                    <div class="fn__flex-1 history-list" style="overflow: auto;margin: 0 8px;  width: 95%;">
+                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0;">
+                                        <div class="fn__flex fn__flex-center" style="padding: 8px;">
+                                            <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                                                ${this.i18n.note.total.replace('${count}', (this.data[DOCK_STORAGE_NAME]?.history || []).length.toString())}
+                                            </div>
+                                            <span class="fn__flex-1"></span>
+                                            <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
+                                                <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                    <use xlink:href="#iconFilter"></use>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
+                                            <!-- 批量操作工具栏，默认隐藏 -->
+                                            <div class="batch-toolbar fn__none fn__flex" style="gap: 8px; margin-right: auto;">
+                                                <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
+                                                    ${this.i18n.note.selectAll}
+                                                </button>
+                                                <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
+                                                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                        <use xlink:href="#iconCopy"></use>
+                                                    </svg>
+                                                </button>
+                                                <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                                                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                        <use xlink:href="#iconArchive"></use>
+                                                    </svg>
+                                                </button>
+                                                <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
+                                                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                        <use xlink:href="#iconTrashcan"></use>
+                                                    </svg>
+                                                </button>
+                                                <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
+                                                    ${this.i18n.note.cancelSelect}
+                                                </button>
+                                            </div>
+                                            <!-- 常规工具栏 -->
+                                            <div class="normal-toolbar fn__flex" style="gap: 8px;">
+                                                <div class="search-container fn__flex">
+                                                    <div class="search-wrapper" style="position: relative;">
+                                                        <input type="text" 
+                                                            class="search-input b3-text-field" 
+                                                            placeholder="${this.i18n.note.search}" 
+                                                            style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
+                                                        <button class="search-btn" style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
+                                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                                <use xlink:href="#iconSearch"></use>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <button class="filter-btn" 
+                                                    style="border: none; background: none; padding: 4px; cursor: pointer; position: relative;" 
+                                                    title="${this.i18n.note.tagFilter}">
+                                                    <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                        <use xlink:href="#iconTags"></use>
+                                                    </svg>
+                                                    ${this.selectedTags.length > 0 ? `
+                                                        <div style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);"></div>
+                                                    ` : ''}
+                                                </button>
+                                                <button class="sort-btn" 
+                                                    style="border: none; background: none; padding: 4px; cursor: pointer;" 
+                                                    title="${this.i18n.note.sort}">
+                                                    <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                        <use xlink:href="#iconSort"></use>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="filter-panel" style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
+                                            <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                                                ${this.i18n.note.tagFilter}
+                                            </div>
+                                            <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                                ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                            ?.flatMap(item => item.tags || []) || []))
+                                .map(tag => {
+                                    const isSelected = this.selectedTags.includes(tag);
+                                    return `
+                                                            <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
+                                                                style="cursor: pointer; 
+                                                                    background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
+                                                                    color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
+                                                                    border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
+                                                                    transition: all 0.2s ease;" 
+                                                                data-tag="${tag}"
+                                                                aria-label="${tag}"
+                                                                data-selected="${isSelected}">
+                                                                <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                                                <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                                </span>
+                                                            </span>
+                                                        `;
+                                }).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px; width: 95%;">
                                         ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
                                     </div>
-                    </div>
                     </div>`;
-                }
+                    }
 
                     // 绑定事件监听器
                     const textarea = dock.element.querySelector('textarea');
@@ -229,7 +329,7 @@ export default class PluginSample extends Plugin {
                         const type = button.getAttribute('data-type');
                         if (type) {
                             button.onclick = async () => {
-                                switch(type) {
+                                switch (type) {
                                     case 'refresh':
                                         // 重新加载数据
                                         this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
@@ -242,7 +342,7 @@ export default class PluginSample extends Plugin {
                                         break;
                                     case 'save':
                                         if (textarea.value.trim()) {
-                                            const tags = Array.from(dock.element.querySelectorAll('.tag-item')).map(tag => 
+                                            const tags = Array.from(dock.element.querySelectorAll('.tag-item')).map(tag =>
                                                 tag.getAttribute('data-tag')
                                             );
                                             await this.saveContent(dock, textarea.value, tags);
@@ -267,11 +367,11 @@ export default class PluginSample extends Plugin {
                                         if (editorContainer) {
                                             const isVisible = editorContainer.style.display !== 'none';
                                             editorContainer.style.display = isVisible ? 'none' : 'block';
-                                            
+
                                             // 保存状态
                                             this.data[DOCK_STORAGE_NAME].editorVisible = !isVisible;
                                             await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                            
+
                                             // 更新按钮图标和提示文本
                                             const icon = button.querySelector('use');
                                             if (icon) {
@@ -319,8 +419,8 @@ export default class PluginSample extends Plugin {
                 // 初始渲染时应用当前排序
                 if (this.data[DOCK_STORAGE_NAME]?.history) {
                     this.data[DOCK_STORAGE_NAME].history.sort((a, b) => {
-                        return this.isDescending ? 
-                            b.timestamp - a.timestamp : 
+                        return this.isDescending ?
+                            b.timestamp - a.timestamp :
                             a.timestamp - b.timestamp;
                     });
                 }
@@ -332,48 +432,6 @@ export default class PluginSample extends Plugin {
                 console.log("destroy dock:", DOCK_TYPE);
             }
         });
-
-
-        this.protyleSlash = [{
-            filter: ["insert emoji 😊", "插入表情 😊", "crbqwx"],
-            html: `<div class="b3-list-item__first"><span class="b3-list-item__text">${this.i18n.insertEmoji}</span><span class="b3-list-item__meta">😊</span></div>`,
-            id: "insertEmoji",
-            callback(protyle: Protyle) {
-                protyle.insert("😊");
-            }
-        }];
-
-        this.protyleOptions = {
-            toolbar: ["block-ref",
-                "a",
-                "|",
-                "text",
-                "strong",
-                "em",
-                "u",
-                "s",
-                "mark",
-                "sup",
-                "sub",
-                "clear",
-                "|",
-                "code",
-                "kbd",
-                "tag",
-                "inline-math",
-                "inline-memo",
-                "|",
-                {
-                    name: "insert-smail-emoji",
-                    icon: "iconEmoji",
-                    hotkey: "⇧⌘I",
-                    tipPosition: "n",
-                    tip: this.i18n.insertEmoji,
-                    click(protyle: Protyle) {
-                        protyle.insert("😊");
-                    }
-                }],
-        };
 
         console.log(this.i18n.helloPlugin);
     }
@@ -615,7 +673,7 @@ export default class PluginSample extends Plugin {
                 label: "Open Doc Window(open help first)",
                 click: () => {
                     openWindow({
-                        doc: {id: "20200812220555-lj3enxa"}
+                        doc: { id: "20200812220555-lj3enxa" }
                     });
                 }
             });
@@ -973,15 +1031,15 @@ export default class PluginSample extends Plugin {
     }
 
     // 渲染历史记录列表
-    private renderHistory(history: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}> = [], showAll: boolean = false) {
+    private renderHistory(history: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }> = [], showAll: boolean = false) {
         // 根据当前模式选择显示的数据
-        const sourceData = this.showArchived ? 
+        const sourceData = this.showArchived ?
             this.data[PluginSample.ARCHIVE_STORAGE_NAME].history :
             this.data[DOCK_STORAGE_NAME].history;
 
         // 首先根据标签过滤历史记录
-        const filteredHistory = this.selectedTags.length > 0 
-            ? sourceData.filter(item => 
+        const filteredHistory = this.selectedTags.length > 0
+            ? sourceData.filter(item =>
                 this.selectedTags.some(tag => item.tags?.includes(tag))
             )
             : sourceData;
@@ -989,111 +1047,6 @@ export default class PluginSample extends Plugin {
         // 分离置顶和非置顶记录
         const pinnedHistory = filteredHistory.filter(item => item.isPinned);
         const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
-        
-        // 渲染工具栏
-        const toolbarHtml = `
-            <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color);">
-                <div class="fn__flex fn__flex-center" style="padding: 8px;">
-                    <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
-                        ${this.i18n.note.total.replace('${count}', sourceData.length.toString())}
-                    </div>
-                    <span class="fn__flex-1"></span>
-                    <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
-                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                            <use xlink:href="#iconFilter"></use>
-                        </svg>
-                    </button>
-                </div>
-                <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
-                    <!-- 批量操作工具栏，默认隐藏 -->
-                    <div class="batch-toolbar fn__none fn__flex" style="gap: 8px; margin-right: auto;">
-                        <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
-                            ${this.i18n.note.selectAll}
-                        </button>
-                        <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconCopy"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconArchive"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconTrashcan"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
-                            ${this.i18n.note.cancelSelect}
-                        </button>
-                    </div>
-                    <!-- 常规工具栏 -->
-                    <div class="normal-toolbar fn__flex" style="gap: 8px;">
-                        <div class="search-container fn__flex">
-                            <div class="search-wrapper" style="position: relative;">
-                                <input type="text" 
-                                    class="search-input b3-text-field" 
-                                    placeholder="${this.i18n.note.search}" 
-                                    style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
-                                <button class="search-btn" style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
-                                    <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                        <use xlink:href="#iconSearch"></use>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <!-- 添加标签过滤按钮 -->
-                        <button class="filter-btn" 
-                            style="border: none; background: none; padding: 4px; cursor: pointer; position: relative;" 
-                            title="${this.i18n.note.tagFilter}">
-                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                <use xlink:href="#iconTags"></use>
-                            </svg>
-                            ${this.selectedTags.length > 0 ? `
-                                <div style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);"></div>
-                            ` : ''}
-                        </button>
-                        <!-- 添加排序按钮 -->
-                        <button class="sort-btn" 
-                            style="border: none; background: none; padding: 4px; cursor: pointer;" 
-                            title="${this.i18n.note.sort}">
-                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                <use xlink:href="#iconSort"></use>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="filter-panel" style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
-                    <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
-                        ${this.i18n.note.tagFilter}
-                    </div>
-                    <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${Array.from(new Set(sourceData
-                            ?.flatMap(item => item.tags || []) || []))
-                            .map(tag => {
-                                const isSelected = this.selectedTags.includes(tag);
-                                return `
-                                    <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
-                                        style="cursor: pointer; 
-                                            background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
-                                            color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
-                                            border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
-                                            transition: all 0.2s ease;" 
-                                        data-tag="${tag}"
-                                        aria-label="${tag}"
-                                        data-selected="${isSelected}">
-                                        <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
-                                        <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
-                                            ${sourceData.filter(item => item.tags?.includes(tag)).length}
-                                        </span>
-                                    </span>
-                                `;
-                            }).join('')}
-                    </div>
-                </div>
-            </div>`;
 
         // 渲染历史记录内容
         let historyHtml = '';
@@ -1115,8 +1068,8 @@ export default class PluginSample extends Plugin {
         }
 
         // 渲染非置顶记录
-        const displayHistory = showAll ? 
-            unpinnedHistory.slice(0, this.currentDisplayCount) : 
+        const displayHistory = showAll ?
+            unpinnedHistory.slice(0, this.currentDisplayCount) :
             unpinnedHistory.slice(0, ITEMS_PER_PAGE);
 
         if (displayHistory.length > 0) {
@@ -1132,14 +1085,13 @@ export default class PluginSample extends Plugin {
 
         // 返回完整的 HTML
         return `
-            ${toolbarHtml}
             <div class="history-content">
                 ${historyHtml}
             </div>`;
     }
 
     // 渲染置顶记录
-    private renderPinnedHistory(pinnedHistory: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
+    private renderPinnedHistory(pinnedHistory: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>) {
         return `<div class="pinned-records" style="margin-top: 8px;">
             ${pinnedHistory.map(item => `
                 <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
@@ -1169,7 +1121,7 @@ export default class PluginSample extends Plugin {
     }
 
     // 渲染非置顶记录
-    private renderUnpinnedHistory(displayHistory: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>, hasPinned: boolean) {
+    private renderUnpinnedHistory(displayHistory: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>, hasPinned: boolean) {
         return `<div style="margin-top: ${hasPinned ? '16px' : '8px'}">
             ${displayHistory.map(item => `
                 <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
@@ -1192,14 +1144,14 @@ export default class PluginSample extends Plugin {
     }
 
     // 渲染笔记内容
-    private renderNoteContent(item: {text: string, timestamp: number, tags?: string[]}) {
+    private renderNoteContent(item: { text: string, timestamp: number, tags?: string[] }) {
         const displayText = item.text;
         const encodeText = (text: string) => {
             return text.replace(/&/g, '&amp;')
-                      .replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;')
-                      .replace(/"/g, '&quot;')
-                      .replace(/'/g, '&#039;');
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         };
 
         // 使用 Lute 渲染 Markdown
@@ -1219,8 +1171,8 @@ export default class PluginSample extends Plugin {
                 </div>
                 <div class="fn__flex-1">
                     <div class="text-content" data-text="${encodeText(displayText)}">
-                        ${item.text.length > MAX_TEXT_LENGTH ? 
-                            `<div style="word-break: break-word;">
+                        ${item.text.length > MAX_TEXT_LENGTH ?
+                `<div style="word-break: break-word;">
                                 <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
                                     ${window.Lute.New().Md2HTML(displayText.substring(0, MAX_TEXT_LENGTH))}...
                                 </div>
@@ -1234,8 +1186,8 @@ export default class PluginSample extends Plugin {
                                         <use xlink:href="#iconDown"></use>
                                     </svg>
                                 </button>
-                            </div>` 
-                            : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                            </div>`
+                : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
                                 ${renderedContent}
                             </div>`}
                     </div>
@@ -1285,8 +1237,8 @@ export default class PluginSample extends Plugin {
             <div class="fn__flex-center" style="padding: 8px 8px 0;">
                 <button class="b3-button b3-button--outline load-more-btn">
                     ${this.i18n.note.loadMore} (${this.i18n.note.showing
-                        .replace('${shown}', shown.toString())
-                        .replace('${total}', total.toString())})
+                .replace('${shown}', shown.toString())
+                .replace('${total}', total.toString())})
                 </button>
             </div>`;
     }
@@ -1335,7 +1287,7 @@ export default class PluginSample extends Plugin {
                         const text = textarea.value;
                         const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
                             .map(tag => tag.getAttribute('data-tag'));
-                        
+
                         if (text.trim()) {
                             if (!this.data[DOCK_STORAGE_NAME]) {
                                 this.data[DOCK_STORAGE_NAME] = { text: '', history: [] };
@@ -1343,13 +1295,13 @@ export default class PluginSample extends Plugin {
                             if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
                                 this.data[DOCK_STORAGE_NAME].history = [];
                             }
-                            
+
                             this.data[DOCK_STORAGE_NAME].history.unshift({
                                 text: text,
                                 timestamp: Date.now(),
                                 tags: tags
                             });
-                            
+
                             await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
                             showMessage(this.i18n.note.saveSuccess);
                             dialog.destroy();
@@ -1375,7 +1327,7 @@ export default class PluginSample extends Plugin {
         try {
             // 根据当前状态选择正确的数据源
             const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
-            
+
             // 获取当前记录项
             const currentItem = this.data[storageKey].history.find(
                 item => item.timestamp === timestamp
@@ -1407,7 +1359,7 @@ export default class PluginSample extends Plugin {
                         if (newText.trim()) {
                             const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
                                 .map(tag => tag.getAttribute('data-tag'));
-                            
+
                             const index = this.data[storageKey].history.findIndex(
                                 item => item.timestamp === timestamp
                             );
@@ -1466,15 +1418,15 @@ export default class PluginSample extends Plugin {
             this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history.filter(
                 item => item.timestamp !== timestamp
             );
-            
+
             // 立即保存数据
             await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-            
+
             // 更新视图
             if (dock.renderDock) {
                 dock.renderDock(false);
             }
-            
+
             return true;
         } catch (error) {
             console.error('Error deleting history item:', error);
@@ -1487,23 +1439,23 @@ export default class PluginSample extends Plugin {
         try {
             const timestamp = Date.now();
             dock.data.text = content;
-            
+
             if (!this.data[DOCK_STORAGE_NAME]) {
                 this.data[DOCK_STORAGE_NAME] = { text: content, history: [] };
             }
             if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
                 this.data[DOCK_STORAGE_NAME].history = [];
             }
-            
+
             this.data[DOCK_STORAGE_NAME].history.unshift({
                 text: content,
                 timestamp,
                 tags
             });
-            
+
             // 立即保存数据
             await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-            
+
             // 更新视图
             if (dock.renderDock) {
                 dock.renderDock(false);
@@ -1555,7 +1507,7 @@ export default class PluginSample extends Plugin {
         if (tagsList && addTagBtn) {
             addTagBtn.onclick = (e) => {
                 e.stopPropagation();
-                
+
                 // 创建标签选择面板
                 const tagPanel = document.createElement('div');
                 tagPanel.className = 'tag-panel';
@@ -1588,8 +1540,8 @@ export default class PluginSample extends Plugin {
                             </div>
                             <div class="history-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
                                 ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
-                                    ?.flatMap(item => item.tags || []) || []))
-                                    .map(tag => `
+                    ?.flatMap(item => item.tags || []) || []))
+                        .map(tag => `
                                         <span class="b3-chip b3-chip--middle history-tag" 
                                             style="cursor: pointer;" 
                                             data-tag="${tag}">
@@ -1615,7 +1567,7 @@ export default class PluginSample extends Plugin {
                     if (tagText.trim()) {
                         const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
                             .map(tag => tag.getAttribute('data-tag'));
-                        
+
                         if (!existingTags.includes(tagText)) {
                             const tagElement = document.createElement('span');
                             tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
@@ -1667,7 +1619,7 @@ export default class PluginSample extends Plugin {
                         document.removeEventListener('click', closePanel);
                     }
                 };
-                
+
                 // 延迟添加点击事件，避免立即触发
                 setTimeout(() => {
                     document.addEventListener('click', closePanel);
@@ -1683,7 +1635,7 @@ export default class PluginSample extends Plugin {
             const moreBtn = target.closest('.more-btn') as HTMLElement;
             const copyBtn = target.closest('.copy-btn') as HTMLElement;
             const editBtn = target.closest('.edit-btn') as HTMLElement;
-            
+
             if (copyBtn) {
                 e.stopPropagation();
                 const textContainer = copyBtn.closest('.history-item').querySelector('[data-text]');
@@ -1711,16 +1663,16 @@ export default class PluginSample extends Plugin {
                 e.stopPropagation();
                 const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
                 const rect = moreBtn.getBoundingClientRect();
-                
+
                 // 获取当前记录项
-                const currentItem = this.showArchived ? 
+                const currentItem = this.showArchived ?
                     this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.find(
                         item => item.timestamp === timestamp
                     ) :
                     this.data[DOCK_STORAGE_NAME].history.find(
                         item => item.timestamp === timestamp
                     );
-                
+
                 const menu = new Menu("historyItemMenu");
                 menu.addItem({
                     icon: "iconPin",
@@ -1731,7 +1683,7 @@ export default class PluginSample extends Plugin {
                         const index = this.data[storageKey].history.findIndex(
                             i => i.timestamp === timestamp
                         );
-                        
+
                         if (index !== -1) {
                             // 切换置顶状态
                             this.data[storageKey].history[index].isPinned = !this.data[storageKey].history[index].isPinned;
@@ -1773,12 +1725,12 @@ export default class PluginSample extends Plugin {
                         confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
                             // 根据当前状态选择正确的数据源
                             const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
-                            
+
                             // 从对应的数据源中删除
                             const index = this.data[storageKey].history.findIndex(
                                 i => i.timestamp === timestamp
                             );
-                            
+
                             if (index !== -1) {
                                 this.data[storageKey].history.splice(index, 1);
                                 await this.saveData(storageKey, this.data[storageKey]);
@@ -1825,7 +1777,7 @@ export default class PluginSample extends Plugin {
                 const textContent = toggleBtn.closest('.text-content');
                 const collapsedText = textContent.querySelector('.collapsed-text');
                 const expandedText = textContent.querySelector('.expanded-text');
-                
+
                 if (collapsedText.style.display !== 'none') {
                     // 展开
                     collapsedText.style.display = 'none';
@@ -1860,7 +1812,7 @@ export default class PluginSample extends Plugin {
                     e.stopPropagation();
                     const rect = filterMenuBtn.getBoundingClientRect();
                     const menu = new Menu("filterMenu");
-                    
+
                     // 添加批量选择选项
                     menu.addItem({
                         icon: "iconCheck",
@@ -1988,12 +1940,12 @@ export default class PluginSample extends Plugin {
                         try {
                             this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
                                 .filter(item => !selectedTimestamps.includes(item.timestamp));
-                            
+
                             await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                            
+
                             cancelSelectBtn.click();
                             renderDock(false);
-                            
+
                             showMessage(this.i18n.note.batchDeleteSuccess);
                         } catch (error) {
                             console.error('Batch delete failed:', error);
@@ -2019,14 +1971,14 @@ export default class PluginSample extends Plugin {
                             filterPanel.querySelectorAll('.filter-tag').forEach(tag => {
                                 // 移除旧的事件监听器
                                 tag.replaceWith(tag.cloneNode(true));
-                                
+
                                 // 重新获取元素并添加事件监听器
                                 const newTag = filterPanel.querySelector(`[data-tag="${tag.getAttribute('data-tag')}"]`);
                                 if (newTag) {
                                     newTag.addEventListener('click', () => {
                                         const tagText = newTag.getAttribute('data-tag');
                                         const isSelected = newTag.getAttribute('data-selected') === 'true';
-                                        
+
                                         if (isSelected) {
                                             this.selectedTags = this.selectedTags.filter(t => t !== tagText);
                                             newTag.style.backgroundColor = 'var(--b3-theme-surface)';
@@ -2039,7 +1991,7 @@ export default class PluginSample extends Plugin {
                                             newTag.style.border = '1px solid var(--b3-theme-primary)';
                                         }
                                         newTag.setAttribute('data-selected', (!isSelected).toString());
-                                        
+
                                         // 更新过滤状态小圆点
                                         const indicator = filterBtn.querySelector('div');
                                         if (this.selectedTags.length > 0) {
@@ -2101,8 +2053,8 @@ export default class PluginSample extends Plugin {
                         return;
                     }
 
-                    const confirmMessage = this.showArchived ? 
-                        this.i18n.note.batchUnarchiveConfirm : 
+                    const confirmMessage = this.showArchived ?
+                        this.i18n.note.batchUnarchiveConfirm :
                         this.i18n.note.batchArchiveConfirm;
 
                     confirm(
@@ -2114,24 +2066,24 @@ export default class PluginSample extends Plugin {
                                     // 批量取消归档
                                     const itemsToUnarchive = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history
                                         .filter(item => selectedTimestamps.includes(item.timestamp));
-                                    
+
                                     // 从归档中移除
-                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history = 
+                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history =
                                         this.data[PluginSample.ARCHIVE_STORAGE_NAME].history
                                             .filter(item => !selectedTimestamps.includes(item.timestamp));
-                                    
+
                                     // 添加到活动记录
                                     this.data[DOCK_STORAGE_NAME].history.unshift(...itemsToUnarchive);
                                 } else {
                                     // 批量归档
                                     const itemsToArchive = this.data[DOCK_STORAGE_NAME].history
                                         .filter(item => selectedTimestamps.includes(item.timestamp));
-                                    
+
                                     // 从活动记录中移除
-                                    this.data[DOCK_STORAGE_NAME].history = 
+                                    this.data[DOCK_STORAGE_NAME].history =
                                         this.data[DOCK_STORAGE_NAME].history
                                             .filter(item => !selectedTimestamps.includes(item.timestamp));
-                                    
+
                                     // 添加到归档
                                     this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
                                 }
@@ -2140,17 +2092,17 @@ export default class PluginSample extends Plugin {
                                 await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
                                 await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
 
-                                showMessage(this.showArchived ? 
-                                    this.i18n.note.batchUnarchiveSuccess : 
+                                showMessage(this.showArchived ?
+                                    this.i18n.note.batchUnarchiveSuccess :
                                     this.i18n.note.batchArchiveSuccess
                                 );
-                                
+
                                 cancelSelectBtn.click(); // 操作完成后退出选择模式
                                 renderDock(false);
                             } catch (error) {
                                 console.error('批量归档/取消归档失败:', error);
-                                showMessage(this.showArchived ? 
-                                    this.i18n.note.batchUnarchiveFailed : 
+                                showMessage(this.showArchived ?
+                                    this.i18n.note.batchUnarchiveFailed :
                                     this.i18n.note.batchArchiveFailed
                                 );
                             }
@@ -2187,7 +2139,7 @@ export default class PluginSample extends Plugin {
 
             searchInput.oninput = () => {
                 const searchText = searchInput.value.toLowerCase();
-                
+
                 if (!searchText) {
                     this.currentDisplayCount = ITEMS_PER_PAGE;
                     this.dock.renderDock(false);
@@ -2195,7 +2147,7 @@ export default class PluginSample extends Plugin {
                 }
 
                 // 根据当前状态选择搜索的数据源
-                const sourceData = this.showArchived ? 
+                const sourceData = this.showArchived ?
                     this.data[PluginSample.ARCHIVE_STORAGE_NAME].history :
                     this.data[DOCK_STORAGE_NAME].history;
 
@@ -2272,14 +2224,14 @@ export default class PluginSample extends Plugin {
 
             sortBtn.onclick = () => {
                 this.isDescending = !this.isDescending;
-                
+
                 // 根据当前状态选择要排序的数据源
                 if (this.showArchived) {
-                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.sort((a, b) => 
+                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.sort((a, b) =>
                         this.isDescending ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
                     );
                 } else {
-                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) => 
+                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) =>
                         this.isDescending ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
                     );
                 }
@@ -2312,7 +2264,7 @@ export default class PluginSample extends Plugin {
                 tag.addEventListener('click', () => {
                     const isSelected = tag.getAttribute('data-selected') === 'true';
                     tag.setAttribute('data-selected', (!isSelected).toString());
-                    
+
                     if (!isSelected) {
                         tag.style.backgroundColor = 'var(--b3-theme-primary)';
                         tag.style.color = 'var(--b3-theme-on-primary)';
@@ -2327,12 +2279,12 @@ export default class PluginSample extends Plugin {
                         .map(tag => tag.getAttribute('data-tag'));
 
                     this.currentDisplayCount = ITEMS_PER_PAGE;
-                    
+
                     const filterPanelDisplay = filterPanel.style.display;
                     const filterBtnColor = filterBtn.style.color;
-                    
+
                     renderDock(true);
-                    
+
                     const newFilterPanel = container.querySelector('.filter-panel');
                     const newFilterBtn = container.querySelector('.filter-btn');
                     if (newFilterPanel && newFilterBtn) {
@@ -2360,8 +2312,8 @@ export default class PluginSample extends Plugin {
                     const headers = ['内容', '标签', '时间', '状态'];
                     const csvContent = [
                         headers.join(','),
-                        ...exportData.map(row => 
-                            headers.map(header => 
+                        ...exportData.map(row =>
+                            headers.map(header =>
                                 JSON.stringify(row[header] || '')
                             ).join(',')
                         )
@@ -2371,11 +2323,11 @@ export default class PluginSample extends Plugin {
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
                     link.download = `小记导出_${new Date().toLocaleDateString()}.csv`;
-                    
+
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    
+
                     showMessage(this.i18n.note.exportSuccess);
                 } catch (error) {
                     console.error('Export failed:', error);
@@ -2478,7 +2430,7 @@ export default class PluginSample extends Plugin {
             tag.addEventListener('click', () => {
                 const isSelected = tag.getAttribute('data-selected') === 'true';
                 tag.setAttribute('data-selected', (!isSelected).toString());
-                
+
                 if (!isSelected) {
                     tag.style.backgroundColor = 'var(--b3-theme-primary)';
                     tag.style.color = 'var(--b3-theme-on-primary)';
@@ -2512,10 +2464,10 @@ export default class PluginSample extends Plugin {
 
             // 过滤数据
             const filteredData = allData.filter(item => {
-                const matchDate = (!startDate || item.timestamp >= startDate) && 
-                                (!endDate || item.timestamp <= endDate);
-                const matchTags = selectedTags.length === 0 || 
-                                selectedTags.some(tag => item.tags?.includes(tag));
+                const matchDate = (!startDate || item.timestamp >= startDate) &&
+                    (!endDate || item.timestamp <= endDate);
+                const matchTags = selectedTags.length === 0 ||
+                    selectedTags.some(tag => item.tags?.includes(tag));
                 const matchPinned = !pinnedOnly || item.isPinned;
                 return matchDate && matchTags && matchPinned;
             });
@@ -2534,7 +2486,7 @@ export default class PluginSample extends Plugin {
         });
     }
 
-    private exportData(data: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>, format: string) {
+    private exportData(data: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>, format: string) {
         try {
             let content: string;
             let filename: string;
@@ -2562,11 +2514,11 @@ export default class PluginSample extends Plugin {
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = filename;
-            
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
+
             showMessage(this.i18n.note.exportSuccess);
         } catch (error) {
             console.error('Export failed:', error);
@@ -2574,7 +2526,7 @@ export default class PluginSample extends Plugin {
         }
     }
 
-    private generateCSV(data: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
+    private generateCSV(data: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>) {
         const headers = ['内容', '标签', '时间', '状态'];
         const rows = data.map(item => ({
             '内容': item.text,
@@ -2585,15 +2537,15 @@ export default class PluginSample extends Plugin {
 
         return [
             headers.join(','),
-            ...rows.map(row => 
-                headers.map(header => 
+            ...rows.map(row =>
+                headers.map(header =>
                     JSON.stringify(row[header] || '')
                 ).join(',')
             )
         ].join('\n');
     }
 
-    private generateMarkdown(data: Array<{text: string, timestamp: number, isPinned?: boolean, tags?: string[]}>) {
+    private generateMarkdown(data: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>) {
         return `# 小记导出
 导出时间：${new Date().toLocaleString()}
 
@@ -2614,7 +2566,7 @@ ${item.tags?.length ? `标签：${item.tags.map(tag => `\`${tag}\``).join(' ')}`
         const itemIndex = this.data[DOCK_STORAGE_NAME].history.findIndex(item => item.timestamp === timestamp);
         if (itemIndex !== -1) {
             const item = this.data[DOCK_STORAGE_NAME].history[itemIndex];
-            
+
             // 取消置顶状态
             if (item.isPinned) {
                 item.isPinned = false;
