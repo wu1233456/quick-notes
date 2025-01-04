@@ -1010,8 +1010,20 @@ export default class PluginSample extends Plugin {
                         <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
                             ${this.i18n.note.selectAll}
                         </button>
-                        <button class="b3-button b3-button--error batch-delete-btn" style="padding: 4px 8px; font-size: 12px;">
-                            ${this.i18n.note.batchDelete}
+                        <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconCopy"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconArchive"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconTrashcan"></use>
+                            </svg>
                         </button>
                         <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
                             ${this.i18n.note.cancelSelect}
@@ -2036,6 +2048,103 @@ export default class PluginSample extends Plugin {
                             });
                         }
                     }
+                };
+            }
+
+            // 批量复制
+            const batchCopyBtn = container.querySelector('.batch-copy-btn') as HTMLButtonElement;
+            if (batchCopyBtn) {
+                batchCopyBtn.onclick = async () => {
+                    const selectedItems = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                        .map(input => {
+                            const historyItem = (input as HTMLInputElement).closest('.history-item');
+                            return historyItem?.querySelector('[data-text]')?.getAttribute('data-text') || '';
+                        })
+                        .filter(text => text);
+
+                    if (selectedItems.length === 0) {
+                        showMessage(this.i18n.note.noItemSelected);
+                        return;
+                    }
+
+                    try {
+                        await navigator.clipboard.writeText(selectedItems.join('\n\n'));
+                        showMessage(this.i18n.note.copySuccess);
+                        cancelSelectBtn.click(); // 复制后自动退出选择模式
+                    } catch (err) {
+                        console.error('批量复制失败:', err);
+                        showMessage(this.i18n.note.copyFailed);
+                    }
+                };
+            }
+
+            // 批量归档/取消归档
+            const batchArchiveBtn = container.querySelector('.batch-archive-btn') as HTMLButtonElement;
+            if (batchArchiveBtn) {
+                batchArchiveBtn.onclick = async () => {
+                    const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                        .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
+
+                    if (selectedTimestamps.length === 0) {
+                        showMessage(this.i18n.note.noItemSelected);
+                        return;
+                    }
+
+                    const confirmMessage = this.showArchived ? 
+                        this.i18n.note.batchUnarchiveConfirm : 
+                        this.i18n.note.batchArchiveConfirm;
+
+                    confirm(
+                        this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
+                        confirmMessage,
+                        async () => {
+                            try {
+                                if (this.showArchived) {
+                                    // 批量取消归档
+                                    const itemsToUnarchive = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history
+                                        .filter(item => selectedTimestamps.includes(item.timestamp));
+                                    
+                                    // 从归档中移除
+                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history = 
+                                        this.data[PluginSample.ARCHIVE_STORAGE_NAME].history
+                                            .filter(item => !selectedTimestamps.includes(item.timestamp));
+                                    
+                                    // 添加到活动记录
+                                    this.data[DOCK_STORAGE_NAME].history.unshift(...itemsToUnarchive);
+                                } else {
+                                    // 批量归档
+                                    const itemsToArchive = this.data[DOCK_STORAGE_NAME].history
+                                        .filter(item => selectedTimestamps.includes(item.timestamp));
+                                    
+                                    // 从活动记录中移除
+                                    this.data[DOCK_STORAGE_NAME].history = 
+                                        this.data[DOCK_STORAGE_NAME].history
+                                            .filter(item => !selectedTimestamps.includes(item.timestamp));
+                                    
+                                    // 添加到归档
+                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
+                                }
+
+                                // 保存更改
+                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
+
+                                showMessage(this.showArchived ? 
+                                    this.i18n.note.batchUnarchiveSuccess : 
+                                    this.i18n.note.batchArchiveSuccess
+                                );
+                                
+                                cancelSelectBtn.click(); // 操作完成后退出选择模式
+                                renderDock(false);
+                            } catch (error) {
+                                console.error('批量归档/取消归档失败:', error);
+                                showMessage(this.showArchived ? 
+                                    this.i18n.note.batchUnarchiveFailed : 
+                                    this.i18n.note.batchArchiveFailed
+                                );
+                            }
+                        }
+                    );
                 };
             }
         }

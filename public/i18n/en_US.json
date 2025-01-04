@@ -77,6 +77,12 @@
         "exportIncludeArchived": "Include Archived Content",
         "showEditor": "Show Editor",
         "hideEditor": "Hide Editor",
-        "quickNotes": "Quick Open Notes"
+        "quickNotes": "Quick Open Notes",
+        "batchArchiveConfirm": "Are you sure you want to archive the selected items?",
+        "batchUnarchiveConfirm": "Are you sure you want to restore the selected items?",
+        "batchArchiveSuccess": "Batch archive successful",
+        "batchUnarchiveSuccess": "Batch restore successful",
+        "batchArchiveFailed": "Batch archive failed",
+        "batchUnarchiveFailed": "Batch restore failed"
     }
 }
