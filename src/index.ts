@@ -78,7 +78,8 @@ export default class PluginSample extends Plugin {
         // 初始化 dock 数据
         this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || { 
             text: "",
-            history: []
+            history: [],
+            editorVisible: true  // 添加编辑框显示状态
         };
 
         // 确保 history 是数组
@@ -150,7 +151,7 @@ export default class PluginSample extends Plugin {
                                 <div class="toolbar__text">${this.i18n.note.title}</div>
                     </div>
                             <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
-                                <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%;">
+                                <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[DOCK_STORAGE_NAME].editorVisible ? 'block' : 'none'};">
                                     ${this.getEditorTemplate()}
                                 </div>
                                 <div class="fn__flex-1 history-list" style="overflow: auto;margin: 0 8px;  width: 95%;">
@@ -166,8 +167,11 @@ export default class PluginSample extends Plugin {
                             ${this.i18n.note.title}
                         </div>
                         <span class="fn__flex-1 fn__space"></span>
-                        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="${this.i18n.note.hideEditor}">
-                            <svg class="block__logoicon"><use xlink:href="#iconPreview"></use></svg>
+                        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" 
+                            aria-label="${this.data[DOCK_STORAGE_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
+                            <svg class="block__logoicon">
+                                <use xlink:href="${this.data[DOCK_STORAGE_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
+                            </svg>
                         </span>
                         <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
                             <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
@@ -180,7 +184,7 @@ export default class PluginSample extends Plugin {
                         </span>
                     </div>
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
-                                    <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%;">
+                                    <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[DOCK_STORAGE_NAME].editorVisible ? 'block' : 'none'};">
                                         ${this.getEditorTemplate()}
                                     </div>
                                     <div class="fn__flex-1 history-list" style="overflow: auto;margin: 0 8px;  width: 95%;">
@@ -263,13 +267,17 @@ export default class PluginSample extends Plugin {
                                         if (editorContainer) {
                                             const isVisible = editorContainer.style.display !== 'none';
                                             editorContainer.style.display = isVisible ? 'none' : 'block';
-                                            // 更新按钮图标
+                                            
+                                            // 保存状态
+                                            this.data[DOCK_STORAGE_NAME].editorVisible = !isVisible;
+                                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                            
+                                            // 更新按钮图标和提示文本
                                             const icon = button.querySelector('use');
                                             if (icon) {
-                                                icon.setAttribute('xlink:href', isVisible ? '#iconEdit' : '#iconPreview');
+                                                icon.setAttribute('xlink:href', !isVisible ? '#iconPreview' : '#iconEdit');
                                             }
-                                            // 更新提示文本
-                                            button.setAttribute('aria-label', isVisible ? this.i18n.note.showEditor : this.i18n.note.hideEditor);
+                                            button.setAttribute('aria-label', !isVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor);
                                         }
                                         break;
                                 }
