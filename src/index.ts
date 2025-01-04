@@ -1866,9 +1866,20 @@ export default class PluginSample extends Plugin {
                         icon: "iconCheck",
                         label: this.i18n.note.batchSelect,
                         click: () => {
+                            // 重置所有复选框为未选中状态
+                            checkboxes.forEach(checkbox => {
+                                checkbox.classList.remove('fn__none');
+                                const input = checkbox.querySelector('input') as HTMLInputElement;
+                                if (input) {
+                                    input.checked = false;
+                                }
+                            });
+                            // 重置全选按钮文本
+                            if (selectAllBtn) {
+                                selectAllBtn.textContent = this.i18n.note.selectAll;
+                            }
                             batchToolbar.classList.remove('fn__none');
                             normalToolbar.classList.add('fn__none');
-                            checkboxes.forEach(checkbox => checkbox.classList.remove('fn__none'));
                         }
                     });
 
