@@ -1130,8 +1130,10 @@ export default class PluginSample extends Plugin {
                     cursor: text;
                     user-select: text;
                     position: relative;" 
-                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'" 
-                    onmouseout="this.style.boxShadow='none'">
+                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)';
+                                this.querySelector('.action-buttons').style.opacity='1';" 
+                    onmouseout="this.style.boxShadow='none';
+                               this.querySelector('.action-buttons').style.opacity='0';">
                     <div class="fn__flex" style="align-items: center; margin-bottom: 4px;">
                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
                             <use xlink:href="#iconPin"></use>
@@ -1157,8 +1159,12 @@ export default class PluginSample extends Plugin {
                     cursor: text;
                     user-select: text;
                     position: relative;" 
-                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; this.style.borderColor='var(--b3-theme-primary-light)'" 
-                    onmouseout="this.style.boxShadow='none'; this.style.borderColor='var(--b3-border-color)'">
+                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; 
+                                this.style.borderColor='var(--b3-theme-primary-light)';
+                                this.querySelector('.action-buttons').style.opacity='1';" 
+                    onmouseout="this.style.boxShadow='none'; 
+                               this.style.borderColor='var(--b3-border-color)';
+                               this.querySelector('.action-buttons').style.opacity='0';">
                     ${this.renderNoteContent(item)}
                 </div>
             `).join('')}
@@ -1228,7 +1234,7 @@ export default class PluginSample extends Plugin {
                         <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
                             ${new Date(item.timestamp).toLocaleString()}
                         </div>
-                        <div class="fn__flex" style="gap: 4px;">
+                        <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
                             <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                                 style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
                                 <svg class="b3-button__icon" style="height: 14px; width: 14px;">
