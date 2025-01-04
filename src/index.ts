@@ -101,9 +101,17 @@ export default class PluginSample extends Plugin {
         this.addCommand({
             langKey: "createNewSmallNote",
             hotkey: "⇧⌘Y",
-            callback: () => {
+            // callback: () => {
+            //     this.createNewNote(this.dock);
+            // },
+            globalCallback: () => {
                 this.createNewNote(this.dock);
+                const { getCurrentWindow } = window.require('@electron/remote');
+                const win = getCurrentWindow();
+                win.show(); 
+                win.focus(); 
             }
+
         });
 
         // 初始化归档数据
