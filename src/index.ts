@@ -4,98 +4,93 @@ import {
     confirm,
     Dialog,
     Menu,
-    openTab,
     adaptHotkey,
     getFrontend,
-    getBackend,
     IModel,
-    Protyle,
-    openWindow,
-    IOperation,
-    Constants,
-    openMobileFileById,
-    lockScreen,
     ICard,
     ICardData
 } from "siyuan";
 import "@/index.scss";
 
-import HelloExample from "@/hello.svelte";
-import SettingExample from "@/setting-example.svelte";
-
-import { svelteDialog } from "./libs/dialog";
-import { upload } from "./api"; 
-
-// 移除外部的静态属性声明
-const STORAGE_NAME = "menu-config";
-const TAB_TYPE = "custom_tab";
-const DOCK_TYPE = "small_notes_dock";
-const DOCK_STORAGE_NAME = "dock-content";
-const ITEMS_PER_PAGE = 10; // 每次加载10条记录
-const MAX_TEXT_LENGTH = 250; // 超过这个长度的文本会被折叠
+import { upload } from "./api";
+import { initMardownStyle } from './components/markdown';
+// 导入新的组件
+import { ExportDialog } from './components/ExportDialog';
+import { ExportService } from './components/ExportService';
+import { HistoryService, HistoryData } from './components/HistoryService';
+import { ARCHIVE_STORAGE_NAME, DOCK_STORAGE_NAME, CONFIG_DATA_NAME, ITEMS_PER_PAGE, MAX_TEXT_LENGTH, DOCK_TYPE } from './libs/const';
+import { iconsSVG } from './components/icon';
 
 export default class PluginSample extends Plugin {
-    // 将静态属性移到类内部
-    private static readonly ARCHIVE_STORAGE_NAME = "archive-content";
     private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
     private tempNoteContent: string = ''; // 添加临时内容存储
     private tempNoteTags: string[] = []; // 添加临时标签存储
 
     customTab: () => IModel;
     private isMobile: boolean;
-    private blockIconEventBindThis = this.blockIconEvent.bind(this);
     private isDescending: boolean = true;
     private dock: any;
     private currentDisplayCount: number = ITEMS_PER_PAGE;
     private selectedTags: string[] = [];
     private showArchived: boolean = false;
 
+    private exportDialog: ExportDialog;
+    private exportService: ExportService;
+    private historyService: HistoryService;
+
+
     async onload() {
-        this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
+        await this.initData();
+        this.initComponents();
+        console.log("onload");
+    }
 
-        console.log("loading plugin-sample", this.i18n);
+    async onLayoutReady() {
+        console.log("onLayoutReady");
+    }
 
+    async onunload() {
+        console.log(this.i18n.byePlugin);
+    }
+
+    uninstall() {
+        console.log("uninstall");
+    }
+
+    private async initData() {
         const frontEnd = getFrontend();
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
-        // 图标的制作参见帮助文档
-        this.addIcons(`<symbol id="iconFace" viewBox="0 0 32 32">
-<path d="M13.667 17.333c0 0.92-0.747 1.667-1.667 1.667s-1.667-0.747-1.667-1.667 0.747-1.667 1.667-1.667 1.667 0.747 1.667 1.667zM20 15.667c-0.92 0-1.667 0.747-1.667 1.667s0.747 1.667 1.667 1.667 1.667-0.747 1.667-1.667-0.747-1.667-1.667-1.667zM29.333 16c0 7.36-5.973 13.333-13.333 13.333s-13.333-5.973-13.333-13.333 5.973-13.333 13.333-13.333 13.333 5.973 13.333 13.333zM14.213 5.493c1.867 3.093 5.253 5.173 9.12 5.173 0.613 0 1.213-0.067 1.787-0.16-1.867-3.093-5.253-5.173-9.12-5.173-0.613 0-1.213 0.067-1.787 0.16zM5.893 12.627c2.28-1.293 4.040-3.4 4.88-5.92-2.28 1.293-4.040 3.4-4.88 5.92zM26.667 16c0-1.040-0.16-2.040-0.44-2.987-0.933 0.2-1.893 0.32-2.893 0.32-4.173 0-7.893-1.92-10.347-4.92-1.4 3.413-4.187 6.093-7.653 7.4 0.013 0.053 0 0.12 0 0.187 0 5.88 4.787 10.667 10.667 10.667s10.667-4.787 10.667-10.667z"></path>
-</symbol>
-<symbol id="iconSaving" viewBox="0 0 32 32">
-<path d="M20 13.333c0-0.733 0.6-1.333 1.333-1.333s1.333 0.6 1.333 1.333c0 0.733-0.6 1.333-1.333 1.333s-1.333-0.6-1.333-1.333zM10.667 12h6.667v-2.667h-6.667v2.667zM29.333 10v9.293l-3.76 1.253-2.24 7.453h-7.333v-2.667h-2.667v2.667h-7.333c0 0-3.333-11.28-3.333-15.333s3.28-7.333 7.333-7.333h6.667c1.213-1.613 3.147-2.667 5.333-2.667 1.107 0 2 0.893 2 2 0 0.28-0.053 0.533-0.16 0.773-0.187 0.453-0.347 0.973-0.427 1.533l3.027 3.027h2.893zM26.667 12.667h-1.333l-4.667-4.667c0-0.867 0.12-1.72 0.347-2.547-1.293 0.333-2.347 1.293-2.787 2.547h-8.227c-2.573 0-4.667 2.093-4.667 4.667 0 2.507 1.627 8.867 2.68 12.667h2.653v-2.667h8v2.667h2.68l2.067-6.867 3.253-1.093v-4.707z"></path>
-</symbol>
-<symbol id="iconSmallNote" viewBox="0 0 1024 1024">
-    <path d="M525.489 551.877c26.867-40.836 125.288-187.583 162.151-219.15-47.001 111.956-139.59 227.146-194.992 336.989 102.353 34.68 148.738-6.429 205.211-54.28l-55.957-10.735c71.059-23.289 66.096-14.656 90.981-49.064 19.741-27.271 36.126-64.094 42.13-102.545l-46.244 5.751c14.758-8.592 47.618-23.683 52.834-32.103 13.959-22.5 50.621-237.738 51.045-282.476-141.319 1.304-367.1 296.536-383.434 437.633-16.435 141.855-177.9 356.214 76.274-30.031v0.011z m210.649 79.762c42.15 25.128 67.218 57.585 67.218 93.761 0 195.113-612.005 195.113-612.005 0 0-89.607 139.024-129.786 211.043-140.793-1.698 12.049-5.398 24.35-10.239 36.924-49.499 9.057-166.013 42.544-166.013 103.869 0 147.384 542.422 147.384 542.422 0 0-25.866-23.299-50.55-61.79-70.381 9.856-7.177 19.519-15.102 29.364-23.38z"/>
-</symbol>
-<symbol id="iconStatus" viewBox="0 0 24 24">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.88-11.71L10 14.17l-1.88-1.88a.996.996 0 1 0-1.41 1.41l2.59 2.59c.39.39 1.02.39 1.41 0L17.3 9.7a.996.996 0 0 0 0-1.41c-.39-.39-1.03-.39-1.42 0z"/>
-</symbol>
-<symbol id="iconArchive" viewBox="0 0 1024 1024">
-    <path d="M865.3 506.3V184.1c0-64.8-52.7-117.5-117.5-117.5H281c-64.8 0-117.5 52.7-117.5 117.5v322.2c-46.4 5.8-82.4 45.5-82.4 93.5v257.8c0 52 42.3 94.2 94.2 94.2h678.2c52 0 94.2-42.3 94.2-94.2V599.8c0-47.9-36-87.6-82.4-93.5zM233.5 184.1c0-26.2 21.3-47.5 47.5-47.5h466.8c26.2 0 47.5 21.3 47.5 47.5v321.5H669.9v87.6c0 3.3-2.7 6-6 6H365c-3.3 0-6-2.7-6-6v-87.6H233.5V184.1z m644.2 673.6c0 13.4-10.9 24.2-24.2 24.2H175.3c-13.4 0-24.2-10.9-24.2-24.2V599.8c0-13.4 10.9-24.2 24.2-24.2H289v17.6c0 41.9 34.1 76 76 76h298.8c41.9 0 76-34.1 76-76v-17.6H853.4c13.4 0 24.2 10.9 24.2 24.2v257.9z"/>
-    <path d="M513.2 520.3l140.6-140.6-49.5-49.5-57.3 57.4V194.5h-70v190.6l-54.9-54.9-49.5 49.5 91.1 91.1z"/>
-</symbol>
-<symbol id="iconMerge" viewBox="0 0 1024 1024">
-  <path d="M1024 385.024l0 189.44-169.984 0q-12.288 0-16.896 5.12t-4.608 15.36l0 26.624q0 8.192-6.656 14.336t-16.896 8.192-22.528-1.024-23.552-14.336q-29.696-28.672-60.928-65.536t-57.856-66.56q-6.144-7.168-5.12-19.456t9.216-21.504q27.648-32.768 58.368-64.512l67.584-66.56q5.12-5.12 14.848-6.656t19.456-0.512 16.896 5.12 7.168 9.216l0 15.36q0 10.24 4.608 24.064t23.04 13.824l163.84 0zM63.488 574.464l0-189.44 163.84 0q17.408 0 22.528-7.68t5.12-17.92l0-16.384q0-12.288 7.168-18.944t16.896-8.192 19.456 1.024 14.848 7.68l67.584 66.56q30.72 31.744 58.368 64.512 8.192 9.216 9.216 21.504t-6.144 19.456q-26.624 29.696-57.856 66.56t-60.928 65.536q-11.264 11.264-23.552 15.36t-22.016 2.048-16.384-9.728-6.656-20.992l0-26.624q0-10.24-4.608-12.288t-17.92-2.048l-168.96 0zM896 63.488q26.624 0 49.664 10.24t40.448 27.648 27.648 40.448 10.24 49.664l0 128-128 0 0-128-320.512 0 0 576.512 320.512 0 0-128 128 0 0 128q0 26.624-10.24 49.664t-27.648 40.448-40.448 27.648-49.664 10.24l-704.512 0q-26.624 0-49.664-10.24t-40.448-27.648-27.648-40.448-10.24-49.664l0-128 128 0 0 128 320.512 0 0-576.512-320.512 0 0 128-128 0 0-128q0-26.624 10.24-49.664t27.648-40.448 40.448-27.648 49.664-10.24l704.512 0z" p-id="4414"></path>
-</symbol>
-<symbol id="iconExportNew" viewBox="0 0 1024 1024">
-    <path d="M512 202.666667a32 32 0 0 0-32-32H256a85.333333 85.333333 0 0 0-85.333333 85.333333v512a85.333333 85.333333 0 0 0 85.333333 85.333333h512a85.333333 85.333333 0 0 0 85.333333-85.333333v-224a32 32 0 0 0-64 0V768a21.333333 21.333333 0 0 1-21.333333 21.333333H256a21.333333 21.333333 0 0 1-21.333333-21.333333V256a21.333333 21.333333 0 0 1 21.333333-21.333333h224a32 32 0 0 0 32-32z" fill="currentColor"/>
-    <path d="M848.469333 361.258667a8.533333 8.533333 0 0 1-0.085333 12.8l-194.218667 171.178666a8.533333 8.533333 0 0 1-14.165333-6.4V448c0-27.434667-25.898667-10.325333-67.370667-3.029333-44.288 7.722667-124.970667 63.018667-164.906666 92.032-6.954667 5.034667-16.170667-1.92-12.928-9.856 18.773333-45.781333 59.008-135.466667 96.981333-164.48C599.594667 280.362667 640 310.869333 640 283.434667V192.853333a8.533333 8.533333 0 0 1 14.250667-6.314666l194.218666 174.72z" fill="currentColor"/>
-</symbol>`);
 
-        // 初始化 dock 数据
-        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
-            text: "",
-            history: [],
-            editorVisible: true  // 添加编辑框显示状态
-        };
-
-        // 确保 history 是数组
-        if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
-            this.data[DOCK_STORAGE_NAME].history = [];
+        // 初始化配置数据
+        this.data[CONFIG_DATA_NAME] = await this.loadData(CONFIG_DATA_NAME) || {
+            editorVisible: true,
         }
 
+        // 初始化未归档小记数据
+        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
+            history: []
+        };
+        // 初始化归档数据
+        this.data[ARCHIVE_STORAGE_NAME] = await this.loadData(ARCHIVE_STORAGE_NAME) || {
+            history: []
+        };
+
+        // 初始化历史服务
+        const historyData: HistoryData = {
+            history: this.data[DOCK_STORAGE_NAME]?.history || [],
+            archivedHistory: this.data[ARCHIVE_STORAGE_NAME]?.history
+        };
+        //小记相关的存储统一交由historyService管理
+        this.historyService = new HistoryService(this, historyData, ITEMS_PER_PAGE);
+
+        // 初始化导出对话框和导出服务
+        this.exportDialog = new ExportDialog(this.i18n);
+        this.exportService = new ExportService(this.i18n);
+    }
+    private initComponents() {
+        this.addIcons(iconsSVG);
         // 添加顶部栏按钮
-        const topBarElement = this.addTopBar({
+        this.addTopBar({
             icon: "iconSmallNote",
             title: this.i18n.note.title,
             position: "right",
@@ -115,18 +110,15 @@ export default class PluginSample extends Plugin {
                 this.createNewNote(this.dock);
                 const { getCurrentWindow } = window.require('@electron/remote');
                 const win = getCurrentWindow();
-                win.show(); 
-                win.focus(); 
+                win.show();
+                win.focus();
             }
 
         });
-
-        // 初始化归档数据
-        this.data[PluginSample.ARCHIVE_STORAGE_NAME] = await this.loadData(PluginSample.ARCHIVE_STORAGE_NAME) || {
-            history: []
-        };
-
-
+        this.initDock();
+        initMardownStyle();
+    }
+    private initDock() {
         // 创建 dock 时读取保存的位置
         this.dock = this.addDock({
             config: {
@@ -140,25 +132,11 @@ export default class PluginSample extends Plugin {
                 text: "",
             },
             type: DOCK_TYPE,
-            init: (dock) => {
+            init: (dock: any) => {
                 this.dock = dock;
                 const renderDock = (showAll: boolean = false) => {
-                    if (this.isMobile) {
-                        dock.element.innerHTML = `
-                            <div class="toolbar toolbar--border toolbar--dark" style="height: 100%;">
-                                <svg class="toolbar__icon"><use xlink:href="#iconSmallNote"></use></svg>
-                                <div class="toolbar__text">${this.i18n.note.title}</div>
-                    </div>
-                            <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
-                                <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[DOCK_STORAGE_NAME].editorVisible ? 'block' : 'none'};">
-                                    ${this.getEditorTemplate()}
-                                </div>
-                                <div class="fn__flex-1 history-list" style="overflow: auto;margin: 0 8px;  width: 95%;">
-                                    ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
-                    </div>
-                    </div>`;
-                    } else {
-                        dock.element.innerHTML = `
+                    console.log("renderDock", showAll);
+                    dock.element.innerHTML = `
                             <div class="fn__flex-1 fn__flex-column" style="height: 100%;">
 
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
@@ -169,9 +147,9 @@ export default class PluginSample extends Plugin {
                                     </div>
                                     <span class="fn__flex-1 fn__space"></span>
                                     <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" 
-                                        aria-label="${this.data[DOCK_STORAGE_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
+                                        aria-label="${this.data[CONFIG_DATA_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
                                         <svg class="block__logoicon">
-                                            <use xlink:href="${this.data[DOCK_STORAGE_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
+                                            <use xlink:href="${this.data[CONFIG_DATA_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
                                         </svg>
                                     </span>
                                     <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
@@ -184,13 +162,13 @@ export default class PluginSample extends Plugin {
                                         <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
                                     </span>
                                 </div>
-                                    <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[DOCK_STORAGE_NAME].editorVisible ? 'block' : 'none'};">
+                                    <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[CONFIG_DATA_NAME].editorVisible ? 'block' : 'none'};">
                                         ${this.getEditorTemplate()}
                                     </div>
                                     <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width:95%;">
                                         <div class="fn__flex fn__flex-center" style="padding: 8px;">
                                             <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
-                                                ${this.i18n.note.total.replace('${count}', (this.data[DOCK_STORAGE_NAME]?.history || []).length.toString())}
+                                                ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() || []).length.toString())}
                                             </div>
                                             <span class="fn__flex-1"></span>
                                             <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
@@ -277,11 +255,10 @@ export default class PluginSample extends Plugin {
                                                 ${this.i18n.note.tagFilter}
                                             </div>
                                             <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                                ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
-                            ?.flatMap(item => item.tags || []) || []))
-                                .map(tag => {
-                                    const isSelected = this.selectedTags.includes(tag);
-                                    return `
+                                                ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
+                            .map(tag => {
+                                const isSelected = this.selectedTags.includes(tag);
+                                return `
                                                             <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
                                                                 style="cursor: pointer; 
                                                                     background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
@@ -293,19 +270,18 @@ export default class PluginSample extends Plugin {
                                                                 data-selected="${isSelected}">
                                                                 <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
                                                                 <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
-                                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                                    ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
                                                                 </span>
-                                                            </span>
-                                                        `;
-                                }).join('')}
+                                                            </span>`;
+                                                            }).join('')}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px; width: 95%;">
-                                        ${this.renderHistory(this.data[DOCK_STORAGE_NAME]?.history || [], showAll)}
+                                        ${this.renderHistory(showAll)}
                                     </div>
-                    </div>`;
-                    }
+                            </div>`;
+
 
                     // 绑定事件监听器
                     const textarea = dock.element.querySelector('textarea');
@@ -373,17 +349,18 @@ export default class PluginSample extends Plugin {
                                         showMessage('内容已清空');
                                         break;
                                     case 'export':
-                                        this.showExportDialog();
                                         break;
                                     case 'toggle-editor':
+                                        console.log("toggle-editor");
                                         const editorContainer = dock.element.querySelector('[style*="min-height: 200px"]');
                                         if (editorContainer) {
                                             const isVisible = editorContainer.style.display !== 'none';
                                             editorContainer.style.display = isVisible ? 'none' : 'block';
 
                                             // 保存状态
-                                            this.data[DOCK_STORAGE_NAME].editorVisible = !isVisible;
-                                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                            this.data[CONFIG_DATA_NAME].editorVisible = !isVisible;
+                                            console.log("this.data[CONFIG_DATA_NAME]", this.data[CONFIG_DATA_NAME]);
+                                            await this.saveData(CONFIG_DATA_NAME, this.data[CONFIG_DATA_NAME]);
 
                                             // 更新按钮图标和提示文本
                                             const icon = button.querySelector('use');
@@ -431,16 +408,6 @@ export default class PluginSample extends Plugin {
 
                 // 将 renderDock 函数添加到 dock 对象上
                 dock.renderDock = renderDock;
-
-                // 初始渲染时应用当前排序
-                if (this.data[DOCK_STORAGE_NAME]?.history) {
-                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) => {
-                        return this.isDescending ?
-                            b.timestamp - a.timestamp :
-                            a.timestamp - b.timestamp;
-                    });
-                }
-
                 // 初始渲染
                 renderDock(false);
             },
@@ -448,717 +415,19 @@ export default class PluginSample extends Plugin {
                 console.log("destroy dock:", DOCK_TYPE);
             }
         });
-
-        console.log(this.i18n.helloPlugin);
-
-        // 在 onload 方法中添加快捷键命令
-        this.addCommand({
-            langKey: "openTagPanel",
-            hotkey: "⌃⌥K",
-            callback: () => {
-                const addTagBtn = document.querySelector('.add-tag-btn');
-                if (addTagBtn) {
-                    addTagBtn.click();
-                    setTimeout(() => {
-                        const tagInput = document.querySelector('.tag-input') as HTMLInputElement;
-                        if (tagInput) {
-                            tagInput.focus();
-                        }
-                    }, 100);
-                }
-            }
-        });
-
-        // 添加 Markdown 列表样式
-        const style = document.createElement('style');
-        style.textContent = `
-            .markdown-content ul {
-                list-style-type: disc;
-                padding-left: 2em;
-                margin: 4px 0;
-            }
-            .markdown-content ol {
-                list-style-type: decimal;
-                padding-left: 2em;
-                margin: 4px 0;
-            }
-            .markdown-content li {
-                margin: 2px 0;
-            }
-            .markdown-content li > ul,
-            .markdown-content li > ol {
-                margin: 2px 0;
-            }
-            .markdown-content li p {
-                margin: 0;
-            }
-            
-            /* 代码块样式 */
-            .markdown-content pre {
-                margin: 8px 0;
-                padding: 0;
-                background-color: var(--b3-theme-surface);
-                border-radius: 4px;
-                overflow: hidden;
-            }
-            
-            .markdown-content pre > code {
-                display: block;
-                padding: 16px;
-                overflow-x: auto;
-                font-family: 'JetBrainsMono-Regular', 'Consolas', monospace;
-                font-size: 90%;
-                line-height: 1.5;
-                background-color: var(--b3-theme-surface);
-                color: var(--b3-theme-on-surface);
-                border: 1px solid var(--b3-border-color);
-                border-radius: 4px;
-            }
-            
-            /* 行内代码样式 */
-            .markdown-content code:not(pre > code) {
-                padding: 2px 4px;
-                margin: 0 2px;
-                font-family: 'JetBrainsMono-Regular', 'Consolas', monospace;
-                font-size: 90%;
-                background-color: var(--b3-theme-surface);
-                color: var(--b3-theme-on-surface);
-                border: 1px solid var(--b3-border-color);
-                border-radius: 4px;
-            }
-
-            /* 任务列表样式 */
-            .markdown-content .task-list-item {
-                list-style-type: none;
-                padding-left: 0.5em;
-                margin: 4px 0;
-            }
-            
-            .markdown-content .task-list-item-checkbox {
-                margin-right: 0.5em;
-                vertical-align: middle;
-            }
-        `;
-        document.head.appendChild(style);
     }
 
-    async onLayoutReady() {
-        let tabDiv = document.createElement("div");
-        new HelloExample({
-            target: tabDiv,
-            props: {
-                app: this.app,
-            }
-        });
-        this.customTab = this.addTab({
-            type: TAB_TYPE,
-            init() {
-                this.element.appendChild(tabDiv);
-                console.log(this.element);
-            },
-            beforeDestroy() {
-                console.log("before destroy tab:", TAB_TYPE);
-            },
-            destroy() {
-                console.log("destroy tab:", TAB_TYPE);
-            }
-        });
 
-        // 加载小记数据
-        const savedData = await this.loadData(DOCK_STORAGE_NAME);
-        if (savedData) {
-            this.data[DOCK_STORAGE_NAME] = savedData;
-            // 如果 dock 已经初始化，重新渲染
-            if (this.dock?.renderDock) {
-                this.dock.renderDock(false);
-            }
-        }
-    }
-
-    async onunload() {
-        console.log(this.i18n.byePlugin);
-    }
-
-    uninstall() {
-        console.log("uninstall");
-    }
-
-    async updateCards(options: ICardData) {
-        options.cards.sort((a: ICard, b: ICard) => {
-            if (a.blockID < b.blockID) {
-                return -1;
-            }
-            if (a.blockID > b.blockID) {
-                return 1;
-            }
-            return 0;
-        });
-        return options;
-    }
-
-    /**
-     * A custom setting pannel provided by svelte
-     */
-    openDIYSetting(): void {
-        let dialog = new Dialog({
-            title: "SettingPannel",
-            content: `<div id="SettingPanel" style="height: 100%;"></div>`,
-            width: "800px",
-            destroyCallback: (options) => {
-                console.log("destroyCallback", options);
-                //You'd better destroy the component when the dialog is closed
-                pannel.$destroy();
-            }
-        });
-        let pannel = new SettingExample({
-            target: dialog.element.querySelector("#SettingPanel"),
-        });
-    }
-
-    private eventBusPaste(event: any) {
-        // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
-        event.preventDefault();
-        // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
-        event.detail.resolve({
-            textPlain: event.detail.textPlain.trim(),
-        });
-    }
-
-    private eventBusLog({ detail }: any) {
-        console.log(detail);
-    }
-
-    private blockIconEvent({ detail }: any) {
-        detail.menu.addItem({
-            iconHTML: "",
-            label: this.i18n.removeSpace,
-            click: () => {
-                const doOperations: IOperation[] = [];
-                detail.blockElements.forEach((item: HTMLElement) => {
-                    const editElement = item.querySelector('[contenteditable="true"]');
-                    if (editElement) {
-                        editElement.textContent = editElement.textContent.replace(/ /g, "");
-                        doOperations.push({
-                            id: item.dataset.nodeId,
-                            data: item.outerHTML,
-                            action: "update"
-                        });
-                    }
-                });
-                detail.protyle.getInstance().transaction(doOperations);
-            }
-        });
-    }
-
-    private showDialog() {
-        // let dialog = new Dialog({
-        //     title: `SiYuan ${Constants.SIYUAN_VERSION}`,
-        //     content: `<div id="helloPanel" class="b3-dialog__content"></div>`,
-        //     width: this.isMobile ? "92vw" : "720px",
-        //     destroyCallback() {
-        //         // hello.$destroy();
-        //     },
-        // });
-        // new HelloExample({
-        //     target: dialog.element.querySelector("#helloPanel"),
-        //     props: {
-        //         app: this.app,
-        //     }
-        // });
-        svelteDialog({
-            title: `SiYuan ${Constants.SIYUAN_VERSION}`,
-            width: this.isMobile ? "92vw" : "720px",
-            constructor: (container: HTMLElement) => {
-                return new HelloExample({
-                    target: container,
-                    props: {
-                        app: this.app,
-                    }
-                });
-            }
-        });
-    }
-
-    private addMenu(rect?: DOMRect) {
-        const menu = new Menu("topBarSample", () => {
-            console.log(this.i18n.byeMenu);
-        });
-        menu.addItem({
-            icon: "iconInfo",
-            label: "Dialog(open help first)",
-            accelerator: this.commands[0].customHotkey,
-            click: () => {
-                this.showDialog();
-            }
-        });
-        if (!this.isMobile) {
-            menu.addItem({
-                icon: "iconFace",
-                label: "Open Custom Tab",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        custom: {
-                            icon: "iconFace",
-                            title: "Custom Tab",
-                            data: {
-                                text: "This is my custom tab",
-                            },
-                            id: this.name + TAB_TYPE
-                        },
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconImage",
-                label: "Open Asset Tab(open help first)",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        asset: {
-                            path: "assets/paragraph-20210512165953-ag1nib4.svg"
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconFile",
-                label: "Open Doc Tab(open help first)",
-                click: async () => {
-                    const tab = await openTab({
-                        app: this.app,
-                        doc: {
-                            id: "20200812220555-lj3enxa",
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconSearch",
-                label: "Open Search Tab",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        search: {
-                            k: "SiYuan"
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconRiffCard",
-                label: "Open Card Tab",
-                click: () => {
-                    const tab = openTab({
-                        app: this.app,
-                        card: {
-                            type: "all"
-                        }
-                    });
-                    console.log(tab);
-                }
-            });
-            menu.addItem({
-                icon: "iconLayout",
-                label: "Open Float Layer(open help first)",
-                click: () => {
-                    this.addFloatLayer({
-                        ids: ["20210428212840-8rqwn5o", "20201225220955-l154bn4"],
-                        defIds: ["20230415111858-vgohvf3", "20200813131152-0wk5akh"],
-                        x: window.innerWidth - 768 - 120,
-                        y: 32
-                    });
-                }
-            });
-            menu.addItem({
-                icon: "iconOpenWindow",
-                label: "Open Doc Window(open help first)",
-                click: () => {
-                    openWindow({
-                        doc: { id: "20200812220555-lj3enxa" }
-                    });
-                }
-            });
-        } else {
-            menu.addItem({
-                icon: "iconFile",
-                label: "Open Doc(open help first)",
-                click: () => {
-                    openMobileFileById(this.app, "20200812220555-lj3enxa");
-                }
-            });
-        }
-        menu.addItem({
-            icon: "iconLock",
-            label: "Lockscreen",
-            click: () => {
-                lockScreen(this.app);
-            }
-        });
-        menu.addItem({
-            icon: "iconScrollHoriz",
-            label: "Event Bus",
-            type: "submenu",
-            submenu: [{
-                icon: "iconSelect",
-                label: "On ws-main",
-                click: () => {
-                    this.eventBus.on("ws-main", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off ws-main",
-                click: () => {
-                    this.eventBus.off("ws-main", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-blockicon",
-                click: () => {
-                    this.eventBus.on("click-blockicon", this.blockIconEventBindThis);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-blockicon",
-                click: () => {
-                    this.eventBus.off("click-blockicon", this.blockIconEventBindThis);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-pdf",
-                click: () => {
-                    this.eventBus.on("click-pdf", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-pdf",
-                click: () => {
-                    this.eventBus.off("click-pdf", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-editorcontent",
-                click: () => {
-                    this.eventBus.on("click-editorcontent", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-editorcontent",
-                click: () => {
-                    this.eventBus.off("click-editorcontent", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-editortitleicon",
-                click: () => {
-                    this.eventBus.on("click-editortitleicon", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-editortitleicon",
-                click: () => {
-                    this.eventBus.off("click-editortitleicon", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On click-flashcard-action",
-                click: () => {
-                    this.eventBus.on("click-flashcard-action", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off click-flashcard-action",
-                click: () => {
-                    this.eventBus.off("click-flashcard-action", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-noneditableblock",
-                click: () => {
-                    this.eventBus.on("open-noneditableblock", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-noneditableblock",
-                click: () => {
-                    this.eventBus.off("open-noneditableblock", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On loaded-protyle-static",
-                click: () => {
-                    this.eventBus.on("loaded-protyle-static", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off loaded-protyle-static",
-                click: () => {
-                    this.eventBus.off("loaded-protyle-static", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On loaded-protyle-dynamic",
-                click: () => {
-                    this.eventBus.on("loaded-protyle-dynamic", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off loaded-protyle-dynamic",
-                click: () => {
-                    this.eventBus.off("loaded-protyle-dynamic", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On switch-protyle",
-                click: () => {
-                    this.eventBus.on("switch-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off switch-protyle",
-                click: () => {
-                    this.eventBus.off("switch-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On destroy-protyle",
-                click: () => {
-                    this.eventBus.on("destroy-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off destroy-protyle",
-                click: () => {
-                    this.eventBus.off("destroy-protyle", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-doctree",
-                click: () => {
-                    this.eventBus.on("open-menu-doctree", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-doctree",
-                click: () => {
-                    this.eventBus.off("open-menu-doctree", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-blockref",
-                click: () => {
-                    this.eventBus.on("open-menu-blockref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-blockref",
-                click: () => {
-                    this.eventBus.off("open-menu-blockref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-fileannotationref",
-                click: () => {
-                    this.eventBus.on("open-menu-fileannotationref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-fileannotationref",
-                click: () => {
-                    this.eventBus.off("open-menu-fileannotationref", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-tag",
-                click: () => {
-                    this.eventBus.on("open-menu-tag", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-tag",
-                click: () => {
-                    this.eventBus.off("open-menu-tag", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-link",
-                click: () => {
-                    this.eventBus.on("open-menu-link", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-link",
-                click: () => {
-                    this.eventBus.off("open-menu-link", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-image",
-                click: () => {
-                    this.eventBus.on("open-menu-image", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-image",
-                click: () => {
-                    this.eventBus.off("open-menu-image", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-av",
-                click: () => {
-                    this.eventBus.on("open-menu-av", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-av",
-                click: () => {
-                    this.eventBus.off("open-menu-av", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-content",
-                click: () => {
-                    this.eventBus.on("open-menu-content", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-content",
-                click: () => {
-                    this.eventBus.off("open-menu-content", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-breadcrumbmore",
-                click: () => {
-                    this.eventBus.on("open-menu-breadcrumbmore", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-breadcrumbmore",
-                click: () => {
-                    this.eventBus.off("open-menu-breadcrumbmore", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-menu-inbox",
-                click: () => {
-                    this.eventBus.on("open-menu-inbox", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-menu-inbox",
-                click: () => {
-                    this.eventBus.off("open-menu-inbox", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On input-search",
-                click: () => {
-                    this.eventBus.on("input-search", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off input-search",
-                click: () => {
-                    this.eventBus.off("input-search", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On paste",
-                click: () => {
-                    this.eventBus.on("paste", this.eventBusPaste);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off paste",
-                click: () => {
-                    this.eventBus.off("paste", this.eventBusPaste);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-siyuan-url-plugin",
-                click: () => {
-                    this.eventBus.on("open-siyuan-url-plugin", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-siyuan-url-plugin",
-                click: () => {
-                    this.eventBus.off("open-siyuan-url-plugin", this.eventBusLog);
-                }
-            }, {
-                icon: "iconSelect",
-                label: "On open-siyuan-url-block",
-                click: () => {
-                    this.eventBus.on("open-siyuan-url-block", this.eventBusLog);
-                }
-            }, {
-                icon: "iconClose",
-                label: "Off open-siyuan-url-block",
-                click: () => {
-                    this.eventBus.off("open-siyuan-url-block", this.eventBusLog);
-                }
-            }]
-        });
-        menu.addSeparator();
-        menu.addItem({
-            icon: "iconSettings",
-            label: "Official Setting Dialog",
-            click: () => {
-                this.openSetting();
-            }
-        });
-        menu.addItem({
-            icon: "iconSettings",
-            label: "A custom setting dialog (by svelte)",
-            click: () => {
-                this.openDIYSetting();
-            }
-        });
-        menu.addItem({
-            icon: "iconSparkles",
-            label: this.data[STORAGE_NAME].readonlyText || "Readonly",
-            type: "readonly",
-        });
-        if (this.isMobile) {
-            menu.fullscreen();
-        } else {
-            menu.open({
-                x: rect.right,
-                y: rect.bottom,
-                isLeft: true,
-            });
-        }
-    }
 
     // 渲染历史记录列表
-    private renderHistory(history: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }> = [], showAll: boolean = false) {
-        // 根据当前模式选择显示的数据
-        const sourceData = this.showArchived ?
-            this.data[PluginSample.ARCHIVE_STORAGE_NAME].history :
-            this.data[DOCK_STORAGE_NAME].history;
-
-        // 首先根据标签过滤历史记录
-        const filteredHistory = this.selectedTags.length > 0
-            ? sourceData.filter(item =>
-                this.selectedTags.some(tag => item.tags?.includes(tag))
-            )
-            : sourceData;
-
-        // 分离置顶和非置顶记录
-        const pinnedHistory = filteredHistory.filter(item => item.isPinned);
-        const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
-
-        // 渲染历史记录内容
+    private renderHistory(showAll: boolean = false) {
+        this.historyService.setIsDescending(this.isDescending);
+        this.historyService.setShowArchived(this.showArchived);
+        const filteredHistory = this.historyService.getFilteredHistory(showAll);
         let historyHtml = '';
 
         // 添加归档状态指示
-        if (this.showArchived) {
+        if (this.historyService.isArchiveView()) {
             historyHtml += `
                 <div class="fn__flex-center" style="padding: 8px; background: var(--b3-theme-surface); color: var(--b3-theme-on-surface); font-size: 12px;">
                     <svg class="b3-button__icon" style="height: 14px; width: 14px; margin-right: 4px;">
@@ -1169,31 +438,27 @@ export default class PluginSample extends Plugin {
         }
 
         // 渲染置顶记录
-        if (pinnedHistory.length > 0) {
-            historyHtml += this.renderPinnedHistory(pinnedHistory);
+        if (filteredHistory.pinnedItems.length > 0) {
+            historyHtml += this.renderPinnedHistory(filteredHistory.pinnedItems);
         }
 
         // 渲染非置顶记录
-        const displayHistory = showAll ?
-            unpinnedHistory.slice(0, this.currentDisplayCount) :
-            unpinnedHistory.slice(0, ITEMS_PER_PAGE);
-
-        if (displayHistory.length > 0) {
-            historyHtml += this.renderUnpinnedHistory(displayHistory, pinnedHistory.length > 0);
+        if (filteredHistory.unpinnedItems.length > 0) {
+            historyHtml += this.renderUnpinnedHistory(filteredHistory.unpinnedItems, filteredHistory.pinnedItems.length > 0);
         }
 
         // 添加加载更多按钮
-        if (unpinnedHistory.length > displayHistory.length) {
-            historyHtml += this.renderLoadMoreButton(displayHistory.length, unpinnedHistory.length);
-        } else if (unpinnedHistory.length > 0) {
+        const totalUnpinnedCount = this.historyService.getTotalUnpinnedCount();
+        if (totalUnpinnedCount > filteredHistory.unpinnedItems.length) {
+            historyHtml += this.renderLoadMoreButton(filteredHistory.unpinnedItems.length, totalUnpinnedCount);
+        } else if (filteredHistory.unpinnedItems.length > 0) {
             historyHtml += this.renderNoMoreItems();
         }
 
-        // 返回完整的 HTML
         return `
-            <div class="history-content">
-                ${historyHtml}
-            </div>`;
+        <div class="history-content">
+            ${historyHtml}
+        </div>`;
     }
 
     // 渲染置顶记录
@@ -1264,7 +529,7 @@ export default class PluginSample extends Plugin {
         const processTaskList = (content: string) => {
             // 首先处理输入的 [] 转换为 [ ]
             content = content.replace(/\[\]([^\n]*)/g, '[ ]$1');
-            
+
             // 然后处理任务列表，使用新的正则表达式匹配多行
             return content.replace(
                 /(\[ \]|\[x\])([^\n]*)/g,
@@ -1491,91 +756,17 @@ export default class PluginSample extends Plugin {
     // 编辑历史记录
     private async editHistoryItem(dock: any, timestamp: number, oldText: string) {
         try {
-            // 根据当前状态选择正确的数据源
-            const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
-
-            // 获取当前记录项
-            const currentItem = this.data[storageKey].history.find(
-                item => item.timestamp === timestamp
+            const success = await this.historyService.openEditDialog(timestamp,
+                {
+                    getEditorTemplate: (text) => this.getEditorTemplate(text),
+                    setupTagsFeature: (element) => this.setupTagsFeature(element),
+                    setupImageUpload: (element) => this.setupImageUpload(element)
+                },
             );
-
-            return new Promise((resolve) => {
-                const dialog = new Dialog({
-                    title: this.i18n.note.edit,
-                    content: `
-                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
-                            ${this.getEditorTemplate(oldText)}
-                        </div>`,
-                    width: "520px",
-                    height: "320px",
-                    transparent: false,
-                    disableClose: false,
-                    disableAnimation: false,
-                    destroyCallback: () => {
-                        resolve(false);
-                    }
-                });
-
-                // 绑定保存按钮事件
-                const saveBtn = dialog.element.querySelector('[data-type="save"]');
-                const textarea = dialog.element.querySelector('textarea');
-                if (saveBtn && textarea) {
-                    saveBtn.onclick = async () => {
-                        const newText = textarea.value;
-                        if (newText.trim()) {
-                            const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
-                                .map(tag => tag.getAttribute('data-tag'));
-
-                            const index = this.data[storageKey].history.findIndex(
-                                item => item.timestamp === timestamp
-                            );
-                            if (index !== -1) {
-                                this.data[storageKey].history[index].text = newText;
-                                this.data[storageKey].history[index].tags = tags;
-                                await this.saveData(storageKey, this.data[storageKey]);
-                                showMessage(this.i18n.note.saveSuccess);
-                                dialog.destroy();
-                                resolve(true);
-                                dock.renderDock(false);
-                                return;
-                            }
-                        }
-                        resolve(false);
-                    };
-                }
-
-                // 设置标签功能
-                this.setupTagsFeature(dialog.element);
-
-                // 添加已有标签
-                if (currentItem?.tags?.length) {
-                    const tagsList = dialog.element.querySelector('.tags-list');
-                    currentItem.tags.forEach(tagText => {
-                        const tagElement = document.createElement('span');
-                        tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                        tagElement.setAttribute('data-tag', tagText);
-                        tagElement.setAttribute('aria-label', tagText);
-                        tagElement.style.cursor = 'default';
-                        tagElement.innerHTML = `
-                            <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
-                            <svg class="b3-chip__close" style="cursor: pointer;">
-                                <use xlink:href="#iconClose"></use>
-                            </svg>
-                        `;
-                        tagsList.appendChild(tagElement);
-
-                        // 添加删除标签的事件
-                        tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                            tagElement.remove();
-                        });
-                    });
-                }
-
-                // 在对话框创建后设置图片上传功能
-                setTimeout(() => {
-                    this.setupImageUpload(dialog.element);
-                }, 100);
-            });
+            if (success) {
+                showMessage(this.i18n.note.editSuccess);
+                dock.renderDock(false);
+            }
         } catch (error) {
             console.error('Error editing history item:', error);
             return false;
@@ -1583,57 +774,26 @@ export default class PluginSample extends Plugin {
     }
 
     // 删除历史记录
-    private async deleteHistoryItem(dock: any, timestamp: number) {
-        try {
-            // 找到并删除指定的历史记录
-            this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history.filter(
-                item => item.timestamp !== timestamp
-            );
-
-            // 立即保存数据
-            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-
-            // 更新视图
-            if (dock.renderDock) {
-                dock.renderDock(false);
+    private async deleteHistoryItem(timestamp: number, renderDock: (showAll: boolean) => void) {
+        let isDelete = await confirm(this.i18n.note.confirmDelete)
+        console.log("isDelete", isDelete);
+        if (isDelete) {
+            console.log("deleteHistoryItem");
+            const success = await this.historyService.deleteHistoryItem(timestamp);
+            if (success) {
+                showMessage(this.i18n.note.deleteSuccess);
+                renderDock(false);
             }
-
-            return true;
-        } catch (error) {
-            console.error('Error deleting history item:', error);
-            return false;
         }
     }
 
     // 保存内容并更新历史记录
-    private async saveContent(dock: any, content: string, tags: string[] = []) {
-        try {
-            const timestamp = Date.now();
-            dock.data.text = content;
+    private async saveContent(dock: any, text: string, tags: string[] = []) {
+        const success = await this.historyService.saveContent({ text, tags });
 
-            if (!this.data[DOCK_STORAGE_NAME]) {
-                this.data[DOCK_STORAGE_NAME] = { text: content, history: [] };
-            }
-            if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
-                this.data[DOCK_STORAGE_NAME].history = [];
-            }
-
-            this.data[DOCK_STORAGE_NAME].history.unshift({
-                text: content,
-                timestamp,
-                tags
-            });
-
-            // 立即保存数据
-            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-
-            // 更新视图
-            if (dock.renderDock) {
-                dock.renderDock(false);
-            }
-        } catch (error) {
-            console.error('Error saving content:', error);
-            showMessage('保存失败');
+        if (success) {
+            showMessage(this.i18n.note.saveSuccess);
+            dock.renderDock(false);
         }
     }
 
@@ -1688,13 +848,13 @@ export default class PluginSample extends Plugin {
                 // 添加调试日志
                 console.log('DOCK_STORAGE_NAME data:', this.data[DOCK_STORAGE_NAME]);
                 console.log('History:', this.data[DOCK_STORAGE_NAME]?.history);
-                
+
                 // 获取所有标签并去重
                 const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
                     ?.filter(item => item && Array.isArray(item.tags))
                     .flatMap(item => item.tags || [])
                 ));
-                
+
                 console.log('Available tags:', allTags);
 
                 // 创建标签选择面板
@@ -1724,8 +884,8 @@ export default class PluginSample extends Plugin {
                 // 判断是否有足够空间在上方显示
                 const showAbove = btnRect.top > panelHeight + margin;
                 // 如果上方空间不够，就显示在下方
-                const top = showAbove ? 
-                    btnRect.top - panelHeight - margin : 
+                const top = showAbove ?
+                    btnRect.top - panelHeight - margin :
                     btnRect.bottom + margin;
 
                 tagPanel.style.top = `${top}px`;
@@ -1750,14 +910,14 @@ export default class PluginSample extends Plugin {
                         </div>
                         <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                ${allTags.length > 0 ? 
-                                    allTags
-                                        .sort((a, b) => {
-                                            const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
-                                            const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
-                                            return countB - countA;
-                                        })
-                                        .map(tag => `
+                                ${allTags.length > 0 ?
+                        allTags
+                            .sort((a, b) => {
+                                const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                return countB - countA;
+                            })
+                            .map(tag => `
                                             <div class="history-tag b3-chip b3-chip--middle" 
                                                 style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
                                                 data-tag="${tag}">
@@ -1769,10 +929,10 @@ export default class PluginSample extends Plugin {
                                                 </span>
                                             </div>
                                         `).join('')
-                                    : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
                                         ${this.i18n.note.noTags}
                                        </div>`
-                                }
+                    }
                             </div>
                         </div>
                     </div>
@@ -1844,7 +1004,7 @@ export default class PluginSample extends Plugin {
                         }
                     }
                 });
-                
+
 
                 // 点击其他地方关闭面板
                 const closePanel = (e: MouseEvent) => {
@@ -1886,7 +1046,7 @@ export default class PluginSample extends Plugin {
                 tagInput.addEventListener('input', (e) => {
                     const searchText = (e.target as HTMLInputElement).value.toLowerCase();
                     const historyTags = tagPanel.querySelectorAll('.history-tag');
-                    
+
                     historyTags.forEach(tag => {
                         const tagText = tag.getAttribute('data-tag').toLowerCase();
                         if (tagText.includes(searchText)) {
@@ -1897,10 +1057,10 @@ export default class PluginSample extends Plugin {
                     });
 
                     // 如果没有匹配的标签，显示"无匹配标签"提示
-                    const visibleTags = Array.from(historyTags).filter(tag => 
+                    const visibleTags = Array.from(historyTags).filter(tag =>
                         (tag as HTMLElement).style.display !== 'none'
                     );
-                    
+
                     const noMatchMessage = tagPanel.querySelector('.no-match-message');
                     if (visibleTags.length === 0 && searchText) {
                         if (!noMatchMessage) {
@@ -1924,7 +1084,7 @@ export default class PluginSample extends Plugin {
                             // 检查是否有匹配的已有标签
                             const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
                                 .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-                            
+
                             if (matchingTag) {
                                 // 如果有完全匹配的标签，直接使用该标签
                                 addTag(matchingTag.getAttribute('data-tag'));
@@ -1932,7 +1092,7 @@ export default class PluginSample extends Plugin {
                                 // 如果没有完全匹配的标签，创建新标签
                                 addTag(searchText);
                             }
-                            
+
                             const textarea = container.querySelector('textarea');
                             if (textarea) {
                                 textarea.focus();
@@ -1982,7 +1142,7 @@ export default class PluginSample extends Plugin {
 
                 // 获取当前记录项
                 const currentItem = this.showArchived ?
-                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.find(
+                    this.data[ARCHIVE_STORAGE_NAME].history.find(
                         item => item.timestamp === timestamp
                     ) :
                     this.data[DOCK_STORAGE_NAME].history.find(
@@ -1994,18 +1154,7 @@ export default class PluginSample extends Plugin {
                     icon: "iconPin",
                     label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
                     click: async () => {
-                        // 根据当前状态选择正确的数据源
-                        const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
-                        const index = this.data[storageKey].history.findIndex(
-                            i => i.timestamp === timestamp
-                        );
-
-                        if (index !== -1) {
-                            // 切换置顶状态
-                            this.data[storageKey].history[index].isPinned = !this.data[storageKey].history[index].isPinned;
-                            await this.saveData(storageKey, this.data[storageKey]);
-                            renderDock(showAll);
-                        }
+                        this.historyService.toggleItemPin(timestamp);
                     }
                 });
 
@@ -2016,13 +1165,13 @@ export default class PluginSample extends Plugin {
                     click: async () => {
                         if (this.showArchived) {
                             // 从归档中恢复
-                            const index = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.findIndex(
+                            const index = this.data[ARCHIVE_STORAGE_NAME].history.findIndex(
                                 i => i.timestamp === timestamp
                             );
                             if (index !== -1) {
-                                const item = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.splice(index, 1)[0];
+                                const item = this.data[ARCHIVE_STORAGE_NAME].history.splice(index, 1)[0];
                                 this.data[DOCK_STORAGE_NAME].history.unshift(item);
-                                await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
+                                await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
                                 await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
                                 showMessage(this.i18n.note.unarchiveSuccess);
                             }
@@ -2040,7 +1189,7 @@ export default class PluginSample extends Plugin {
                     click: async () => {
                         confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
                             // 根据当前状态选择正确的数据源
-                            const storageKey = this.showArchived ? PluginSample.ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
+                            const storageKey = this.showArchived ? ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
 
                             // 从对应的数据源中删除
                             const index = this.data[storageKey].history.findIndex(
@@ -2168,7 +1317,7 @@ export default class PluginSample extends Plugin {
                                 this.isDescending = true;
                                 // 根据当前状态选择要排序的数据源
                                 if (this.showArchived) {
-                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
+                                    this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
                                 } else {
                                     this.data[DOCK_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
                                 }
@@ -2181,7 +1330,7 @@ export default class PluginSample extends Plugin {
                                 this.isDescending = false;
                                 // 根据当前状态选择要排序的数据源
                                 if (this.showArchived) {
-                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
+                                    this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
                                 } else {
                                     this.data[DOCK_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
                                 }
@@ -2361,12 +1510,12 @@ export default class PluginSample extends Plugin {
                             try {
                                 if (this.showArchived) {
                                     // 批量取消归档
-                                    const itemsToUnarchive = this.data[PluginSample.ARCHIVE_STORAGE_NAME].history
+                                    const itemsToUnarchive = this.data[ARCHIVE_STORAGE_NAME].history
                                         .filter(item => selectedTimestamps.includes(item.timestamp));
 
                                     // 从归档中移除
-                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history =
-                                        this.data[PluginSample.ARCHIVE_STORAGE_NAME].history
+                                    this.data[ARCHIVE_STORAGE_NAME].history =
+                                        this.data[ARCHIVE_STORAGE_NAME].history
                                             .filter(item => !selectedTimestamps.includes(item.timestamp));
 
                                     // 添加到活动记录
@@ -2382,12 +1531,12 @@ export default class PluginSample extends Plugin {
                                             .filter(item => !selectedTimestamps.includes(item.timestamp));
 
                                     // 添加到归档
-                                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
+                                    this.data[ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
                                 }
 
                                 // 保存更改
                                 await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
+                                await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
 
                                 showMessage(this.showArchived ?
                                     this.i18n.note.batchUnarchiveSuccess :
@@ -2501,8 +1650,8 @@ export default class PluginSample extends Plugin {
 
                     // 判断是否有足够空间在上方显示
                     const showAbove = btnRect.top > panelHeight + margin;
-                    const top = showAbove ? 
-                        btnRect.top - panelHeight - margin : 
+                    const top = showAbove ?
+                        btnRect.top - panelHeight - margin :
                         btnRect.bottom + margin;
 
                     tagPanel.style.top = `${top}px`;
@@ -2531,14 +1680,14 @@ export default class PluginSample extends Plugin {
                             </div>
                             <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
                                 <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    ${allTags.length > 0 ? 
-                                        allTags
-                                            .sort((a, b) => {
-                                                const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
-                                                const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
-                                                return countB - countA;
-                                            })
-                                            .map(tag => `
+                                    ${allTags.length > 0 ?
+                            allTags
+                                .sort((a, b) => {
+                                    const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
+                                    const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                    return countB - countA;
+                                })
+                                .map(tag => `
                                                 <div class="history-tag b3-chip b3-chip--middle" 
                                                     style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
                                                     data-tag="${tag}">
@@ -2550,10 +1699,10 @@ export default class PluginSample extends Plugin {
                                                     </span>
                                                 </div>
                                             `).join('')
-                                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                            : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
                                             ${this.i18n.note.noTags}
                                            </div>`
-                                    }
+                        }
                                 </div>
                             </div>
                         </div>
@@ -2605,7 +1754,7 @@ export default class PluginSample extends Plugin {
                                 // 检查是否有匹配的已有标签
                                 const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
                                     .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-                                
+
                                 if (matchingTag) {
                                     // 如果有完全匹配的标签，直接使用该标签
                                     await addTag(matchingTag.getAttribute('data-tag'));
@@ -2633,7 +1782,7 @@ export default class PluginSample extends Plugin {
                     tagInput.addEventListener('input', (e) => {
                         const searchText = (e.target as HTMLInputElement).value.toLowerCase();
                         const historyTags = tagPanel.querySelectorAll('.history-tag');
-                        
+
                         historyTags.forEach(tag => {
                             const tagText = tag.getAttribute('data-tag').toLowerCase();
                             if (tagText.includes(searchText)) {
@@ -2644,10 +1793,10 @@ export default class PluginSample extends Plugin {
                         });
 
                         // 如果没有匹配的标签，显示"无匹配标签"提示
-                        const visibleTags = Array.from(historyTags).filter(tag => 
+                        const visibleTags = Array.from(historyTags).filter(tag =>
                             (tag as HTMLElement).style.display !== 'none'
                         );
-                        
+
                         const noMatchMessage = tagPanel.querySelector('.no-match-message');
                         if (visibleTags.length === 0 && searchText) {
                             if (!noMatchMessage) {
@@ -2694,27 +1843,27 @@ export default class PluginSample extends Plugin {
                     const timestamp = Number(target.closest('.task-list-item').getAttribute('data-timestamp'));
                     const originalMark = target.getAttribute('data-original');
                     const newMark = target.checked ? '[x]' : '[ ]';
-                    
+
                     // 更新数据
                     const note = this.data[DOCK_STORAGE_NAME].history.find(
                         item => item.timestamp === timestamp
                     );
-                    
+
                     if (note) {
                         // 获取当前任务项的完整文本
                         const taskItemText = target.nextElementSibling.textContent.trim();
-                        
+
                         // 使用更精确的替换方法
                         const oldTaskItem = `${originalMark} ${taskItemText}`;
                         const newTaskItem = `${newMark} ${taskItemText}`;
                         note.text = note.text.replace(oldTaskItem, newTaskItem);
-                        
+
                         // 保存更改
                         await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                        
+
                         // 更新 data-original 属性
                         target.setAttribute('data-original', newMark);
-                        
+
                         // 添加视觉反馈
                         const textSpan = target.nextElementSibling as HTMLElement;
                         if (textSpan) {
@@ -2727,6 +1876,60 @@ export default class PluginSample extends Plugin {
                     }
                 }
             });
+
+            // 处理加载更多按钮点击事件
+            const loadMoreBtn = historyList.querySelector('.load-more-btn');
+            if (loadMoreBtn) {
+                loadMoreBtn.onclick = () => {
+                    this.currentDisplayCount += ITEMS_PER_PAGE;
+
+                    // 获取历史内容容器
+                    const historyContent = historyList.querySelector('.history-content');
+                    if (historyContent) {
+                        // 移除加载更多按钮和"没有更多"提示
+                        const oldLoadMore = historyContent.querySelector('.load-more-btn')?.parentElement;
+                        const noMoreItems = historyContent.querySelector('.fn__flex-center');
+                        if (oldLoadMore) oldLoadMore.remove();
+                        if (noMoreItems) noMoreItems.remove();
+
+                        // 渲染新的历史记录并追加
+                        const newContent = this.renderHistory([], showAll, true);
+
+                        // 将新内容插入到历史记录列表的末尾
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = newContent;
+                        while (tempDiv.firstChild) {
+                            historyContent.appendChild(tempDiv.firstChild);
+                        }
+
+                        // 获取源数据
+                        const sourceData = this.showArchived ?
+                            this.data[ARCHIVE_STORAGE_NAME].history :
+                            this.data[DOCK_STORAGE_NAME].history;
+
+                        // 过滤数据
+                        const filteredHistory = this.selectedTags.length > 0
+                            ? sourceData.filter(item =>
+                                this.selectedTags.some(tag => item.tags?.includes(tag))
+                            )
+                            : sourceData;
+
+                        const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
+
+                        // 添加新的加载更多按钮或"没有更多"提示
+                        if (unpinnedHistory.length > this.currentDisplayCount) {
+                            historyContent.insertAdjacentHTML('beforeend',
+                                this.renderLoadMoreButton(this.currentDisplayCount, unpinnedHistory.length)
+                            );
+                        } else {
+                            historyContent.insertAdjacentHTML('beforeend', this.renderNoMoreItems());
+                        }
+
+                        // 为新添加的内容绑定事件
+                        this.setupHistoryListEvents(historyContent, renderDock, showAll);
+                    }
+                };
+            }
         }
     }
 
@@ -2755,6 +1958,7 @@ export default class PluginSample extends Plugin {
             };
 
             searchInput.oninput = () => {
+                console.log("searchInput.oninput");
                 const searchText = searchInput.value.toLowerCase();
 
                 if (!searchText) {
@@ -2762,21 +1966,13 @@ export default class PluginSample extends Plugin {
                     this.dock.renderDock(false);
                     return;
                 }
-
-                // 根据当前状态选择搜索的数据源
-                const sourceData = this.showArchived ?
-                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history :
-                    this.data[DOCK_STORAGE_NAME].history;
-
                 // 在选定的数据源中搜索
-                const filteredHistory = sourceData.filter(item => {
-                    const text = item.text.toLowerCase();
-                    const tags = item.tags?.join(' ').toLowerCase() || '';
-                    return text.includes(searchText) || tags.includes(searchText);
-                });
+                const filteredHistory = this.historyService.searchHistory(searchText);
+                console.log("filteredHistory",filteredHistory);
 
                 // 只更新历史记录内容部分
                 const historyContent = container.querySelector('.history-content');
+                console.log("historyContent",historyContent);
                 if (historyContent) {
                     const pinnedHistory = filteredHistory.filter(item => item.isPinned);
                     const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
@@ -2841,18 +2037,7 @@ export default class PluginSample extends Plugin {
 
             sortBtn.onclick = () => {
                 this.isDescending = !this.isDescending;
-
-                // 根据当前状态选择要排序的数据源
-                if (this.showArchived) {
-                    this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.sort((a, b) =>
-                        this.isDescending ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
-                    );
-                } else {
-                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) =>
-                        this.isDescending ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
-                    );
-                }
-
+                this.historyService.setIsDescending(this.isDescending);
                 // 更新图标旋转状态
                 if (sortIcon) {
                     sortIcon.style.transform = this.isDescending ? 'rotate(0deg)' : 'rotate(180deg)';
@@ -3042,252 +2227,21 @@ export default class PluginSample extends Plugin {
         }
     }
 
-    private async showExportDialog() {
-        // 获取所有标签
-        const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
-            ?.flatMap(item => item.tags || []) || []));
-
-        const dialog = new Dialog({
-            title: this.i18n.note.export,
-            content: `
-                <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
-                    <div style="margin-bottom: 16px;">
-                        <div style="margin-bottom: 8px; font-weight: 500;">${this.i18n.note.exportFilter}</div>
-                        <div class="fn__flex-column" style="gap: 16px;">
-                            <div>
-                                <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.dateRange}</div>
-                                <div class="fn__flex" style="gap: 8px;">
-                                    <input type="date" class="b3-text-field fn__flex-1 export-start-date">
-                                    <span style="line-height: 28px;">-</span>
-                                    <input type="date" class="b3-text-field fn__flex-1 export-end-date">
-                                </div>
-                            </div>
-                            <div>
-                                <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.selectTags}</div>
-                                <div class="export-tags-container" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 28px; padding: 4px 8px; border: 1px solid var(--b3-border-color); border-radius: 4px; background: var(--b3-theme-background);">
-                                    ${allTags.map(tag => `
-                                        <span class="b3-chip b3-chip--middle export-tag-item b3-tooltips b3-tooltips__n" 
-                                            data-tag="${tag}"
-                                            aria-label="${tag}"
-                                            style="cursor: pointer; 
-                                                background-color: var(--b3-theme-surface);
-                                                color: var(--b3-theme-on-surface);
-                                                border: 1px solid var(--b3-border-color);
-                                                transition: all 0.2s ease;">
-                                            <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                ${tag}
-                                            </span>
-                                            <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
-                                                ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
-                                            </span>
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            <div>
-                                <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.exportFormat}</div>
-                                <div class="fn__flex" style="gap: 8px;">
-                                    <label class="fn__flex" style="align-items: center; gap: 4px;">
-                                        <input type="radio" name="export-format" value="csv" class="b3-radio" checked>
-                                        <span>${this.i18n.note.formatCSV}</span>
-                                    </label>
-                                    <label class="fn__flex" style="align-items: center; gap: 4px;">
-                                        <input type="radio" name="export-format" value="md" class="b3-radio">
-                                        <span>${this.i18n.note.formatMD}</span>
-                                    </label>
-                                    <label class="fn__flex" style="align-items: center; gap: 4px;">
-                                        <input type="radio" name="export-format" value="json" class="b3-radio">
-                                        <span>${this.i18n.note.formatJSON}</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="fn__flex-column" style="gap: 8px;">
-                        <label class="fn__flex" style="align-items: center; gap: 4px;">
-                            <input type="checkbox" class="b3-checkbox export-pinned-only">
-                            <span>${this.i18n.note.exportPinnedOnly}</span>
-                        </label>
-                        <label class="fn__flex" style="align-items: center; gap: 4px;">
-                            <input type="checkbox" class="b3-checkbox export-include-archived">
-                            <span>${this.i18n.note.exportIncludeArchived}</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="b3-dialog__action">
-                    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
-                    <button class="b3-button b3-button--text" data-type="confirm">${this.i18n.note.export}</button>
-                </div>`,
-            width: "520px",
-        });
-
-        // 设置默认日期范围（最近一个月）
-        const startDateInput = dialog.element.querySelector('.export-start-date') as HTMLInputElement;
-        const endDateInput = dialog.element.querySelector('.export-end-date') as HTMLInputElement;
-        const now = new Date();
-        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        startDateInput.value = oneMonthAgo.toISOString().split('T')[0];
-        endDateInput.value = now.toISOString().split('T')[0];
-
-        // 设置标签点击事件
-        const tagItems = dialog.element.querySelectorAll('.export-tag-item');
-        tagItems.forEach(tag => {
-            tag.addEventListener('click', () => {
-                const isSelected = tag.getAttribute('data-selected') === 'true';
-                tag.setAttribute('data-selected', (!isSelected).toString());
-
-                if (!isSelected) {
-                    tag.style.backgroundColor = 'var(--b3-theme-primary)';
-                    tag.style.color = 'var(--b3-theme-on-primary)';
-                    tag.style.border = '1px solid var(--b3-theme-primary)';
+    private showExportDialog() {
+        this.exportDialog.show(
+            {
+                history: this.data[DOCK_STORAGE_NAME].history,
+                archivedHistory: this.data[ARCHIVE_STORAGE_NAME]?.history
+            },
+            this.data[DOCK_STORAGE_NAME],
+            (filteredData, format) => {
+                if (this.exportService.exportData(filteredData, format)) {
+                    showMessage(this.i18n.note.exportSuccess);
                 } else {
-                    tag.style.backgroundColor = 'var(--b3-theme-surface)';
-                    tag.style.color = 'var(--b3-theme-on-surface)';
-                    tag.style.border = '1px solid var(--b3-border-color)';
+                    showMessage(this.i18n.note.exportFailed);
                 }
-            });
-        });
-
-        // 绑定按钮事件
-        const btns = dialog.element.querySelectorAll('.b3-button');
-        btns[0].addEventListener('click', () => {
-            dialog.destroy();
-        });
-        btns[1].addEventListener('click', () => {
-            const startDate = new Date(startDateInput.value).getTime();
-            const endDate = new Date(endDateInput.value).setHours(23, 59, 59, 999);
-            const selectedTags = Array.from(dialog.element.querySelectorAll('.export-tag-item[data-selected="true"]'))
-                .map(tag => tag.getAttribute('data-tag'));
-            const pinnedOnly = (dialog.element.querySelector('.export-pinned-only') as HTMLInputElement).checked;
-            const includeArchived = (dialog.element.querySelector('.export-include-archived') as HTMLInputElement).checked;
-
-            // 合并活动记录和归档记录（如果需要）
-            let allData = [...this.data[DOCK_STORAGE_NAME].history];
-            if (includeArchived) {
-                allData = allData.concat(this.data[PluginSample.ARCHIVE_STORAGE_NAME].history || []);
             }
-
-            // 过滤数据
-            const filteredData = allData.filter(item => {
-                const matchDate = (!startDate || item.timestamp >= startDate) &&
-                    (!endDate || item.timestamp <= endDate);
-                const matchTags = selectedTags.length === 0 ||
-                    selectedTags.some(tag => item.tags?.includes(tag));
-                const matchPinned = !pinnedOnly || item.isPinned;
-                return matchDate && matchTags && matchPinned;
-            });
-
-            if (filteredData.length === 0) {
-                showMessage(this.i18n.note.noDataToExport);
-                return;
-            }
-
-            // 获取选择的导出格式
-            const format = dialog.element.querySelector('input[name="export-format"]:checked').value;
-
-            // 导出过滤后的数据
-            this.exportData(filteredData, format);
-            dialog.destroy();
-        });
-    }
-
-    private exportData(data: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>, format: string) {
-        try {
-            let content: string;
-            let filename: string;
-            let mimeType: string;
-
-            switch (format) {
-                case 'md':
-                    content = this.generateMarkdown(data);
-                    filename = `小记导出_${new Date().toLocaleDateString()}.md`;
-                    mimeType = 'text/markdown';
-                    break;
-                case 'json':
-                    content = JSON.stringify(data, null, 2);
-                    filename = `小记导出_${new Date().toLocaleDateString()}.json`;
-                    mimeType = 'application/json';
-                    break;
-                default: // csv
-                    content = this.generateCSV(data);
-                    filename = `小记导出_${new Date().toLocaleDateString()}.csv`;
-                    mimeType = 'text/csv;charset=utf-8';
-                    break;
-            }
-
-            const blob = new Blob(['\ufeff' + content], { type: mimeType });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            showMessage(this.i18n.note.exportSuccess);
-        } catch (error) {
-            console.error('Export failed:', error);
-            showMessage('导出失败');
-        }
-    }
-
-    private generateCSV(data: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>) {
-        const headers = ['内容', '标签', '时间', '状态'];
-        const rows = data.map(item => ({
-            '内容': item.text,
-            '标签': (item.tags || []).join(', '),
-            '时间': new Date(item.timestamp).toLocaleString(),
-            '状态': item.isPinned ? '已置顶' : '未置顶'
-        }));
-
-        return [
-            headers.join(','),
-            ...rows.map(row =>
-                headers.map(header =>
-                    JSON.stringify(row[header] || '')
-                ).join(',')
-            )
-        ].join('\n');
-    }
-
-    private generateMarkdown(data: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>) {
-        return `# 小记导出
-导出时间：${new Date().toLocaleString()}
-
-${data.map(item => `## ${new Date(item.timestamp).toLocaleString()}${item.isPinned ? ' 📌' : ''}
-${item.text}
-
-${item.tags?.length ? `标签：${item.tags.map(tag => `\`${tag}\``).join(' ')}` : ''}`).join('\n\n---\n\n')}`;
-    }
-
-    // 修改归档功能的处理逻辑
-    private async archiveItem(timestamp: number, renderDock: (showAll: boolean) => void) {
-        // 初始化归档存储
-        if (!this.data[PluginSample.ARCHIVE_STORAGE_NAME]) {
-            this.data[PluginSample.ARCHIVE_STORAGE_NAME] = { history: [] };
-        }
-
-        // 找到要归档的项目
-        const itemIndex = this.data[DOCK_STORAGE_NAME].history.findIndex(item => item.timestamp === timestamp);
-        if (itemIndex !== -1) {
-            const item = this.data[DOCK_STORAGE_NAME].history[itemIndex];
-
-            // 取消置顶状态
-            if (item.isPinned) {
-                item.isPinned = false;
-            }
-
-            // 移动到归档
-            this.data[PluginSample.ARCHIVE_STORAGE_NAME].history.push(item);
-            this.data[DOCK_STORAGE_NAME].history.splice(itemIndex, 1);
-
-            // 保存更改
-            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-            await this.saveData(PluginSample.ARCHIVE_STORAGE_NAME, this.data[PluginSample.ARCHIVE_STORAGE_NAME]);
-
-            showMessage(this.i18n.note.archiveSuccess);
-            renderDock(false);
-        }
+        );
     }
 
     // 在 createNewNote 和 editHistoryItem 方法中添加图片上传事件处理
@@ -3340,4 +2294,119 @@ ${item.tags?.length ? `标签：${item.tags.map(tag => `\`${tag}\``).join(' ')}`
             });
         }
     }
+
+    private async archiveItem(timestamp: number, renderDock: (showAll: boolean) => void) {
+        const success = await this.historyService.archiveItem(timestamp, async (data) => {
+            this.data[DOCK_STORAGE_NAME].history = data.history;
+            this.data[ARCHIVE_STORAGE_NAME].history = data.archivedHistory;
+            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+            await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
+        });
+
+        if (success) {
+            showMessage(this.i18n.note.archiveSuccess);
+            renderDock(false);
+        }
+    }
+
+
+    private renderHistoryItem(item: HistoryItem, showDivider: boolean = true): string {
+        const html = `
+            <div class="history-item" data-timestamp="${item.timestamp}" style="
+                padding: 12px;
+                background: var(--b3-theme-background);
+                border-radius: 4px;
+                margin-bottom: ${showDivider ? '8px' : '0'};
+                position: relative;
+                ${item.isPinned ? 'border: 1px solid var(--b3-theme-primary);' : 'border: 1px solid var(--b3-border-color);'}
+            ">
+                <div class="fn__flex" style="justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div class="fn__flex-1" style="margin-right: 8px;">
+                        <div class="markdown-content" style="margin-bottom: 8px;">
+                            ${this.renderMarkdown(item.text)}
+                        </div>
+                        ${this.renderTags(item.tags || [])}
+                    </div>
+                    <div class="fn__flex" style="gap: 4px;">
+                        ${this.renderItemButtons(item)}
+                    </div>
+                </div>
+                <div style="font-size: 12px; color: var(--b3-theme-on-surface); opacity: 0.68;">
+                    ${new Date(item.timestamp).toLocaleString()}
+                </div>
+                ${item.isPinned ? `
+                    <div style="position: absolute; top: -6px; right: -6px; background: var(--b3-theme-primary); color: var(--b3-theme-on-primary); padding: 2px 4px; border-radius: 4px; font-size: 10px;">
+                        ${this.i18n.note.pinned}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // 在元素渲染完成后绑定事件
+        setTimeout(() => {
+            const itemElement = document.querySelector(`[data-timestamp="${item.timestamp}"]`);
+            if (itemElement) {
+                this.setupItemEvents(itemElement, item.timestamp);
+            }
+        }, 0);
+
+        return html;
+    }
+
+    private setupItemEvents(element: HTMLElement, timestamp: number) {
+        // 编辑按钮
+        const editBtn = element.querySelector('.edit-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                const item = this.historyService.getHistoryItem(timestamp);
+                if (item) {
+                    this.editHistoryItem(this.dock, timestamp, item.text);
+                }
+            });
+        }
+
+        // 删除按钮
+        const deleteBtn = element.querySelector('.delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                if (await confirm(this.i18n.note.confirmDelete)) {
+                    const success = await this.historyService.deleteHistoryItem(timestamp);
+                    if (success) {
+                        showMessage(this.i18n.note.deleteSuccess);
+                        this.dock.renderDock(false);
+                    }
+                }
+            });
+        }
+
+        // 归档按钮
+        const archiveBtn = element.querySelector('.archive-btn');
+        if (archiveBtn) {
+            archiveBtn.addEventListener('click', async () => {
+                const success = await this.historyService.archiveItem(timestamp);
+                if (success) {
+                    showMessage(this.i18n.note.archiveSuccess);
+                    this.dock.renderDock(false);
+                }
+            });
+        }
+    }
+
+    private renderItemButtons(item: HistoryItem): string {
+        return `
+            <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__w" aria-label="${this.i18n.note.edit}" style="padding: 4px;">
+                <svg class="b3-button__icon"><use xlink:href="#iconEdit"></use></svg>
+            </button>
+            <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__w" aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}" style="padding: 4px;">
+                <svg class="b3-button__icon"><use xlink:href="#iconPin"></use></svg>
+            </button>
+            <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__w" aria-label="${this.i18n.note.archive}" style="padding: 4px;">
+                <svg class="b3-button__icon"><use xlink:href="#iconArchive"></use></svg>
+            </button>
+            <button class="b3-button b3-button--text delete-btn b3-tooltips b3-tooltips__w" aria-label="${this.i18n.note.delete}" style="padding: 4px;">
+                <svg class="b3-button__icon"><use xlink:href="#iconTrashcan"></use></svg>
+            </button>
+        `;
+    }
+
 }

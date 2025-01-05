@@ -99,7 +99,8 @@
         "noMatchingTags": "无匹配标签",
         "uploadImage": "上传图片",
         "uploadSuccess": "上传成功",
-        "uploadFailed": "上传失败"
+        "uploadFailed": "上传失败",
+        "editSuccess": "编辑成功"
     },
     "openTagPanel": "打开标签选择面板"
 }
