@@ -83,6 +83,7 @@
         "batchArchiveSuccess": "批量归档成功",
         "batchUnarchiveSuccess": "批量恢复成功",
         "batchArchiveFailed": "批量归档失败",
-        "batchUnarchiveFailed": "批量恢复失败"
+        "batchUnarchiveFailed": "批量恢复失败",
+        "alreadyCreating": "已有一个新建小记窗口正在打开"
     }
 }

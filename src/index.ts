@@ -36,6 +36,9 @@ const MAX_TEXT_LENGTH = 250; // 超过这个长度的文本会被折叠
 export default class PluginSample extends Plugin {
     // 将静态属性移到类内部
     private static readonly ARCHIVE_STORAGE_NAME = "archive-content";
+    private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
+    private tempNoteContent: string = ''; // 添加临时内容存储
+    private tempNoteTags: string[] = []; // 添加临时标签存储
 
     customTab: () => IModel;
     private isMobile: boolean;
@@ -1245,13 +1248,20 @@ export default class PluginSample extends Plugin {
 
     // 创建新笔记
     private async createNewNote(dock: any) {
+        // 如果已经有窗口在打开中,则返回
+        if (this.isCreatingNote) {
+            showMessage(this.i18n.note.alreadyCreating);
+            return false;
+        }
+
         try {
+            this.isCreatingNote = true; // 设置标志位
             return new Promise((resolve) => {
                 const dialog = new Dialog({
                     title: this.i18n.note.new,
                     content: `
                         <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
-                            ${this.getEditorTemplate()}
+                            ${this.getEditorTemplate(this.tempNoteContent)}
                         </div>`,
                     width: "520px",
                     height: "320px",
@@ -1259,6 +1269,16 @@ export default class PluginSample extends Plugin {
                     disableClose: false,
                     disableAnimation: false,
                     destroyCallback: () => {
+                        // 在关闭窗口时保存当前内容
+                        const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
+                        if (textarea) {
+                            this.tempNoteContent = textarea.value;
+                            // 保存标签
+                            this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                                .map(tag => tag.getAttribute('data-tag'))
+                                .filter(tag => tag !== null) as string[];
+                        }
+                        this.isCreatingNote = false; // 重置标志位
                         resolve(false);
                     }
                 });
@@ -1268,6 +1288,33 @@ export default class PluginSample extends Plugin {
                     const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
                     if (textarea) {
                         textarea.focus();
+                        // 将光标移到文本末尾
+                        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                    }
+                    // 恢复之前保存的标签
+                    if (this.tempNoteTags.length > 0) {
+                        const tagsList = dialog.element.querySelector('.tags-list');
+                        if (tagsList) {
+                            this.tempNoteTags.forEach(tagText => {
+                                const tagElement = document.createElement('span');
+                                tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                                tagElement.setAttribute('data-tag', tagText);
+                                tagElement.setAttribute('aria-label', tagText);
+                                tagElement.style.cursor = 'default';
+                                tagElement.innerHTML = `
+                                    <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
+                                    <svg class="b3-chip__close" style="cursor: pointer;">
+                                        <use xlink:href="#iconClose"></use>
+                                    </svg>
+                                `;
+                                tagsList.appendChild(tagElement);
+
+                                // 添加删除标签的事件
+                                tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                    tagElement.remove();
+                                });
+                            });
+                        }
                     }
                 }, 100);
 
@@ -1281,24 +1328,13 @@ export default class PluginSample extends Plugin {
                             .map(tag => tag.getAttribute('data-tag'));
 
                         if (text.trim()) {
-                            if (!this.data[DOCK_STORAGE_NAME]) {
-                                this.data[DOCK_STORAGE_NAME] = { text: '', history: [] };
-                            }
-                            if (!Array.isArray(this.data[DOCK_STORAGE_NAME].history)) {
-                                this.data[DOCK_STORAGE_NAME].history = [];
-                            }
-
-                            this.data[DOCK_STORAGE_NAME].history.unshift({
-                                text: text,
-                                timestamp: Date.now(),
-                                tags: tags
-                            });
-
-                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            await this.saveContent(dock, text, tags);
                             showMessage(this.i18n.note.saveSuccess);
+                            // 清空临时内容和标签
+                            this.tempNoteContent = '';
+                            this.tempNoteTags = [];
                             dialog.destroy();
                             resolve(true);
-                            this.dock.renderDock(false);
                             return;
                         }
                         resolve(false);

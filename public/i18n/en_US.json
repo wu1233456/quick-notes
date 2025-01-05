@@ -83,6 +83,7 @@
         "batchArchiveSuccess": "Batch archive successful",
         "batchUnarchiveSuccess": "Batch restore successful",
         "batchArchiveFailed": "Batch archive failed",
-        "batchUnarchiveFailed": "Batch restore failed"
+        "batchUnarchiveFailed": "Batch restore failed",
+        "alreadyCreating": "A note creation window is already open"
     }
 }
