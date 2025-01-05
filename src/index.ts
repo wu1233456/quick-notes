@@ -522,6 +522,18 @@ export default class PluginSample extends Plugin {
                 border: 1px solid var(--b3-border-color);
                 border-radius: 4px;
             }
+
+            /* 任务列表样式 */
+            .markdown-content .task-list-item {
+                list-style-type: none;
+                padding-left: 0.5em;
+                margin: 4px 0;
+            }
+            
+            .markdown-content .task-list-item-checkbox {
+                margin-right: 0.5em;
+                vertical-align: middle;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1244,10 +1256,34 @@ export default class PluginSample extends Plugin {
                 .replace(/'/g, '&#039;');
         };
 
+        // 处理任务列表
+        const processTaskList = (content: string) => {
+            // 首先处理输入的 [] 转换为 [ ]
+            content = content.replace(/<p>\[\](.*?)<\/p>/g, '<p>[ ]$1</p>');
+            
+            // 然后处理任务列表
+            return content.replace(
+                /<p>(\[ \]|\[x\])(.*?)<\/p>/g, 
+                (match, checkbox, text) => {
+                    const isChecked = checkbox === '[x]';
+                    const timestamp = item.timestamp;
+                    return `
+                        <div class="task-list-item" data-timestamp="${timestamp}">
+                            <input type="checkbox" 
+                                class="task-list-item-checkbox" 
+                                ${isChecked ? 'checked' : ''} 
+                                data-original="${checkbox}">
+                            <span style="${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${text.trim()}</span>
+                        </div>`;
+                }
+            );
+        };
+
         // 使用 Lute 渲染 Markdown
         let renderedContent = '';
         try {
             renderedContent = window.Lute.New().Md2HTML(displayText);
+            renderedContent = processTaskList(renderedContent);
         } catch (error) {
             console.error('Markdown rendering failed:', error);
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
@@ -2011,25 +2047,6 @@ export default class PluginSample extends Plugin {
             }
         };
 
-        // 添加双击复制功能
-        historyList.ondblclick = async (e) => {
-            const target = e.target as HTMLElement;
-            const historyItem = target.closest('.history-item') as HTMLElement;
-            if (historyItem && !target.closest('.more-btn')) {
-                const textContainer = historyItem.querySelector('[data-text]');
-                if (textContainer) {
-                    const text = textContainer.getAttribute('data-text') || '';
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        showMessage('已复制到剪贴板');
-                    } catch (err) {
-                        console.error('复制失败:', err);
-                        showMessage('复制失败');
-                    }
-                }
-            }
-        };
-
         // 处理展开/折叠按钮
         historyList.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
@@ -2650,6 +2667,47 @@ export default class PluginSample extends Plugin {
                     });
                 };
             }
+
+            // 添加任务列表勾选框事件处理
+            historyList.addEventListener('change', async (e) => {
+                const target = e.target as HTMLInputElement;
+                if (target.classList.contains('task-list-item-checkbox')) {
+                    const timestamp = Number(target.closest('.task-list-item').getAttribute('data-timestamp'));
+                    const originalMark = target.getAttribute('data-original');
+                    const newMark = target.checked ? '[x]' : '[ ]';
+                    
+                    // 更新数据
+                    const note = this.data[DOCK_STORAGE_NAME].history.find(
+                        item => item.timestamp === timestamp
+                    );
+                    
+                    if (note) {
+                        // 获取当前任务项的完整文本
+                        const taskItemText = target.nextElementSibling.textContent.trim();
+                        
+                        // 使用更精确的替换方法
+                        const oldTaskItem = `${originalMark} ${taskItemText}`;
+                        const newTaskItem = `${newMark} ${taskItemText}`;
+                        note.text = note.text.replace(oldTaskItem, newTaskItem);
+                        
+                        // 保存更改
+                        await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                        
+                        // 更新 data-original 属性
+                        target.setAttribute('data-original', newMark);
+                        
+                        // 添加视觉反馈
+                        const textSpan = target.nextElementSibling as HTMLElement;
+                        if (textSpan) {
+                            textSpan.style.textDecoration = target.checked ? 'line-through' : 'none';
+                            textSpan.style.opacity = target.checked ? '0.6' : '1';
+                        }
+
+                        // 可选：添加操作成功的提示
+                        showMessage(target.checked ? '已完成任务' : '已取消完成');
+                    }
+                }
+            });
         }
     }
 
