@@ -89,7 +89,7 @@
         "collapseTags": "Collapse Tags",
         "merge": "Merge",
         "mergeSuccess": "Merge successful",
-        "tag": "Tag",
+        "tag": "Modify Tag",
         "tagSuccess": "Tag updated successfully",
         "mergeDeleteConfirm": "Do you want to delete the merged notes?",
         "mergeDeleteConfirmTitle": "Delete Confirmation",
