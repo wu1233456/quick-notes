@@ -1263,16 +1263,15 @@ export default class PluginSample extends Plugin {
         // 处理任务列表
         const processTaskList = (content: string) => {
             // 首先处理输入的 [] 转换为 [ ]
-            content = content.replace(/<p>\[\](.*?)<\/p>/g, '<p>[ ]$1</p>');
+            content = content.replace(/\[\]([^\n]*)/g, '[ ]$1');
             
-            // 然后处理任务列表
+            // 然后处理任务列表，使用新的正则表达式匹配多行
             return content.replace(
-                /<p>(\[ \]|\[x\])(.*?)<\/p>/g, 
+                /(\[ \]|\[x\])([^\n]*)/g,
                 (match, checkbox, text) => {
                     const isChecked = checkbox === '[x]';
-                    const timestamp = item.timestamp;
                     return `
-                        <div class="task-list-item" data-timestamp="${timestamp}">
+                        <div class="task-list-item">
                             <input type="checkbox" 
                                 class="task-list-item-checkbox" 
                                 ${isChecked ? 'checked' : ''} 
