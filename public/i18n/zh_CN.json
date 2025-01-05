@@ -96,7 +96,10 @@
         "mergeDeleteSuccess": "已删除合并的小记",
         "mergeDeleteFailed": "删除合并的小记失败",
         "noTags": "暂无标签",
-        "noMatchingTags": "无匹配标签"
+        "noMatchingTags": "无匹配标签",
+        "uploadImage": "上传图片",
+        "uploadSuccess": "上传成功",
+        "uploadFailed": "上传失败"
     },
     "openTagPanel": "打开标签选择面板"
 }

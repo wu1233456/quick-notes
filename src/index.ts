@@ -24,6 +24,7 @@ import HelloExample from "@/hello.svelte";
 import SettingExample from "@/setting-example.svelte";
 
 import { svelteDialog } from "./libs/dialog";
+import { upload } from "./api"; 
 
 // 移除外部的静态属性声明
 const STORAGE_NAME = "menu-config";
@@ -423,6 +424,9 @@ export default class PluginSample extends Plugin {
 
                     // 设置导出功能
                     this.setupExportFeature(dock.element);
+
+                    // 设置图片上传功能
+                    this.setupImageUpload(dock.element);
                 };
 
                 // 将 renderDock 函数添加到 dock 对象上
@@ -1473,6 +1477,11 @@ export default class PluginSample extends Plugin {
 
                 // 设置标签功能
                 this.setupTagsFeature(dialog.element);
+
+                // 在对话框创建后设置图片上传功能
+                setTimeout(() => {
+                    this.setupImageUpload(dialog.element);
+                }, 100);
             });
         } catch (error) {
             console.error('Error creating new note:', error);
@@ -1562,6 +1571,11 @@ export default class PluginSample extends Plugin {
                         });
                     });
                 }
+
+                // 在对话框创建后设置图片上传功能
+                setTimeout(() => {
+                    this.setupImageUpload(dialog.element);
+                }, 100);
             });
         } catch (error) {
             console.error('Error editing history item:', error);
@@ -1646,9 +1660,15 @@ export default class PluginSample extends Plugin {
                 <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px;">
                     <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
                     <div class="fn__flex" style="justify-content: space-between; align-items: center;">
-                        <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.addTag}">
-                            <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
-                        </button>
+                        <div class="fn__flex" style="gap: 8px;">
+                            <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.addTag}">
+                                <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
+                            </button>
+                            <button class="b3-button b3-button--text upload-image-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.uploadImage}">
+                                <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconImage"></use></svg>
+                            </button>
+                            <input type="file" class="fn__none image-upload-input" accept="image/*" multiple>
+                        </div>
                         <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center" data-type="save" aria-label="${adaptHotkey('⌘Enter')}" style="padding: 4px 8px; gap: 4px;">
                             <span>${this.i18n.note.save}</span>
                         </button>
@@ -3268,6 +3288,57 @@ ${item.tags?.length ? `标签：${item.tags.map(tag => `\`${tag}\``).join(' ')}`
 
             showMessage(this.i18n.note.archiveSuccess);
             renderDock(false);
+        }
+    }
+
+    // 在 createNewNote 和 editHistoryItem 方法中添加图片上传事件处理
+    private setupImageUpload(container: HTMLElement) {
+        const uploadBtn = container.querySelector('.upload-image-btn');
+        const uploadInput = container.querySelector('.image-upload-input') as HTMLInputElement;
+        const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+        if (uploadBtn && uploadInput && textarea) {
+            console.log('setupImageUpload');
+            uploadBtn.addEventListener('click', () => {
+                uploadInput.click();
+            });
+
+            uploadInput.addEventListener('change', async () => {
+                const files = Array.from(uploadInput.files || []);
+                if (files.length === 0) return;
+
+                try {
+                    // 上传图片
+                    const result = await upload("/assets/", files);
+                    if (result.succMap) {
+                        // 获取光标位置
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const text = textarea.value;
+
+                        // 构建 Markdown 图片语法
+                        const imageLinks = Object.entries(result.succMap)
+                            .map(([filename, url]) => `![${filename}](${url})`)
+                            .join('\n');
+
+                        // 在光标位置插入图片链接
+                        textarea.value = text.substring(0, start) + imageLinks + text.substring(end);
+
+                        // 更新光标位置
+                        const newPosition = start + imageLinks.length;
+                        textarea.setSelectionRange(newPosition, newPosition);
+                        textarea.focus();
+
+                        showMessage(this.i18n.note.uploadSuccess);
+                    }
+                } catch (error) {
+                    console.error('Upload failed:', error);
+                    showMessage(this.i18n.note.uploadFailed);
+                }
+
+                // 清空 input，允许重复上传相同文件
+                uploadInput.value = '';
+            });
         }
     }
 }
