@@ -73,6 +73,9 @@ export default class PluginSample extends Plugin {
     <path d="M865.3 506.3V184.1c0-64.8-52.7-117.5-117.5-117.5H281c-64.8 0-117.5 52.7-117.5 117.5v322.2c-46.4 5.8-82.4 45.5-82.4 93.5v257.8c0 52 42.3 94.2 94.2 94.2h678.2c52 0 94.2-42.3 94.2-94.2V599.8c0-47.9-36-87.6-82.4-93.5zM233.5 184.1c0-26.2 21.3-47.5 47.5-47.5h466.8c26.2 0 47.5 21.3 47.5 47.5v321.5H669.9v87.6c0 3.3-2.7 6-6 6H365c-3.3 0-6-2.7-6-6v-87.6H233.5V184.1z m644.2 673.6c0 13.4-10.9 24.2-24.2 24.2H175.3c-13.4 0-24.2-10.9-24.2-24.2V599.8c0-13.4 10.9-24.2 24.2-24.2H289v17.6c0 41.9 34.1 76 76 76h298.8c41.9 0 76-34.1 76-76v-17.6H853.4c13.4 0 24.2 10.9 24.2 24.2v257.9z"/>
     <path d="M513.2 520.3l140.6-140.6-49.5-49.5-57.3 57.4V194.5h-70v190.6l-54.9-54.9-49.5 49.5 91.1 91.1z"/>
 </symbol>
+<symbol id="iconMerge" viewBox="0 0 1024 1024">
+  <path d="M1024 385.024l0 189.44-169.984 0q-12.288 0-16.896 5.12t-4.608 15.36l0 26.624q0 8.192-6.656 14.336t-16.896 8.192-22.528-1.024-23.552-14.336q-29.696-28.672-60.928-65.536t-57.856-66.56q-6.144-7.168-5.12-19.456t9.216-21.504q27.648-32.768 58.368-64.512l67.584-66.56q5.12-5.12 14.848-6.656t19.456-0.512 16.896 5.12 7.168 9.216l0 15.36q0 10.24 4.608 24.064t23.04 13.824l163.84 0zM63.488 574.464l0-189.44 163.84 0q17.408 0 22.528-7.68t5.12-17.92l0-16.384q0-12.288 7.168-18.944t16.896-8.192 19.456 1.024 14.848 7.68l67.584 66.56q30.72 31.744 58.368 64.512 8.192 9.216 9.216 21.504t-6.144 19.456q-26.624 29.696-57.856 66.56t-60.928 65.536q-11.264 11.264-23.552 15.36t-22.016 2.048-16.384-9.728-6.656-20.992l0-26.624q0-10.24-4.608-12.288t-17.92-2.048l-168.96 0zM896 63.488q26.624 0 49.664 10.24t40.448 27.648 27.648 40.448 10.24 49.664l0 128-128 0 0-128-320.512 0 0 576.512 320.512 0 0-128 128 0 0 128q0 26.624-10.24 49.664t-27.648 40.448-40.448 27.648-49.664 10.24l-704.512 0q-26.624 0-49.664-10.24t-40.448-27.648-27.648-40.448-10.24-49.664l0-128 128 0 0 128 320.512 0 0-576.512-320.512 0 0 128-128 0 0-128q0-26.624 10.24-49.664t27.648-40.448 40.448-27.648 49.664-10.24l704.512 0z" p-id="4414"></path>
+</symbol>
 <symbol id="iconExportNew" viewBox="0 0 1024 1024">
     <path d="M512 202.666667a32 32 0 0 0-32-32H256a85.333333 85.333333 0 0 0-85.333333 85.333333v512a85.333333 85.333333 0 0 0 85.333333 85.333333h512a85.333333 85.333333 0 0 0 85.333333-85.333333v-224a32 32 0 0 0-64 0V768a21.333333 21.333333 0 0 1-21.333333 21.333333H256a21.333333 21.333333 0 0 1-21.333333-21.333333V256a21.333333 21.333333 0 0 1 21.333333-21.333333h224a32 32 0 0 0 32-32z" fill="currentColor"/>
     <path d="M848.469333 361.258667a8.533333 8.533333 0 0 1-0.085333 12.8l-194.218667 171.178666a8.533333 8.533333 0 0 1-14.165333-6.4V448c0-27.434667-25.898667-10.325333-67.370667-3.029333-44.288 7.722667-124.970667 63.018667-164.906666 92.032-6.954667 5.034667-16.170667-1.92-12.928-9.856 18.773333-45.781333 59.008-135.466667 96.981333-164.48C599.594667 280.362667 640 310.869333 640 283.434667V192.853333a8.533333 8.533333 0 0 1 14.250667-6.314666l194.218666 174.72z" fill="currentColor"/>
@@ -197,28 +200,42 @@ export default class PluginSample extends Plugin {
                                         </div>
                                         <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
                                             <!-- 批量操作工具栏，默认隐藏 -->
-                                            <div class="batch-toolbar fn__none fn__flex" style="gap: 8px; margin-right: auto;">
-                                                <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
-                                                    ${this.i18n.note.selectAll}
-                                                </button>
-                                                <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
-                                                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                        <use xlink:href="#iconCopy"></use>
-                                                    </svg>
-                                                </button>
-                                                <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
-                                                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                        <use xlink:href="#iconArchive"></use>
-                                                    </svg>
-                                                </button>
-                                                <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n" style="padding: 4px 8px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
-                                                    <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                        <use xlink:href="#iconTrashcan"></use>
-                                                    </svg>
-                                                </button>
-                                                <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
-                                                    ${this.i18n.note.cancelSelect}
-                                                </button>
+                                            <div class="batch-toolbar fn__none fn__flex-column" style="gap: 8px; margin-right: auto;">
+                                                <div class="fn__flex" style="gap: 8px;">
+                                                    <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
+                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                            <use xlink:href="#iconCopy"></use>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="b3-button b3-button--text batch-tag-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.tag}">
+                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                            <use xlink:href="#iconTags"></use>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                            <use xlink:href="#iconArchive"></use>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
+                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                            <use xlink:href="#iconTrashcan"></use>
+                                                        </svg>
+                                                    </button>
+                                                    <button class="b3-button b3-button--text batch-merge-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.merge}">
+                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                            <use xlink:href="#iconMerge"></use>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div class="fn__flex" style="gap: 8px;">
+                                                    <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
+                                                        ${this.i18n.note.selectAll}
+                                                    </button>
+                                                    <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
+                                                        ${this.i18n.note.cancelSelect}
+                                                    </button>
+                                                </div>
                                             </div>
                                             <!-- 常规工具栏 -->
                                             <div class="normal-toolbar fn__flex" style="gap: 8px;">
@@ -429,6 +446,24 @@ export default class PluginSample extends Plugin {
         });
 
         console.log(this.i18n.helloPlugin);
+
+        // 在 onload 方法中添加快捷键命令
+        this.addCommand({
+            langKey: "openTagPanel",
+            hotkey: "⌃⌥K",
+            callback: () => {
+                const addTagBtn = document.querySelector('.add-tag-btn');
+                if (addTagBtn) {
+                    addTagBtn.click();
+                    setTimeout(() => {
+                        const tagInput = document.querySelector('.tag-input') as HTMLInputElement;
+                        if (tagInput) {
+                            tagInput.focus();
+                        }
+                    }, 100);
+                }
+            }
+        });
     }
 
     async onLayoutReady() {
@@ -1497,7 +1532,7 @@ export default class PluginSample extends Plugin {
     // 创建编辑器模板
     private getEditorTemplate(text: string = '', placeholder: string = '在这里输入你的想法...') {
         return `
-            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%;">
                 <textarea class="fn__flex-1" 
                     placeholder="${placeholder}"
                     style="width: 100%; 
@@ -1536,55 +1571,101 @@ export default class PluginSample extends Plugin {
             addTagBtn.onclick = (e) => {
                 e.stopPropagation();
 
+                // 添加调试日志
+                console.log('DOCK_STORAGE_NAME data:', this.data[DOCK_STORAGE_NAME]);
+                console.log('History:', this.data[DOCK_STORAGE_NAME]?.history);
+                
+                // 获取所有标签并去重
+                const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                    ?.filter(item => item && Array.isArray(item.tags))
+                    .flatMap(item => item.tags || [])
+                ));
+                
+                console.log('Available tags:', allTags);
+
                 // 创建标签选择面板
                 const tagPanel = document.createElement('div');
                 tagPanel.className = 'tag-panel';
                 tagPanel.style.cssText = `
-                    position: absolute;
-                    bottom: 100%;
-                    left: 0;
-                    width: 200px;
-                    max-height: 300px;
-                    background: var(--b3-theme-background);
+                    position: fixed;
+                    z-index: 205;
+                    width: 133px;
+                    height: 150px; // 固定高度
+                    background: var(--b3-menu-background);
                     border: 1px solid var(--b3-border-color);
-                    border-radius: 4px;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                    padding: 8px;
-                    margin-bottom: 8px;
-                    overflow: auto;
-                    z-index: 999;
+                    border-radius: var(--b3-border-radius);
+                    box-shadow: var(--b3-dialog-shadow);
+                    display: flex;
+                    flex-direction: column;
+                    padding: 0;
+                    overflow: hidden; // 防止内容溢出
                 `;
 
-                // 添加输入框
-                tagPanel.innerHTML = `
-                    <div class="fn__flex" style="margin-bottom: 8px;">
-                                <input type="text" 
-                                    class="b3-text-field fn__flex-1 tag-input" 
-                                    placeholder="${this.i18n.note.addTag}..."
-                                    style="margin-right: 8px;">
-                            </div>
-                            <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
-                                ${this.i18n.note.existingTags}
-                            </div>
-                            <div class="history-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                ${Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
-                    ?.flatMap(item => item.tags || []) || []))
-                        .map(tag => `
-                                        <span class="b3-chip b3-chip--middle history-tag" 
-                                            style="cursor: pointer;" 
-                                            data-tag="${tag}">
-                                            <span class="b3-chip__content">${tag}</span>
-                                    <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
-                                        ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
-                                    </span>
-                                        </span>
-                                    `).join('')}
-                    </div>`;
+                // 修改位置计算逻辑
+                const btnRect = addTagBtn.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const panelHeight = 150; // 面板高度
+                const margin = 8; // 边距
 
-                // 将面板添加到按钮的父容器中
-                const btnContainer = addTagBtn.parentElement;
-                btnContainer.style.position = 'relative';
-                btnContainer.appendChild(tagPanel);
+                // 判断是否有足够空间在上方显示
+                const showAbove = btnRect.top > panelHeight + margin;
+                // 如果上方空间不够，就显示在下方
+                const top = showAbove ? 
+                    btnRect.top - panelHeight - margin : 
+                    btnRect.bottom + margin;
+
+                tagPanel.style.top = `${top}px`;
+                tagPanel.style.left = `${btnRect.left}px`;
+
+                // 如果面板会超出视口右侧，则向左对齐
+                if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
+                    tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
+                }
+
+                // 修改面板内容结构
+                tagPanel.innerHTML = `
+                    <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
+                        <input type="text" 
+                            class="b3-text-field fn__flex-1 tag-input" 
+                            placeholder="${this.i18n.note.addTag}..."
+                            style="width: 100%; background: var(--b3-theme-background);">
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
+                        <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
+                            ${this.i18n.note.existingTags}
+                        </div>
+                        <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${allTags.length > 0 ? 
+                                    allTags
+                                        .sort((a, b) => {
+                                            const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
+                                            const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                            return countB - countA;
+                                        })
+                                        .map(tag => `
+                                            <div class="history-tag b3-chip b3-chip--middle" 
+                                                style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
+                                                data-tag="${tag}">
+                                                <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    ${tag}
+                                                </span>
+                                                <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                </span>
+                                            </div>
+                                        `).join('')
+                                    : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                                        ${this.i18n.note.noTags}
+                                       </div>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 将面板添加到文档根节点
+                document.body.appendChild(tagPanel);
 
                 // 获取输入框元素
                 const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
@@ -1668,6 +1749,83 @@ export default class PluginSample extends Plugin {
                 setTimeout(() => {
                     document.addEventListener('click', closePanel);
                 }, 0);
+
+                // 添加标签点击事件
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        const tagText = tag.getAttribute('data-tag');
+                        if (tagText) {
+                            addTag(tagText);
+                        }
+                    });
+
+                    // 添加悬停效果
+                    tag.addEventListener('mouseenter', () => {
+                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        tag.style.backgroundColor = '';
+                    });
+                });
+
+                // 添加搜索功能
+                tagInput.addEventListener('input', (e) => {
+                    const searchText = (e.target as HTMLInputElement).value.toLowerCase();
+                    const historyTags = tagPanel.querySelectorAll('.history-tag');
+                    
+                    historyTags.forEach(tag => {
+                        const tagText = tag.getAttribute('data-tag').toLowerCase();
+                        if (tagText.includes(searchText)) {
+                            (tag as HTMLElement).style.display = 'flex';
+                        } else {
+                            (tag as HTMLElement).style.display = 'none';
+                        }
+                    });
+
+                    // 如果没有匹配的标签，显示"无匹配标签"提示
+                    const visibleTags = Array.from(historyTags).filter(tag => 
+                        (tag as HTMLElement).style.display !== 'none'
+                    );
+                    
+                    const noMatchMessage = tagPanel.querySelector('.no-match-message');
+                    if (visibleTags.length === 0 && searchText) {
+                        if (!noMatchMessage) {
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'no-match-message';
+                            messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
+                            messageDiv.textContent = this.i18n.note.noMatchingTags;
+                            tagPanel.querySelector('.history-tags').appendChild(messageDiv);
+                        }
+                    } else if (noMatchMessage) {
+                        noMatchMessage.remove();
+                    }
+                });
+
+                // 修改回车键处理逻辑
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const searchText = tagInput.value.trim();
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
+                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+                            
+                            if (matchingTag) {
+                                // 如果有完全匹配的标签，直接使用该标签
+                                addTag(matchingTag.getAttribute('data-tag'));
+                            } else {
+                                // 如果没有完全匹配的标签，创建新标签
+                                addTag(searchText);
+                            }
+                            
+                            const textarea = container.querySelector('textarea');
+                            if (textarea) {
+                                textarea.focus();
+                            }
+                        }
+                    }
+                });
             };
         }
     }
@@ -2154,6 +2312,285 @@ export default class PluginSample extends Plugin {
                     );
                 };
             }
+
+            // 批量合并功能
+            const batchMergeBtn = container.querySelector('.batch-merge-btn') as HTMLButtonElement;
+            if (batchMergeBtn) {
+                batchMergeBtn.onclick = async () => {
+                    const selectedItems = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                        .map(input => {
+                            const historyItem = (input as HTMLInputElement).closest('.history-item');
+                            return {
+                                timestamp: Number((input as HTMLInputElement).getAttribute('data-timestamp')),
+                                text: historyItem?.querySelector('[data-text]')?.getAttribute('data-text') || '',
+                                tags: Array.from(historyItem?.querySelectorAll('.b3-chip__content') || []).map(tag => tag.textContent)
+                            };
+                        })
+                        .filter(item => item.text);
+
+                    if (selectedItems.length === 0) {
+                        showMessage(this.i18n.note.noItemSelected);
+                        return;
+                    }
+
+                    // 合并内容和标签
+                    const mergedText = selectedItems.map(item => item.text).join('\n\n');
+                    const mergedTags = Array.from(new Set(selectedItems.flatMap(item => item.tags)));
+
+                    // 创建新的小记
+                    await this.saveContent(this.dock, mergedText, mergedTags);
+                    showMessage(this.i18n.note.mergeSuccess);
+
+                    // 询问是否删除已合并的小记
+                    confirm(this.i18n.note.mergeDeleteConfirm, this.i18n.note.mergeDeleteConfirmTitle, async () => {
+                        try {
+                            // 删除已合并的小记
+                            const timestamps = selectedItems.map(item => item.timestamp);
+                            this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
+                                .filter(item => !timestamps.includes(item.timestamp));
+
+                            // 保存更改
+                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            showMessage(this.i18n.note.mergeDeleteSuccess);
+                        } catch (error) {
+                            console.error('删除已合并的小记失败:', error);
+                            showMessage(this.i18n.note.mergeDeleteFailed);
+                        }
+
+                        // 取消选择模式
+                        cancelSelectBtn.click();
+                        renderDock(false);
+                    }, () => {
+                        // 用户取消删除，只取消选择模式
+                        cancelSelectBtn.click();
+                        renderDock(false);
+                    });
+                };
+            }
+
+            // 批量标签修改功能
+            const batchTagBtn = container.querySelector('.batch-tag-btn') as HTMLButtonElement;
+            if (batchTagBtn) {
+                batchTagBtn.onclick = () => {
+                    const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                        .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
+
+                    if (selectedTimestamps.length === 0) {
+                        showMessage(this.i18n.note.noItemSelected);
+                        return;
+                    }
+
+                    // 创建标签面板
+                    const tagPanel = document.createElement('div');
+                    tagPanel.className = 'tag-panel';
+                    tagPanel.style.cssText = `
+                        position: fixed;
+                        z-index: 205;
+                        width: 133px;
+                        height: 150px;
+                        background: var(--b3-menu-background);
+                        border: 1px solid var(--b3-border-color);
+                        border-radius: var(--b3-border-radius);
+                        box-shadow: var(--b3-dialog-shadow);
+                        display: flex;
+                        flex-direction: column;
+                        padding: 0;
+                        overflow: hidden;
+                    `;
+
+                    // 计算位置
+                    const btnRect = batchTagBtn.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    const panelHeight = 150;
+                    const margin = 8;
+
+                    // 判断是否有足够空间在上方显示
+                    const showAbove = btnRect.top > panelHeight + margin;
+                    const top = showAbove ? 
+                        btnRect.top - panelHeight - margin : 
+                        btnRect.bottom + margin;
+
+                    tagPanel.style.top = `${top}px`;
+                    tagPanel.style.left = `${btnRect.left}px`;
+
+                    // 如果面板会超出视口右侧，则向左对齐
+                    if (btnRect.left + 133 > window.innerWidth) {
+                        tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`;
+                    }
+
+                    // 获取所有已有标签
+                    const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                        ?.flatMap(item => item.tags || []) || []));
+
+                    // 修改面板内容结构
+                    tagPanel.innerHTML = `
+                        <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
+                            <input type="text" 
+                                class="b3-text-field fn__flex-1 tag-input" 
+                                placeholder="${this.i18n.note.addTag}..."
+                                style="width: 100%; background: var(--b3-theme-background);">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
+                            <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
+                                ${this.i18n.note.existingTags}
+                            </div>
+                            <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    ${allTags.length > 0 ? 
+                                        allTags
+                                            .sort((a, b) => {
+                                                const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
+                                                const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                                return countB - countA;
+                                            })
+                                            .map(tag => `
+                                                <div class="history-tag b3-chip b3-chip--middle" 
+                                                    style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
+                                                    data-tag="${tag}">
+                                                    <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                        ${tag}
+                                                    </span>
+                                                    <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                                        ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                    </span>
+                                                </div>
+                                            `).join('')
+                                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                                            ${this.i18n.note.noTags}
+                                           </div>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // 将面板添加到文档根节点
+                    document.body.appendChild(tagPanel);
+
+                    // 获取输入框元素
+                    const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
+                    tagInput.focus();
+
+                    // 添加标签的函数
+                    const addTag = async (tagText: string) => {
+                        if (tagText.trim()) {
+                            // 更新选中小记的标签
+                            const updatedItems = [];
+                            for (const timestamp of selectedTimestamps) {
+                                const note = this.data[DOCK_STORAGE_NAME].history.find(note => note.timestamp === timestamp);
+                                if (note) {
+                                    note.tags = [tagText.trim()]; // 直接覆盖原有标签
+                                    updatedItems.push(note);
+                                }
+                            }
+
+                            if (updatedItems.length > 0) {
+                                // 保存更改
+                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                showMessage(this.i18n.note.tagSuccess);
+
+                                // 取消选择模式并关闭面板
+                                const cancelSelectBtn = container.querySelector('.cancel-select-btn');
+                                if (cancelSelectBtn) {
+                                    (cancelSelectBtn as HTMLElement).click();
+                                }
+                                tagPanel.remove();
+                                document.removeEventListener('click', closePanel);
+                                this.dock.renderDock(false);
+                            }
+                        }
+                    };
+
+                    // 回车添加标签
+                    tagInput.addEventListener('keydown', async (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const searchText = tagInput.value.trim();
+                            if (searchText) {
+                                // 检查是否有匹配的已有标签
+                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+                                
+                                if (matchingTag) {
+                                    // 如果有完全匹配的标签，直接使用该标签
+                                    await addTag(matchingTag.getAttribute('data-tag'));
+                                } else {
+                                    // 如果没有完全匹配的标签，创建新标签
+                                    await addTag(searchText);
+                                }
+                            }
+                        }
+                    });
+
+                    // 点击历史标签直接添加
+                    tagPanel.addEventListener('click', async (e) => {
+                        const target = e.target as HTMLElement;
+                        const tagChip = target.closest('.history-tag') as HTMLElement;
+                        if (tagChip) {
+                            const tagText = tagChip.getAttribute('data-tag');
+                            if (tagText) {
+                                await addTag(tagText);
+                            }
+                        }
+                    });
+
+                    // 添加搜索功能
+                    tagInput.addEventListener('input', (e) => {
+                        const searchText = (e.target as HTMLInputElement).value.toLowerCase();
+                        const historyTags = tagPanel.querySelectorAll('.history-tag');
+                        
+                        historyTags.forEach(tag => {
+                            const tagText = tag.getAttribute('data-tag').toLowerCase();
+                            if (tagText.includes(searchText)) {
+                                (tag as HTMLElement).style.display = 'flex';
+                            } else {
+                                (tag as HTMLElement).style.display = 'none';
+                            }
+                        });
+
+                        // 如果没有匹配的标签，显示"无匹配标签"提示
+                        const visibleTags = Array.from(historyTags).filter(tag => 
+                            (tag as HTMLElement).style.display !== 'none'
+                        );
+                        
+                        const noMatchMessage = tagPanel.querySelector('.no-match-message');
+                        if (visibleTags.length === 0 && searchText) {
+                            if (!noMatchMessage) {
+                                const messageDiv = document.createElement('div');
+                                messageDiv.className = 'no-match-message';
+                                messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
+                                messageDiv.textContent = this.i18n.note.noMatchingTags;
+                                tagPanel.querySelector('.history-tags').appendChild(messageDiv);
+                            }
+                        } else if (noMatchMessage) {
+                            noMatchMessage.remove();
+                        }
+                    });
+
+                    // 点击其他地方关闭面板
+                    const closePanel = (e: MouseEvent) => {
+                        if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
+                            tagPanel.remove();
+                            document.removeEventListener('click', closePanel);
+                        }
+                    };
+
+                    // 延迟添加点击事件，避免立即触发
+                    setTimeout(() => {
+                        document.addEventListener('click', closePanel);
+                    }, 0);
+
+                    // 添加标签悬停效果
+                    tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                        tag.addEventListener('mouseenter', () => {
+                            (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
+                        });
+                        tag.addEventListener('mouseleave', () => {
+                            (tag as HTMLElement).style.backgroundColor = '';
+                        });
+                    });
+                };
+            }
         }
     }
 
@@ -2303,6 +2740,94 @@ export default class PluginSample extends Plugin {
                 filterBtn.style.color = isFilterPanelOpen ? 'var(--b3-theme-primary)' : '';
             };
 
+            // 获取所有标签及其使用次数
+            const tagUsage = this.data[DOCK_STORAGE_NAME]?.history
+                .flatMap(item => item.tags || [])
+                .reduce((acc, tag) => {
+                    acc[tag] = (acc[tag] || 0) + 1;
+                    return acc;
+                }, {} as Record<string, number>);
+
+            // 按使用次数排序标签
+            const sortedTags = Object.entries(tagUsage)
+                .sort((a, b) => b[1] - a[1])
+                .map(([tag]) => tag);
+
+            // 显示前几个常用标签
+            const commonTags = sortedTags.slice(0, 6);
+            const otherTags = sortedTags.slice(6);
+
+            // 渲染常用标签
+            let tagsHtml = `<div class="tags-container" style="display: flex; flex-wrap: wrap; gap: 8px;">`;
+            tagsHtml += commonTags.map(tag => `
+                <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
+                    style="cursor: pointer; 
+                        background-color: var(--b3-theme-surface);
+                        color: var(--b3-theme-on-surface);
+                        border: 1px solid var(--b3-border-color);
+                        transition: all 0.2s ease;" 
+                    data-tag="${tag}"
+                    aria-label="${tag}"
+                    data-selected="false">
+                    <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                    <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                        ${tagUsage[tag]}
+                    </span>
+                </span>
+            `).join('');
+
+            // 添加折叠按钮
+            if (otherTags.length > 0) {
+                tagsHtml += `
+                    <div class="other-tags" style="display: none;">
+                        ${otherTags.map(tag => `
+                            <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
+                                style="cursor: pointer; 
+                                    background-color: var(--b3-theme-surface);
+                                    color: var(--b3-theme-on-surface);
+                                    border: 1px solid var(--b3-border-color);
+                                    transition: all 0.2s ease;" 
+                                data-tag="${tag}"
+                                aria-label="${tag}"
+                                data-selected="false">
+                                <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                    ${tagUsage[tag]}
+                                </span>
+                            </span>
+                        `).join('')}
+                    </div>
+                    <button class="b3-button b3-button--text toggle-tags" 
+                        style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                        ${this.i18n.note.expandTags}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>
+                    </button>
+                `;
+            }
+            tagsHtml += `</div>`;
+
+            filterPanel.innerHTML = tagsHtml;
+
+            // 绑定折叠按钮事件
+            const toggleTagsBtn = filterPanel.querySelector('.toggle-tags');
+            const otherTagsDiv = filterPanel.querySelector('.other-tags');
+            if (toggleTagsBtn && otherTagsDiv) {
+                toggleTagsBtn.onclick = () => {
+                    const isVisible = otherTagsDiv.style.display !== 'none';
+                    otherTagsDiv.style.display = isVisible ? 'none' : 'block';
+                    toggleTagsBtn.innerHTML = isVisible ? `${this.i18n.note.expandTags}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(0deg); transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>` : `${this.i18n.note.collapseTags}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(180deg); transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>`;
+                };
+            }
+
+            // 绑定标签点击事件
             const filterTags = filterPanel.querySelectorAll('.filter-tag');
             filterTags.forEach(tag => {
                 tag.addEventListener('click', () => {

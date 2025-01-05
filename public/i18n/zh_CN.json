@@ -84,6 +84,19 @@
         "batchUnarchiveSuccess": "批量恢复成功",
         "batchArchiveFailed": "批量归档失败",
         "batchUnarchiveFailed": "批量恢复失败",
-        "alreadyCreating": "已有一个新建小记窗口正在打开"
-    }
+        "alreadyCreating": "已有一个新建小记窗口正在打开",
+        "expandTags": "展开标签",
+        "collapseTags": "收起标签",
+        "merge": "合并",
+        "mergeSuccess": "合并成功",
+        "tag": "标签",
+        "tagSuccess": "标签修改成功",
+        "mergeDeleteConfirm": "是否删除已合并的小记？",
+        "mergeDeleteConfirmTitle": "删除确认",
+        "mergeDeleteSuccess": "已删除合并的小记",
+        "mergeDeleteFailed": "删除合并的小记失败",
+        "noTags": "暂无标签",
+        "noMatchingTags": "无匹配标签"
+    },
+    "openTagPanel": "打开标签选择面板"
 }

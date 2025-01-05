@@ -84,6 +84,19 @@
         "batchUnarchiveSuccess": "Batch restore successful",
         "batchArchiveFailed": "Batch archive failed",
         "batchUnarchiveFailed": "Batch restore failed",
-        "alreadyCreating": "A note creation window is already open"
-    }
+        "alreadyCreating": "A note creation window is already open",
+        "expandTags": "Expand Tags",
+        "collapseTags": "Collapse Tags",
+        "merge": "Merge",
+        "mergeSuccess": "Merge successful",
+        "tag": "Tag",
+        "tagSuccess": "Tag updated successfully",
+        "mergeDeleteConfirm": "Do you want to delete the merged notes?",
+        "mergeDeleteConfirmTitle": "Delete Confirmation",
+        "mergeDeleteSuccess": "Merged notes deleted",
+        "mergeDeleteFailed": "Failed to delete merged notes",
+        "noTags": "No tags available",
+        "noMatchingTags": "No matching tags"
+    },
+    "openTagPanel": "Open Tag Selection Panel"
 }
