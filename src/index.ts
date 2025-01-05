@@ -1285,7 +1285,6 @@ export default class PluginSample extends Plugin {
     private async createNewNote(dock: any) {
         // 如果已经有窗口在打开中,则返回
         if (this.isCreatingNote) {
-            showMessage(this.i18n.note.alreadyCreating);
             return false;
         }
 
@@ -1304,9 +1303,9 @@ export default class PluginSample extends Plugin {
                     disableClose: false,
                     disableAnimation: false,
                     destroyCallback: () => {
-                        // 在关闭窗口时保存当前内容
+                        // 只有在没有成功保存的情况下才保存临时内容
                         const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
-                        if (textarea) {
+                        if (textarea && textarea.value.trim()) {
                             this.tempNoteContent = textarea.value;
                             // 保存标签
                             this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
@@ -1365,10 +1364,10 @@ export default class PluginSample extends Plugin {
                         if (text.trim()) {
                             await this.saveContent(dock, text, tags);
                             showMessage(this.i18n.note.saveSuccess);
+                            dialog.destroy();
                             // 清空临时内容和标签
                             this.tempNoteContent = '';
                             this.tempNoteTags = [];
-                            dialog.destroy();
                             resolve(true);
                             return;
                         }
@@ -1532,7 +1531,7 @@ export default class PluginSample extends Plugin {
     // 创建编辑器模板
     private getEditorTemplate(text: string = '', placeholder: string = '在这里输入你的想法...') {
         return `
-            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%;">
+            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
                 <textarea class="fn__flex-1" 
                     placeholder="${placeholder}"
                     style="width: 100%; 
