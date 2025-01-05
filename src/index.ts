@@ -1627,6 +1627,11 @@ export default class PluginSample extends Plugin {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         addTag(tagInput.value);
+                        const textarea = container.querySelector('textarea');
+                        if (textarea) {
+                            // 将焦点设置到编辑框上
+                            textarea.focus();
+                        }
                     }
                 });
 
@@ -1637,14 +1642,25 @@ export default class PluginSample extends Plugin {
                     if (tagChip) {
                         const tagText = tagChip.getAttribute('data-tag');
                         addTag(tagText);
+                        const textarea = container.querySelector('textarea');
+                        if (textarea) {
+                            // 将焦点设置到编辑框上
+                            textarea.focus();
+                        }
                     }
                 });
+                
 
                 // 点击其他地方关闭面板
                 const closePanel = (e: MouseEvent) => {
                     if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
                         tagPanel.remove();
                         document.removeEventListener('click', closePanel);
+                    }
+                    const textarea = container.querySelector('textarea');
+                    if (textarea) {
+                        // 将焦点设置到编辑框上
+                        textarea.focus();
                     }
                 };
 
