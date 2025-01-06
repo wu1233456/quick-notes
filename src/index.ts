@@ -1037,11 +1037,53 @@ export default class PluginQuickNote extends Plugin {
         // 创建新的事件处理函数
         this.historyClickHandler = async (e) => {
             const target = e.target as HTMLElement;
+            console.log("target", target);
+            
+            // 添加对复选框的处理
+            if (target.classList.contains('task-list-item-checkbox')) {
+                e.stopPropagation();
+                const timestamp = Number(target.getAttribute('data-timestamp'));
+                const originalMark = target.getAttribute('data-original');
+                const newMark = target.checked ? '[x]' : '[]';
+                 // 更新数据
+                const note = this.historyService.getHistoryItem(timestamp);
+                
+                if (note) {
+                    // 获取当前任务项的完整文本
+                    const taskItemText = target.nextElementSibling.textContent.trim();
+                    
+                    // 使用更精确的替换方法
+                    const oldTaskItem = `${originalMark}${taskItemText}`;
+                    const newTaskItem = `${newMark}${taskItemText}`;
+                    console.log("oldTaskItem", oldTaskItem);
+                    console.log("newTaskItem", newTaskItem);
+                    note.text = note.text.replace(oldTaskItem, newTaskItem);
+                    console.log("note.text", note.text);
+                    
+                    await this.historyService.updateItemContent(timestamp, note.text);
+                    
+                    // 更新 data-original 属性
+                    target.setAttribute('data-original', newMark);
+                    
+                    // 添加视觉反馈
+                    const textSpan = target.nextElementSibling as HTMLElement;
+                    if (textSpan) {
+                        textSpan.style.textDecoration = target.checked ? 'line-through' : 'none';
+                        textSpan.style.opacity = target.checked ? '0.6' : '1';
+                    }
+
+                    // 可选：添加操作成功的提示
+                    // showMessage(target.checked ? '已完成任务' : '已取消完成');
+                }
+                return;
+            }
+
+            // 其他现有的事件处理代码...
             const moreBtn = target.closest('.more-btn') as HTMLElement;
             const copyBtn = target.closest('.copy-btn') as HTMLElement;
             const editBtn = target.closest('.edit-btn') as HTMLElement;
             const toggleBtn = target.closest('.toggle-text');
-
+            
             if (copyBtn) {
                 e.stopPropagation();
                 const textContainer = copyBtn.closest('.history-item').querySelector('[data-text]');
@@ -1049,7 +1091,7 @@ export default class PluginQuickNote extends Plugin {
                     const text = textContainer.getAttribute('data-text') || '';
                     try {
                         await navigator.clipboard.writeText(text);
-                        showMessage(this.i18n.note.copySuccess);
+                        // showMessage(this.i18n.note.copySuccess);
                     } catch (err) {
                         console.error('复制失败:', err);
                         showMessage(this.i18n.note.copyFailed);
@@ -1224,12 +1266,9 @@ export default class PluginQuickNote extends Plugin {
 
         // 处理任务列表
         const processTaskList = (content: string) => {
-            // 首先处理输入的 [] 转换为 [ ]
-            content = content.replace(/\[\]([^\n]*)/g, '[ ]$1');
-
             // 然后处理任务列表，使用新的正则表达式匹配多行
             return content.replace(
-                /(\[ \]|\[x\])([^\n]*)/g,
+                /(\[\]|\[x\])([^\n]*)/g,
                 (match, checkbox, text) => {
                     const isChecked = checkbox === '[x]';
                     return `
@@ -1237,7 +1276,7 @@ export default class PluginQuickNote extends Plugin {
                             <input type="checkbox" 
                                 class="task-list-item-checkbox" 
                                 ${isChecked ? 'checked' : ''} 
-                                data-original="${checkbox}">
+                                data-original="${checkbox}"  data-timestamp="${item.timestamp}">
                             <span style="${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${text.trim()}</span>
                         </div>`;
                 }

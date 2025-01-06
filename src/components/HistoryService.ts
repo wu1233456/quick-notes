@@ -536,4 +536,23 @@ export class HistoryService {
 
         return filteredData.filter(item => !item.isPinned).length;
     }
+
+    public async updateItemContent(timestamp: number, newText: string): Promise<boolean> {
+        try {
+            // 查找并更新活动记录
+            const activeItem = this.getCurrentData().find(item => item.timestamp === timestamp);
+            if (activeItem) {
+                console.log(newText)
+                console.log("updateItemContent", activeItem);
+                activeItem.text = newText;
+                await this.saveData(this.getStorageKey(), this.getCurrentData());
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('Failed to update item content:', error);
+            return false;
+        }
+    }
 } 
