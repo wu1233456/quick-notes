@@ -515,6 +515,13 @@ export class HistoryService {
             this.data.archivedHistory :
             this.data.history;
     }
+    public getHistoryData(): HistoryItem[] {
+        return this.data.history || [];
+    }
+
+    public getArchivedData(): HistoryItem[] {
+        return this.data.archivedHistory || [];
+    }
 
     public getTotalUnpinnedCount(): number {
         const sourceData = this.showArchived ?

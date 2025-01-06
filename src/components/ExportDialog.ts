@@ -21,7 +21,10 @@ export class ExportDialog {
         this.setupDialogEvents(dialog, data, callback);
     }
 
-    private getDialogContent(allTags: string[]): string {
+    private getDialogContent(allTags: unknown[]): string {
+        // 确保 allTags 是字符串数组
+        const tags = allTags.filter(tag => typeof tag === 'string') as string[];
+        
         return `
             <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
                 <div style="margin-bottom: 16px;">
@@ -38,7 +41,7 @@ export class ExportDialog {
                         <div>
                             <div style="margin-bottom: 4px; font-size: 12px;">${this.i18n.note.selectTags}</div>
                             <div class="export-tags-container" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 28px; padding: 4px 8px; border: 1px solid var(--b3-border-color); border-radius: 4px; background: var(--b3-theme-background);">
-                                ${this.renderTags(allTags)}
+                                ${this.renderTags(tags)}
                             </div>
                         </div>
                         <div>
@@ -122,19 +125,21 @@ export class ExportDialog {
 
     private setupTagEvents(dialog: any) {
         const tagItems = dialog.element.querySelectorAll('.export-tag-item');
-        tagItems.forEach(tag => {
+        tagItems.forEach((tag: Element) => {
             tag.addEventListener('click', () => {
                 const isSelected = tag.getAttribute('data-selected') === 'true';
                 tag.setAttribute('data-selected', (!isSelected).toString());
-
+                
+                // 使用类型断言来处理 style 属性
+                const tagElement = tag as HTMLElement;
                 if (!isSelected) {
-                    tag.style.backgroundColor = 'var(--b3-theme-primary)';
-                    tag.style.color = 'var(--b3-theme-on-primary)';
-                    tag.style.border = '1px solid var(--b3-theme-primary)';
+                    tagElement.style.backgroundColor = 'var(--b3-theme-primary)';
+                    tagElement.style.color = 'var(--b3-theme-on-primary)';
+                    tagElement.style.border = '1px solid var(--b3-theme-primary)';
                 } else {
-                    tag.style.backgroundColor = 'var(--b3-theme-surface)';
-                    tag.style.color = 'var(--b3-theme-on-surface)';
-                    tag.style.border = '1px solid var(--b3-border-color)';
+                    tagElement.style.backgroundColor = 'var(--b3-theme-surface)';
+                    tagElement.style.color = 'var(--b3-theme-on-surface)';
+                    tagElement.style.border = '1px solid var(--b3-border-color)';
                 }
             });
         });
@@ -163,7 +168,8 @@ export class ExportDialog {
         const startDate = new Date(dialog.element.querySelector('.export-start-date').value).getTime();
         const endDate = new Date(dialog.element.querySelector('.export-end-date').value).setHours(23, 59, 59, 999);
         const selectedTags = Array.from(dialog.element.querySelectorAll('.export-tag-item[data-selected="true"]'))
-            .map(tag => tag.getAttribute('data-tag'));
+            .map(tag => (tag as Element).getAttribute('data-tag'))
+            .filter(tag => tag !== null) as string[]; // 添加过滤，确保 tag 不为 null
         const pinnedOnly = (dialog.element.querySelector('.export-pinned-only') as HTMLInputElement).checked;
         const includeArchived = (dialog.element.querySelector('.export-include-archived') as HTMLInputElement).checked;
 

@@ -2044,42 +2044,27 @@ export default class PluginQuickNote extends Plugin {
 
     // 设置导出功能
     private setupExportFeature(container: HTMLElement) {
-        const exportBtn = container.querySelector('.export-btn');
+        const exportBtn = container.querySelector('[data-type="export"]'); // 修改选择器以匹配顶部栏的导出按钮
         if (exportBtn) {
-            exportBtn.onclick = () => {
-                try {
-                    const exportData = this.historyService.getCurrentData().map(item => ({
-                        '内容': item.text,
-                        '标签': (item.tags || []).join(', '),
-                        '时间': new Date(item.timestamp).toLocaleString(),
-                        '状态': item.isPinned ? '已置顶' : '未置顶'
-                    }));
-
-                    const headers = ['内容', '标签', '时间', '状态'];
-                    const csvContent = [
-                        headers.join(','),
-                        ...exportData.map(row =>
-                            headers.map(header =>
-                                JSON.stringify(row[header] || '')
-                            ).join(',')
-                        )
-                    ].join('\n');
-
-                    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `小记导出_${new Date().toLocaleDateString()}.csv`;
-
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-
-                    // showMessage(this.i18n.note.exportSuccess);
-                } catch (error) {
-                    console.error('Export failed:', error);
-                    showMessage('导出失败');
-                }
-            };
+            exportBtn.addEventListener('click', () => {
+                // 创建导出对话框
+                this.exportDialog.show(
+                    {
+                        history: this.historyService.getHistoryData(),
+                        archivedHistory: this.historyService.getArchivedData()
+                    },
+                    this.data[DOCK_STORAGE_NAME],
+                    (filteredData, format) => {
+                        // 导出回调
+                        const success = this.exportService.exportData(filteredData, format);
+                        if (success) {
+                            showMessage(this.i18n.note.exportSuccess);
+                        } else {
+                            showMessage(this.i18n.note.exportFailed);
+                        }
+                    }
+                );
+            });
         }
     }
 
