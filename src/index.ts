@@ -1050,7 +1050,7 @@ export default class PluginQuickNote extends Plugin {
                     const text = textContainer.getAttribute('data-text') || '';
                     try {
                         await navigator.clipboard.writeText(text);
-                        // showMessage(this.i18n.note.copySuccess);
+                        showMessage(this.i18n.note.copySuccess);
                     } catch (err) {
                         console.error('复制失败:', err);
                         showMessage(this.i18n.note.copyFailed);
