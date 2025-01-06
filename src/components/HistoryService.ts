@@ -1,4 +1,5 @@
 import { Dialog, Plugin } from "siyuan";
+import { DOCK_STORAGE_NAME, ARCHIVE_STORAGE_NAME } from '../libs/const';
 
 export interface HistoryItem {
     text: string;
@@ -171,8 +172,8 @@ export class HistoryService {
             this.data.history.splice(itemIndex, 1);
 
             // 保存两个存储位置的数据
-            await this.parent.saveData('dock-content', { history: this.data.history });
-            await this.parent.saveData('archive-content', { history: this.data.archivedHistory });
+            await this.parent.saveData(DOCK_STORAGE_NAME, { history: this.data.history });
+            await this.parent.saveData(ARCHIVE_STORAGE_NAME, { history: this.data.archivedHistory });
             return true;
         } catch (error) {
             console.error('Archive failed:', error);
@@ -192,8 +193,8 @@ export class HistoryService {
             this.data.archivedHistory.splice(itemIndex, 1);
 
             // 保存更改
-            await this.saveData('dock-content', this.data.history);
-            await this.saveData('archive-content', this.data.archivedHistory);
+            await this.saveData(DOCK_STORAGE_NAME, this.data.history);
+            await this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
             return true;
         } catch (error) {
             console.error('Unarchive failed:', error);
@@ -506,7 +507,7 @@ export class HistoryService {
     }
 
     public getStorageKey(): string {
-        return this.showArchived ? 'archive-content' : 'dock-content';
+        return this.showArchived ? ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
     }
 
     //根据归档状态获取当前数据

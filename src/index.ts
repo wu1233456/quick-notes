@@ -65,22 +65,27 @@ export default class PluginQuickNote extends Plugin {
         this.data[CONFIG_DATA_NAME] = await this.loadData(CONFIG_DATA_NAME) || {
             editorVisible: true,
         }
+        console.log("Config data loaded:", this.data[CONFIG_DATA_NAME]);
 
         // 初始化未归档小记数据
         this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
             history: []
         };
+        console.log("Dock data loaded:", this.data[DOCK_STORAGE_NAME]);
+
         // 初始化归档数据
         this.data[ARCHIVE_STORAGE_NAME] = await this.loadData(ARCHIVE_STORAGE_NAME) || {
             history: []
         };
+        console.log("Archive data loaded:", this.data[ARCHIVE_STORAGE_NAME]);
 
         // 初始化历史服务
         const historyData: HistoryData = {
             history: this.data[DOCK_STORAGE_NAME]?.history || [],
             archivedHistory: this.data[ARCHIVE_STORAGE_NAME]?.history
         };
-        //小记相关的存储统一交由historyService管理
+        console.log("History data initialized:", historyData);
+        
         this.historyService = new HistoryService(this, historyData, ITEMS_PER_PAGE, this.i18n);
 
         // 初始化导出对话框和导出服务
@@ -1185,6 +1190,34 @@ export default class PluginQuickNote extends Plugin {
                 }
                 e.stopPropagation();
             }
+
+            // 添加图片点击处理
+            if (target.classList.contains('zoomable-image')) {
+                e.stopPropagation();
+                const img = target as HTMLImageElement;
+                
+                // 创建对话框
+                const dialog = new Dialog({
+                    title: '',
+                    content: `<div class="image-preview" style="text-align: center; padding: 16px;">
+                        <img src="${img.src}" style="max-width: 100%; max-height: 80vh; object-fit: contain;">
+                    </div>`,
+                    width: '80vw',
+                });
+                
+                // 添加关闭按钮
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'b3-button b3-button--text';
+                closeBtn.innerHTML = `<svg class="b3-button__icon"><use xlink:href="#iconClose"></use></svg>`;
+                closeBtn.style.position = 'absolute';
+                closeBtn.style.top = '8px';
+                closeBtn.style.right = '8px';
+                closeBtn.onclick = () => dialog.destroy();
+                
+                dialog.element.querySelector('.b3-dialog__header').appendChild(closeBtn);
+                
+                return;
+            }
         };
 
         // 添加新的事件监听器
@@ -1288,6 +1321,20 @@ export default class PluginQuickNote extends Plugin {
         try {
             renderedContent = window.Lute.New().Md2HTML(displayText);
             renderedContent = processTaskList(renderedContent);
+            
+            // 添加图片点击事件处理
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = renderedContent;
+            
+            // 为所有图片添加点击事件类和样式
+            tempDiv.querySelectorAll('img').forEach(img => {
+                img.classList.add('zoomable-image');
+                img.style.cursor = 'zoom-in';
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+            });
+            
+            renderedContent = tempDiv.innerHTML;
         } catch (error) {
             console.error('Markdown rendering failed:', error);
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
@@ -1394,11 +1441,11 @@ export default class PluginQuickNote extends Plugin {
                 const dialog = new Dialog({
                     title: this.i18n.note.new,
                     content: `
-                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px;">
+                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
                             ${this.getEditorTemplate(this.tempNoteContent)}
                         </div>`,
                     width: "520px",
-                    height: "320px",
+                    height: "400px",  // 添加初始高度
                     transparent: false,
                     disableClose: false,
                     disableAnimation: false,
@@ -1522,11 +1569,12 @@ export default class PluginQuickNote extends Plugin {
     // 创建编辑器模板
     private getEditorTemplate(text: string = '', placeholder: string = this.i18n.note.placeholder) {
         return `
-            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%; display: flex; flex-direction: column;">
                 <textarea class="fn__flex-1" 
                     placeholder="${placeholder}"
                     style="width: 100%; 
-                    height: 160px; 
+                    min-height: 160px; 
+                    flex: 1;
                     resize: none; 
                     padding: 12px; 
                     background-color: var(--b3-theme-background);
@@ -1538,7 +1586,7 @@ export default class PluginQuickNote extends Plugin {
                         this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); 
                     }"
                 >${text}</textarea>
-                <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px;">
+                <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px; flex-shrink: 0;">
                     <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
                     <div class="fn__flex" style="justify-content: space-between; align-items: center;">
                         <div class="fn__flex" style="gap: 8px;">
