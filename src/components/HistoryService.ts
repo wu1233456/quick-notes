@@ -557,8 +557,6 @@ export class HistoryService {
             // 查找并更新活动记录
             const activeItem = this.getCurrentData().find(item => item.timestamp === timestamp);
             if (activeItem) {
-                console.log(newText)
-                console.log("updateItemContent", activeItem);
                 activeItem.text = newText;
                 await this.saveData(this.getStorageKey(), this.getCurrentData());
                 return true;

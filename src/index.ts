@@ -1016,8 +1016,8 @@ export default class PluginQuickNote extends Plugin {
                     const taskItemText = target.nextElementSibling.textContent.trim();
                     
                     // 使用更精确的替换方法
-                    const oldTaskItem = `${originalMark}${taskItemText}`;
-                    const newTaskItem = `${newMark}${taskItemText}`;
+                    const oldTaskItem = `${originalMark} ${taskItemText}`;
+                    const newTaskItem = `${newMark} ${taskItemText}`;
                     note.text = note.text.replace(oldTaskItem, newTaskItem);                   
                     await this.historyService.updateItemContent(timestamp, note.text);
                     
@@ -1250,17 +1250,22 @@ export default class PluginQuickNote extends Plugin {
 
         // 处理任务列表
         const processTaskList = (content: string) => {
-            // 然后处理任务列表，使用新的正则表达式匹配多行
+            // 使用捕获组来保存原始的方括号格式
             return content.replace(
-                /(\[\]|\[x\])([^\n]*)/g,
+                /(\[[ ]?\]|\[[ ]?x[ ]?\]) ([^\n]*)/g,
                 (match, checkbox, text) => {
-                    const isChecked = checkbox === '[x]';
+                    const isChecked = checkbox.includes('x');
+                    // 保持原始的方括号格式
+                    const emptyBox = checkbox.includes(' ') ? '[ ]' : '[]';
+                    const checkedBox = checkbox.includes(' ') ? '[x ]' : '[x]';
+                    const normalizedCheckbox = isChecked ? checkedBox : emptyBox;
+                    
                     return `
                         <div class="task-list-item">
                             <input type="checkbox" 
                                 class="task-list-item-checkbox" 
                                 ${isChecked ? 'checked' : ''} 
-                                data-original="${checkbox}"  data-timestamp="${item.timestamp}">
+                                data-original="${normalizedCheckbox}"  data-timestamp="${item.timestamp}">
                             <span style="${isChecked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${text.trim()}</span>
                         </div>`;
                 }
