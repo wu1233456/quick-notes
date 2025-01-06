@@ -1,78 +1,142 @@
 # Quick Notes
 
-> A SiYuan plugin similar to Yuque's quick notes feature. After migrating from Yuque to SiYuan, I found that SiYuan lacked a convenient quick notes function like Yuque's. So I created this plugin to help record quick thoughts and ideas. As this is the first version, there may be bugs - please use with caution!
+> A SiYuan plugin for quick note-taking, similar to Yuque's quick notes feature. It supports tag management, archiving, Markdown rendering, and more to help you capture ideas efficiently.
 
-
-## Features
+## Key Features
 
 ### 1. Quick Recording
-- Support quick input and save text content
-- Press Ctrl+Shift+y globally to bring up Quick Notes window
+- Global hotkey `⇧⌘Y` to open Quick Notes (works outside SiYuan)
+- Hotkey `⇧⌘U` to open Quick Notes sidebar
+- `⌘Enter` to save content quickly
+- `⌘K` to add tags quickly
+- Support image upload and preview
 
-### 2. Tag Management
-- Add multiple tags to each note
-- Filter and sort content by tags
+### 2. Markdown Support
+- Full Markdown syntax support
+- Real-time Markdown rendering
+- Task list creation and status toggle
+- Image preview and zoom
 
-### 3. Content Management
-- Pin important notes to top
-- Edit and delete existing notes
-- Auto-fold long text, click to expand
-- Support text copy and selection
-- Toggle editor visibility
+### 3. Tag Management
+- Add multiple tags to notes
+- Quick filter by specific tags
+- Show tag usage frequency
+- Tag search and quick selection
 
-### 4. Search and Filter
-- Search by content
-- Sort by time (ascending/descending)
-- Filter by tags
-- Support activity records and archived content switching
+### 4. Content Management
+- Pin important notes
+- Archive unused content
+- Auto-fold/expand long text
+- Batch operations:
+  - Batch copy
+  - Batch tag
+  - Batch archive/unarchive
+  - Batch delete
+  - Batch merge
 
-### 5. Data Export
-- Export to multiple formats (CSV/Markdown/JSON)
-- Select export time range
-- Filter export content by tags
-- Option to export only pinned content
+### 5. Search and Filter
+- Real-time content search
+- Time-based sorting (asc/desc)
+- Tag filtering
+- View archived/unarchived content
+
+### 6. Data Export
+- Support formats: CSV/Markdown/JSON
+- Optional time range
+- Filter export by tags
+- Option to export pinned only
 - Option to include archived content
 
-## Usage Instructions
+## Usage Guide
 
-1. Install the plugin from the SiYuan marketplace
-2. Find the "Quick Notes" icon in the left sidebar
-3. Enter content in the input box, tags can be added
-4. Save using Ctrl+Enter (Mac: Cmd+Enter) shortcut
-5. Press Ctrl+Shift+y globally to bring up Quick Notes
+### Basic Operations
+1. Quick Create:
+   - Press hotkey globally (Windows: `Ctrl+Shift+Y`, macOS: `⇧⌘Y`)
+   - Click Quick Notes icon in toolbar
+   - Use hotkey to save (Windows: `Ctrl+Enter`, macOS: `⌘Enter`)
+
+2. Tag Management:
+   - Press hotkey to add tags while editing (Windows: `Ctrl+K`, macOS: `⌘K`)
+   - Click tag icon to select existing tags
+   - Search or create new tags in tag panel
+
+3. Content Management:
+   - Hover to show action buttons
+   - Click to expand/collapse long text
+   - Click more for pin/archive options
+   - Toggle task list status
+
+4. Batch Operations:
+   - Click filter button to enable batch select
+   - Select multiple notes for batch operations
+   - Support select all/deselect all
+
+### Hotkeys
+- `⇧⌘Y`: Open Quick Notes globally
+- `⇧⌘U`: Open Quick Notes sidebar
+- `⌘Enter`: Save content
+- `⌘K`: Add tags
+- `⌘W`: Close Quick Notes window
++ Windows/Linux:
++ - `Ctrl+Shift+Y`: Open Quick Notes globally
++ - `Ctrl+Shift+U`: Open Quick Notes sidebar
++ - `Ctrl+Enter`: Save content
++ - `Ctrl+K`: Add tags
++ - `Ctrl+W`: Close Quick Notes window
++
++ macOS:
++ - `⇧⌘Y`: Open Quick Notes globally
++ - `⇧⌘U`: Open Quick Notes sidebar
++ - `⌘Enter`: Save content
++ - `⌘K`: Add tags
++ - `⌘W`: Close Quick Notes window
 
 ## Changelog
-### v1.0.7 (2025-01-04)
-- Optimize the issue of global shortcut keys. Previously, they could only be activated within the SiYuan window. Now, even when you are in a non-SiYuan window, pressing "Ctrl + Shift + Y" will switch back to the SiYuan window and pop up the "New Quick Note" option. (The "New Quick Note" is not an independent window, so it will still jump back to the SiYuan application.)
-- Optimize the scrolling experience. When scrolling through the history of quick notes, the editing box and toolbar will be fixed in place.
-- Optimize the display experience. For the history of quick notes, the copy and edit buttons will only be shown when the mouse hovers over them, making the interface cleaner.
 
-### v1.0.5 (2025-01-04)
-- Added Markdown rendering support for note content
-- Fixed cursor focus issue when opening Quick Notes with hotkey
-- Improved overall user experience
-  - Optimized button layouts
-  - Added tooltips for better usability
-  - Improved copy and edit functionality
+### v1.0.7 (2024-01-04)
+- Optimize global hotkey, support `⇧⌘Y` outside SiYuan
+- Add `⇧⌘U` hotkey for Quick Notes sidebar
+- Improve UI interaction:
+  - Fix editor and toolbar position
+  - Show action buttons on hover
+  - Enhance scrolling experience
 
-### v1.0.4 (2025-01-03)
-- Fixed archived notes not updating after editing
-- Improved archive content management
+### v1.0.6 (2024-01-04)
+- Add batch operations:
+  - Support batch copy, tagging
+  - Support batch archive/unarchive
+  - Support batch delete
+  - Support note merging
 
-### v1.0.3 (2025-01-03)
-- Added editor toggle button
-- Improved editor visibility control
+### v1.0.5 (2024-01-04)
+- Add full Markdown rendering support
+- Add task list functionality
+- Add image upload and preview
+- Improve editing experience:
+  - Better button layout and tooltips
+  - Optimize hotkey response
+  - Enhance copy and edit functions
 
-### v1.0.2 (2025-01-02)
-- Added archive feature, allowing unused records to be archived
-- Support switching between activity records and archived content
-- Search and sort functions support archived content
-- Export option to include archived content
+### v1.0.4 (2024-01-03)
+- Fix archived content update issue
+- Optimize archive management
+- Improve data sync logic
 
-### v1.0 (2025-01-02)
+### v1.0.3 (2024-01-03)
+- Add editor toggle functionality
+- Optimize editor area display
+- Improve UI responsiveness
+
+### v1.0.2 (2024-01-02)
+- Add archive feature
+- Support archive content management
+- Extend search and sort to archived content
+- Add archive export options
+
+### v1.0.1 (2024-01-02)
 - Initial release
 - Basic record, edit, delete functions
 - Tag management and content filtering
-- Data export feature
+- Data export functionality
 
 
