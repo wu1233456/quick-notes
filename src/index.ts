@@ -555,63 +555,6 @@ export default class PluginQuickNote extends Plugin {
             };
         }
 
-        // 添加标签过滤功能
-        const filterBtn = container.querySelector('.filter-btn');
-        const filterPanel = container.querySelector('.filter-panel') as HTMLElement;
-
-        
-        filterBtn.onclick = () => {
-            const filterPanel = container.querySelector('.filter-panel') as HTMLElement;
-            if (filterPanel) {
-                const isVisible = filterPanel.style.display !== 'none';
-                filterPanel.style.display = isVisible ? 'none' : 'block';
-
-                // 当面板显示时，重新绑定标签点击事件
-                if (!isVisible) {
-                    filterPanel.querySelectorAll('.filter-tag').forEach(tag => {
-                        // 移除旧的事件监听器
-                        tag.replaceWith(tag.cloneNode(true));
-
-                        // 重新获取元素并添加事件监听器
-                        const newTag = filterPanel.querySelector(`[data-tag="${tag.getAttribute('data-tag')}"]`);
-                        if (newTag) {
-                            newTag.addEventListener('click', () => {
-                                const tagText = newTag.getAttribute('data-tag');
-                                const isSelected = newTag.getAttribute('data-selected') === 'true';
-
-                                if (isSelected) {
-                                    this.selectedTags = this.selectedTags.filter(t => t !== tagText);
-                                    newTag.style.backgroundColor = 'var(--b3-theme-surface)';
-                                    newTag.style.color = 'var(--b3-theme-on-surface)';
-                                    newTag.style.border = '1px solid var(--b3-border-color)';
-                                } else {
-                                    this.selectedTags.push(tagText);
-                                    newTag.style.backgroundColor = 'var(--b3-theme-primary)';
-                                    newTag.style.color = 'var(--b3-theme-on-primary)';
-                                    newTag.style.border = '1px solid var(--b3-theme-primary)';
-                                }
-                                newTag.setAttribute('data-selected', (!isSelected).toString());
-
-                                // 更新过滤状态小圆点
-                                const indicator = filterBtn.querySelector('div');
-                                if (this.selectedTags.length > 0) {
-                                    if (!indicator) {
-                                        filterBtn.insertAdjacentHTML('beforeend', `
-                                            <div style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);"></div>
-                                        `);
-                                    }
-                                } else if (indicator) {
-                                    indicator.remove();
-                                }
-
-                                // 重新渲染列表
-                                this.renderDockHistory();
-                            });
-                        }
-                    });
-                }
-            }
-        };
         // 批量复制
         const batchCopyBtn = container.querySelector('.batch-copy-btn') as HTMLButtonElement;
         
@@ -643,7 +586,9 @@ export default class PluginQuickNote extends Plugin {
         const batchArchiveBtn = container.querySelector('.batch-archive-btn') as HTMLButtonElement;
         if (batchArchiveBtn) {
             batchArchiveBtn.onclick = async () => {
-                const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                let historyList = element.querySelector('.history-list');
+                const selectedItems = Array.from(historyList.querySelectorAll('.batch-checkbox input:checked'))
+                const selectedTimestamps = Array.from(selectedItems)
                     .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
 
                 if (selectedTimestamps.length === 0) {
@@ -696,6 +641,7 @@ export default class PluginQuickNote extends Plugin {
                             );
 
                             cancelSelectBtn.click(); // 操作完成后退出选择模式
+                            this.renderDockerToolbar();
                             this.renderDockHistory();
                         } catch (error) {
                             console.error('批量归档/取消归档失败:', error);
@@ -713,7 +659,8 @@ export default class PluginQuickNote extends Plugin {
         const batchMergeBtn = container.querySelector('.batch-merge-btn') as HTMLButtonElement;
         if (batchMergeBtn) {
             batchMergeBtn.onclick = async () => {
-                const selectedItems = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                let historyList = element.querySelector('.history-list');
+                const selectedItems = Array.from(historyList.querySelectorAll('.batch-checkbox input:checked'))
                     .map(input => {
                         const historyItem = (input as HTMLInputElement).closest('.history-item');
                         return {
@@ -755,10 +702,12 @@ export default class PluginQuickNote extends Plugin {
 
                     // 取消选择模式
                     cancelSelectBtn.click();
+                    this.renderDockerToolbar();
                     this.renderDockHistory();
                 }, () => {
                     // 用户取消删除，只取消选择模式
                     cancelSelectBtn.click();
+                    this.renderDockerToolbar();
                     this.renderDockHistory();
                 });
             };
@@ -768,7 +717,8 @@ export default class PluginQuickNote extends Plugin {
         const batchTagBtn = container.querySelector('.batch-tag-btn') as HTMLButtonElement;
         if (batchTagBtn) {
             batchTagBtn.onclick = () => {
-                const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                let historyList = element.querySelector('.history-list');
+                const selectedTimestamps = Array.from(historyList.querySelectorAll('.batch-checkbox input:checked'))
                     .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
 
                 if (selectedTimestamps.length === 0) {
@@ -892,6 +842,7 @@ export default class PluginQuickNote extends Plugin {
                             }
                             tagPanel.remove();
                             document.removeEventListener('click', closePanel);
+                            this.renderDockerToolbar()
                             this.renderDockHistory();
                         }
                     }
@@ -1148,6 +1099,7 @@ export default class PluginQuickNote extends Plugin {
                     label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
                     click: async () => {
                         this.historyService.toggleItemPin(timestamp);
+                        this.renderDockHistory();
                     }
                 });
 
@@ -1180,22 +1132,10 @@ export default class PluginQuickNote extends Plugin {
                     label: this.i18n.note.delete,
                     click: async () => {
                         confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
-                            // 根据当前状态选择正确的数据源
-                            const storageKey = this.showArchived ? ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
-
-                            // 从对应的数据源中删除
-                            const index = this.data[storageKey].history.findIndex(
-                                i => i.timestamp === timestamp
-                            );
-
-                            if (index !== -1) {
-                                this.data[storageKey].history.splice(index, 1);
-                                await this.saveData(storageKey, this.data[storageKey]);
-                                // showMessage(this.i18n.note.deleteSuccess);
-                                this.renderDockHistory();
-                            }
-                        });
-                    }
+                        this.historyService.deleteItem(timestamp);
+                        this.renderDockerToolbar();
+                        this.renderDockHistory();
+                    })}
                 });
 
                 menu.open({
