@@ -526,7 +526,8 @@ export default class PluginQuickNote extends Plugin {
 
             // 批量删除
             batchDeleteBtn.onclick = async () => {
-                const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                let historyList = element.querySelector('.history-list');
+                const selectedTimestamps = Array.from(historyList.querySelectorAll('.batch-checkbox input:checked'))
                     .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
 
                 if (selectedTimestamps.length === 0) {
@@ -536,14 +537,10 @@ export default class PluginQuickNote extends Plugin {
 
                 confirm(this.i18n.note.batchDelete, this.i18n.note.batchDeleteConfirm, async () => {
                     try {
-                        this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
-                            .filter(item => !selectedTimestamps.includes(item.timestamp));
-
-                        await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-
+                        this.historyService.batchDeleteItems(selectedTimestamps)
                         cancelSelectBtn.click();
+                        this.renderDockerToolbar();
                         this.renderDockHistory();
-
                         // showMessage(this.i18n.note.batchDeleteSuccess);
                     } catch (error) {
                         showMessage(this.i18n.note.batchDeleteFailed);
@@ -679,28 +676,22 @@ export default class PluginQuickNote extends Plugin {
 
                 // 创建新的小记
                 await this.saveContent(mergedText, mergedTags);
-                showMessage(this.i18n.note.mergeSuccess);
 
                 // 询问是否删除已合并的小记
                 confirm(this.i18n.note.mergeDeleteConfirm, this.i18n.note.mergeDeleteConfirmTitle, async () => {
                     try {
                         // 删除已合并的小记
                         const timestamps = selectedItems.map(item => item.timestamp);
-                        this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
-                            .filter(item => !timestamps.includes(item.timestamp));
-
-                        // 保存更改
-                        await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                        showMessage(this.i18n.note.mergeDeleteSuccess);
+                        this.historyService.batchDeleteItems(timestamps);
                     } catch (error) {
                         console.error('删除已合并的小记失败:', error);
                         showMessage(this.i18n.note.mergeDeleteFailed);
                     }
-
                     // 取消选择模式
                     cancelSelectBtn.click();
                     this.renderDockerToolbar();
                     this.renderDockHistory();
+                    showMessage(this.i18n.note.mergeSuccess);
                 }, () => {
                     // 用户取消删除，只取消选择模式
                     cancelSelectBtn.click();
@@ -1078,10 +1069,7 @@ export default class PluginQuickNote extends Plugin {
             } else if (editBtn) {
                 e.stopPropagation();
                 const timestamp = Number(editBtn.getAttribute('data-timestamp'));
-                const textContainer = editBtn.closest('.history-item').querySelector('[data-text]');
-                if (textContainer) {
-                    await this.editHistoryItem(timestamp)
-                }
+                await this.editHistoryItem(timestamp)
             } else if (moreBtn) {
                 e.stopPropagation();
                 console.log("moreBtn被点击")
@@ -1447,7 +1435,7 @@ export default class PluginQuickNote extends Plugin {
 
                         if (text.trim()) {
                             await this.saveContent(text, tags);
-                            showMessage(this.i18n.note.saveSuccess);
+                            // showMessage(this.i18n.note.saveSuccess);
                             dialog.destroy();
                             // 清空临时内容和标签
                             this.tempNoteContent = '';
@@ -1484,7 +1472,8 @@ export default class PluginQuickNote extends Plugin {
                 },
             );
             if (success) {
-                showMessage(this.i18n.note.editSuccess);
+                // showMessage(this.i18n.note.editSuccess);
+                this.renderDockerToolbar();
                 this.renderDockHistory();
             }
         } catch (error) {
@@ -2143,7 +2132,7 @@ export default class PluginQuickNote extends Plugin {
                         textarea.setSelectionRange(newPosition, newPosition);
                         textarea.focus();
 
-                        showMessage(this.i18n.note.uploadSuccess);
+                        // showMessage(this.i18n.note.uploadSuccess);
                     }
                 } catch (error) {
                     console.error('Upload failed:', error);
