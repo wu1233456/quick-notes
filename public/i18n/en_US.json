@@ -100,7 +100,8 @@
         "uploadImage": "Upload Image",
         "uploadSuccess": "Upload successful",
         "uploadFailed": "Upload failed",
-        "editSuccess": "Edit successful"
+        "editSuccess": "Edit successful",
+        "placeholder": "Here is your idea..."
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

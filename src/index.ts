@@ -21,7 +21,7 @@ import { HistoryService, HistoryData } from './components/HistoryService';
 import { ARCHIVE_STORAGE_NAME, DOCK_STORAGE_NAME, CONFIG_DATA_NAME, ITEMS_PER_PAGE, MAX_TEXT_LENGTH, DOCK_TYPE } from './libs/const';
 import { iconsSVG } from './components/icon';
 
-export default class PluginSample extends Plugin {
+export default class PluginQuickNote extends Plugin {
     private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
     private tempNoteContent: string = ''; // 添加临时内容存储
     private tempNoteTags: string[] = []; // 添加临时标签存储
@@ -29,10 +29,13 @@ export default class PluginSample extends Plugin {
     customTab: () => IModel;
     private isMobile: boolean;
     private isDescending: boolean = true;
-    private dock: any;
+    private element: HTMLElement;
+    private inputText: string;
     private currentDisplayCount: number = ITEMS_PER_PAGE;
     private selectedTags: string[] = [];
     private showArchived: boolean = false;
+
+    private isBatchSelect: boolean = false;
 
     private exportDialog: ExportDialog;
     private exportService: ExportService;
@@ -81,7 +84,7 @@ export default class PluginSample extends Plugin {
             archivedHistory: this.data[ARCHIVE_STORAGE_NAME]?.history
         };
         //小记相关的存储统一交由historyService管理
-        this.historyService = new HistoryService(this, historyData, ITEMS_PER_PAGE);
+        this.historyService = new HistoryService(this, historyData, ITEMS_PER_PAGE, this.i18n);
 
         // 初始化导出对话框和导出服务
         this.exportDialog = new ExportDialog(this.i18n);
@@ -95,7 +98,7 @@ export default class PluginSample extends Plugin {
             title: this.i18n.note.title,
             position: "right",
             callback: () => {
-                this.createNewNote(this.dock);
+                this.createNewNote();
             }
         });
 
@@ -107,7 +110,7 @@ export default class PluginSample extends Plugin {
             //     this.createNewNote(this.dock);
             // },
             globalCallback: () => {
-                this.createNewNote(this.dock);
+                this.createNewNote();
                 const { getCurrentWindow } = window.require('@electron/remote');
                 const win = getCurrentWindow();
                 win.show();
@@ -120,7 +123,7 @@ export default class PluginSample extends Plugin {
     }
     private initDock() {
         // 创建 dock 时读取保存的位置
-        this.dock = this.addDock({
+        this.addDock({
             config: {
                 position: "RightTop",
                 size: { width: 300, height: 0 },
@@ -129,287 +132,12 @@ export default class PluginSample extends Plugin {
                 title: this.i18n.note.title,
             },
             data: {
-                text: "",
+                plugin: this
             },
             type: DOCK_TYPE,
-            init: (dock: any) => {
-                this.dock = dock;
-                const renderDock = (showAll: boolean = false) => {
-                    console.log("renderDock", showAll);
-                    dock.element.innerHTML = `
-                            <div class="fn__flex-1 fn__flex-column" style="height: 100%;">
-
-                                <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column">
-                                                        <div class="block__icons">
-                                    <div class="block__logo">
-                                        <svg class="block__logoicon"><use xlink:href="#iconSmallNote"></use></svg>
-                                        ${this.i18n.note.title}
-                                    </div>
-                                    <span class="fn__flex-1 fn__space"></span>
-                                    <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw" 
-                                        aria-label="${this.data[CONFIG_DATA_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
-                                        <svg class="block__logoicon">
-                                            <use xlink:href="${this.data[CONFIG_DATA_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
-                                        </svg>
-                                    </span>
-                                    <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
-                                        <svg class="block__logoicon"><use xlink:href="#iconRefresh"></use></svg>
-                                    </span>
-                                    <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
-                                        <svg class="block__logoicon"><use xlink:href="#iconExportNew"></use></svg>
-                                    </span>
-                                    <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
-                                        <svg class="block__logoicon"><use xlink:href="#iconMin"></use></svg>
-                                    </span>
-                                </div>
-                                    <div style="min-height: 200px; flex-shrink: 0; margin: 0 8px;  width: 95%; display: ${this.data[CONFIG_DATA_NAME].editorVisible ? 'block' : 'none'};">
-                                        ${this.getEditorTemplate()}
-                                    </div>
-                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width:95%;">
-                                        <div class="fn__flex fn__flex-center" style="padding: 8px;">
-                                            <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
-                                                ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() || []).length.toString())}
-                                            </div>
-                                            <span class="fn__flex-1"></span>
-                                            <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
-                                                <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                                    <use xlink:href="#iconFilter"></use>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
-                                            <!-- 批量操作工具栏，默认隐藏 -->
-                                            <div class="batch-toolbar fn__none fn__flex-column" style="gap: 8px; margin-right: auto;">
-                                                <div class="fn__flex" style="gap: 8px;">
-                                                    <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
-                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                            <use xlink:href="#iconCopy"></use>
-                                                        </svg>
-                                                    </button>
-                                                    <button class="b3-button b3-button--text batch-tag-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.tag}">
-                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                            <use xlink:href="#iconTags"></use>
-                                                        </svg>
-                                                    </button>
-                                                    <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
-                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                            <use xlink:href="#iconArchive"></use>
-                                                        </svg>
-                                                    </button>
-                                                    <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
-                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                            <use xlink:href="#iconTrashcan"></use>
-                                                        </svg>
-                                                    </button>
-                                                    <button class="b3-button b3-button--text batch-merge-btn b3-tooltips b3-tooltips__n" style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.merge}">
-                                                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                                            <use xlink:href="#iconMerge"></use>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                                <div class="fn__flex" style="gap: 8px;">
-                                                    <button class="b3-button b3-button--outline select-all-btn" style="padding: 4px 8px; font-size: 12px;">
-                                                        ${this.i18n.note.selectAll}
-                                                    </button>
-                                                    <button class="b3-button b3-button--cancel cancel-select-btn" style="padding: 4px 8px; font-size: 12px;">
-                                                        ${this.i18n.note.cancelSelect}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <!-- 常规工具栏 -->
-                                            <div class="normal-toolbar fn__flex" style="gap: 8px;">
-                                                <div class="search-container fn__flex">
-                                                    <div class="search-wrapper" style="position: relative;">
-                                                        <input type="text" 
-                                                            class="search-input b3-text-field" 
-                                                            placeholder="${this.i18n.note.search}" 
-                                                            style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
-                                                        <button class="search-btn" style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
-                                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                                                <use xlink:href="#iconSearch"></use>
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <button class="filter-btn" 
-                                                    style="border: none; background: none; padding: 4px; cursor: pointer; position: relative;" 
-                                                    title="${this.i18n.note.tagFilter}">
-                                                    <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                                        <use xlink:href="#iconTags"></use>
-                                                    </svg>
-                                                    ${this.selectedTags.length > 0 ? `
-                                                        <div style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);"></div>
-                                                    ` : ''}
-                                                </button>
-                                                <button class="sort-btn" 
-                                                    style="border: none; background: none; padding: 4px; cursor: pointer;" 
-                                                    title="${this.i18n.note.sort}">
-                                                    <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
-                                                        <use xlink:href="#iconSort"></use>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="filter-panel" style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
-                                            <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
-                                                ${this.i18n.note.tagFilter}
-                                            </div>
-                                            <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                                ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
-                            .map(tag => {
-                                const isSelected = this.selectedTags.includes(tag);
-                                return `
-                                                            <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" 
-                                                                style="cursor: pointer; 
-                                                                    background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
-                                                                    color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
-                                                                    border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
-                                                                    transition: all 0.2s ease;" 
-                                                                data-tag="${tag}"
-                                                                aria-label="${tag}"
-                                                                data-selected="${isSelected}">
-                                                                <span class="b3-chip__content" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
-                                                                <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
-                                                                    ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
-                                                                </span>
-                                                            </span>`;
-                                                            }).join('')}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px; width: 95%;">
-                                        ${this.renderHistory(showAll)}
-                                    </div>
-                            </div>`;
-
-
-                    // 绑定事件监听器
-                    const textarea = dock.element.querySelector('textarea');
-                    if (textarea) {
-                        // 添加快捷键保存功能和待办转换功能
-                        textarea.addEventListener('keydown', async (e) => {
-                            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                                e.preventDefault();
-                                if (textarea.value.trim()) {
-                                    const tags = Array.from(dock.element.querySelectorAll('.tag-item'))
-                                        .map(tag => tag.getAttribute('data-tag'));
-                                    await this.saveContent(dock, textarea.value, tags);
-                                    // showMessage(this.i18n.note.saveSuccess);
-                                    textarea.value = '';
-                                    dock.data.text = '';
-                                    // 清空标签
-                                    dock.element.querySelector('.tags-list').innerHTML = '';
-                                    dock.renderDock(false);
-                                }
-                            }
-                        });
-
-                        // 实时保存输入内容
-                        textarea.oninput = (e) => {
-                            dock.data.text = (e.target as HTMLTextAreaElement).value;
-                        };
-                    }
-
-                    // 修改标签输入相关的 HTML 和事件处理
-                    this.setupTagsFeature(dock.element);
-
-                    // 修改保存按钮的处理逻辑
-                    dock.element.querySelectorAll('button, .block__icon').forEach(button => {
-                        const type = button.getAttribute('data-type');
-                        if (type) {
-                            button.onclick = async () => {
-                                switch (type) {
-                                    case 'refresh':
-                                        // 重新加载数据
-                                        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
-                                            text: '',
-                                            history: []
-                                        };
-                                        // 重新渲染
-                                        renderDock(false);
-                                        showMessage('已刷新');
-                                        break;
-                                    case 'save':
-                                        if (textarea.value.trim()) {
-                                            const tags = Array.from(dock.element.querySelectorAll('.tag-item')).map(tag =>
-                                                tag.getAttribute('data-tag')
-                                            );
-                                            await this.saveContent(dock, textarea.value, tags);
-                                            showMessage(this.i18n.note.saveSuccess);
-                                            textarea.value = '';
-                                            dock.data.text = '';
-                                            // 清空标签
-                                            dock.element.querySelector('.tags-list').innerHTML = '';
-                                            renderDock();
-                                        }
-                                        break;
-                                    case 'clear':
-                                        textarea.value = '';
-                                        dock.data.text = '';
-                                        showMessage('内容已清空');
-                                        break;
-                                    case 'export':
-                                        break;
-                                    case 'toggle-editor':
-                                        console.log("toggle-editor");
-                                        const editorContainer = dock.element.querySelector('[style*="min-height: 200px"]');
-                                        if (editorContainer) {
-                                            const isVisible = editorContainer.style.display !== 'none';
-                                            editorContainer.style.display = isVisible ? 'none' : 'block';
-
-                                            // 保存状态
-                                            this.data[CONFIG_DATA_NAME].editorVisible = !isVisible;
-                                            console.log("this.data[CONFIG_DATA_NAME]", this.data[CONFIG_DATA_NAME]);
-                                            await this.saveData(CONFIG_DATA_NAME, this.data[CONFIG_DATA_NAME]);
-
-                                            // 更新按钮图标和提示文本
-                                            const icon = button.querySelector('use');
-                                            if (icon) {
-                                                icon.setAttribute('xlink:href', !isVisible ? '#iconPreview' : '#iconEdit');
-                                            }
-                                            button.setAttribute('aria-label', !isVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor);
-                                        }
-                                        break;
-                                }
-                            };
-                        }
-                    });
-
-                    // 处理加载更多按钮点击事件
-                    const loadMoreBtn = dock.element.querySelector('.load-more-btn');
-                    if (loadMoreBtn) {
-                        loadMoreBtn.onclick = () => {
-                            this.currentDisplayCount += ITEMS_PER_PAGE;
-                            renderDock(true);
-                        };
-                    }
-
-                    // 监听历史记录点击事件
-                    const historyList = dock.element.querySelector('.history-list');
-                    if (historyList) {
-                        this.setupHistoryListEvents(historyList, renderDock, showAll);
-                    }
-
-                    // 设置搜索功能
-                    this.setupSearchFeature(dock.element);
-
-                    // 设置排序功能
-                    this.setupSortFeature(dock.element, renderDock);
-
-                    // 设置标签过滤功能
-                    this.setupFilterFeature(dock.element, renderDock);
-
-                    // 设置导出功能
-                    this.setupExportFeature(dock.element);
-
-                    // 设置图片上传功能
-                    this.setupImageUpload(dock.element);
-                };
-
-                // 将 renderDock 函数添加到 dock 对象上
-                dock.renderDock = renderDock;
-                // 初始渲染
-                renderDock(false);
+            init() {
+                this.data.plugin.element = this.element;
+                this.data.plugin.initDockPanel();
             },
             destroy() {
                 console.log("destroy dock:", DOCK_TYPE);
@@ -417,13 +145,863 @@ export default class PluginSample extends Plugin {
         });
     }
 
+    private initDockPanel() {
+        let element = this.element;
+        element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="height: 100%;">
+                                <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column dock_quicknotes_container">
+                                    <div class="topbar-container" style="width:100%"></div>
+                                    <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'width:95%;display:block' : 'width:95%;display:None'}" ></div>
+                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width:95%;"></div>
+                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px; width: 95%;">
+                                    </div>
+                                </div>
+                            </div>`;
+        this.renderDockerTopbar();
+        this.renderDockerEditor();
+        this.renderDockHistory();
+        this.renderDockerToolbar();
 
+        this.bindDockPanelEvents();
+    }
+        
+    private renderDockerTopbar(){
+        this.element.querySelector('.topbar-container').innerHTML = ` <div class="block__icons">
+        <div class="block__logo">
+            <svg class="block__logoicon">
+                <use xlink:href="#iconSmallNote"></use>
+            </svg>
+            ${this.i18n.note.title}
+        </div>
+        <span class="fn__flex-1 fn__space"></span>
+        <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw editor_toggle_btn"
+            aria-label="${this.data[CONFIG_DATA_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
+            <svg class="block__logoicon">
+                <use xlink:href="${this.data[CONFIG_DATA_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
+            </svg>
+        </span>
+        <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
+            <svg class="block__logoicon">
+                <use xlink:href="#iconRefresh"></use>
+            </svg>
+        </span>
+        <span data-type="export" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Export">
+            <svg class="block__logoicon">
+                <use xlink:href="#iconExportNew"></use>
+            </svg>
+        </span>
+        <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
+            <svg class="block__logoicon">
+                <use xlink:href="#iconMin"></use>
+            </svg>
+        </span>
+             </div>`;
+            this.renderDockTopbarEvents();
+        
+    }
 
-    // 渲染历史记录列表
-    private renderHistory(showAll: boolean = false) {
+    private renderDockTopbarEvents(){
+            let element = this.element;
+            const editorToggleBtn = element.querySelector('.editor_toggle_btn');
+            editorToggleBtn.addEventListener('click',async ()=>{
+                console.log("editorToggleBtn");
+                console.log("toggle-editor");
+                const editorContainer = element.querySelector('.editor-container');
+                if (editorContainer) {
+                    const isVisible = editorContainer.style.display !== 'none';
+                    editorContainer.style.display = isVisible ? 'none' : 'block';
+                    // 保存状态
+                    this.data[CONFIG_DATA_NAME].editorVisible = !isVisible;
+                    console.log("this.data[CONFIG_DATA_NAME]", this.data[CONFIG_DATA_NAME]);
+                    await this.saveData(CONFIG_DATA_NAME, this.data[CONFIG_DATA_NAME]);
+                    // 更新按钮图标和提示文本
+                    const icon = editorToggleBtn.querySelector('use');
+                    if (icon) {
+                        icon.setAttribute('xlink:href', !isVisible ? '#iconPreview' : '#iconEdit');
+                    }
+                    editorToggleBtn.setAttribute('aria-label', !isVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor);
+                }
+            });
+            // element.querySelectorAll('button, .block__icon').forEach(button => {
+            //     const type = button.getAttribute('data-type');
+            //     if (type) {
+            //         button.onclick = async () => {
+            //             switch (type) {
+            //                 case 'refresh':
+            //                     this.initData();
+            //                     this.initDockPanel();
+            //                     break;
+            //                 case 'export':
+            //                     break;
+            //             }
+            //         };
+            //     }
+            // });
+    }
+    private renderDockerEditor(){
+        let element = this.element;
+
+        element.querySelector('.editor-container').innerHTML = this.getEditorTemplate();
+            // 绑定事件监听器
+        const textarea = element.querySelector('textarea');
+        if (textarea) {
+            // 添加快捷键保存功能和待办转换功能
+            textarea.addEventListener('keydown', async (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (textarea.value.trim()) {
+                        const tags = Array.from(element.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
+                        await this.saveContent(textarea.value, tags);
+                        textarea.value = '';
+                        this.inputText = '';
+                        // 清空标签
+                        element.querySelector('.tags-list').innerHTML = '';
+                    }
+                }
+            });
+
+            // 实时保存输入内容
+            textarea.oninput = (e) => {
+                this.inputText = (e.target as HTMLTextAreaElement).value;
+            };
+        }
+        // 修改标签输入相关的 HTML 和事件处理
+        this.setupTagsFeature(element);
+
+        element.querySelector('.main_save_btn').addEventListener('click',async ()=>{
+            if (textarea.value.trim()) {
+                const tags = Array.from(element.querySelectorAll('.tag-item'))
+                    .map(tag => tag.getAttribute('data-tag'));
+                await this.saveContent(textarea.value, tags);
+            }
+        });
+    }
+
+    private renderDockerToolbar(){
+        this.element.querySelector('.toolbar-container').innerHTML = 
+         `
+                                <div class="fn__flex fn__flex-center" style="padding: 8px;">
+                                    <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                                        ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() ||
+            []).length.toString())}
+                                    </div>
+                                    <span class="fn__flex-1"></span>
+                                    <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
+                                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                            <use xlink:href="#iconFilter"></use>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
+                                    <!-- 批量操作工具栏，默认隐藏 -->
+                                    <div class="batch-toolbar fn__none fn__flex-column" style="gap: 8px; margin-right: auto;">
+                                        <div class="fn__flex" style="gap: 8px;">
+                                            <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconCopy"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-tag-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.tag}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconTags"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;"
+                                                aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconArchive"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconTrashcan"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-merge-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.merge}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconMerge"></use>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="fn__flex" style="gap: 8px;">
+                                            <button class="b3-button b3-button--outline select-all-btn"
+                                                style="padding: 4px 8px; font-size: 12px;">
+                                                ${this.i18n.note.selectAll}
+                                            </button>
+                                            <button class="b3-button b3-button--cancel cancel-select-btn"
+                                                style="padding: 4px 8px; font-size: 12px;">
+                                                ${this.i18n.note.cancelSelect}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- 常规工具栏 -->
+                                    <div class="normal-toolbar fn__flex" style="gap: 8px;">
+                                        <div class="search-container fn__flex">
+                                            <div class="search-wrapper" style="position: relative;">
+                                                <input type="text" class="search-input b3-text-field" placeholder="${this.i18n.note.search}"
+                                                    style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
+                                                <button class="search-btn"
+                                                    style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
+                                                    <svg class="b3-button__icon"
+                                                        style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                        <use xlink:href="#iconSearch"></use>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button class="filter-btn"
+                                            style="border: none; background: none; padding: 4px; cursor: pointer; position: relative;"
+                                            title="${this.i18n.note.tagFilter}">
+                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                <use xlink:href="#iconTags"></use>
+                                            </svg>
+                                            ${this.selectedTags.length > 0 ? `
+                                            <div
+                                                style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);">
+                                            </div>
+                                            ` : ''}
+                                        </button>
+                                        <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;"
+                                            title="${this.i18n.note.sort}">
+                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                <use xlink:href="#iconSort"></use>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="filter-panel"
+                                    style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
+                                    <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                                        ${this.i18n.note.tagFilter}
+                                    </div>
+                                    <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
+                .map(tag => {
+                    const isSelected = this.selectedTags.includes(tag);
+                    return `
+                                        <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" style="cursor: pointer; 
+                                                                                background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
+                                                                                color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
+                                                                                border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
+                                                                                transition: all 0.2s ease;" data-tag="${tag}"
+                                            aria-label="${tag}" data-selected="${isSelected}">
+                                            <span class="b3-chip__content"
+                                                style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                            <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                                ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
+                                            </span>
+                                        </span>`;
+                }).join('')}
+                                    </div>
+                                </div>`;
+        this.bindDockerToolbarEvents();
+    }
+    private bindDockerToolbarEvents(){
+        let element = this.element;
+
+        // 添加批量选择相关的事件处理
+        const container = element.querySelector('.toolbar-container');
+        const filterMenuBtn = container.querySelector('.filter-menu-btn');
+        const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
+        const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
+
+       
+        filterMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const rect = filterMenuBtn.getBoundingClientRect();
+            const menu = new Menu("filterMenu");
+
+            // 添加批量选择选项
+            menu.addItem({
+                icon: "iconCheck",
+                label: this.i18n.note.batchSelect,
+                click: () => {
+                    this.isBatchSelect = true;
+                    // 重置全选按钮文本
+                    if (selectAllBtn) {
+                        selectAllBtn.textContent = this.i18n.note.selectAll;
+                    }
+                    batchToolbar.classList.remove('fn__none');
+                    normalToolbar.classList.add('fn__none');
+                    this.renderDockHistory();
+                }
+            });
+
+            menu.addSeparator();
+
+            // 修改为状态过滤选项
+            menu.addItem({
+                icon: "iconStatus",
+                label: this.i18n.note.status,
+                type: "submenu",
+                submenu: [{
+                    icon: !this.showArchived ? "iconSelect" : "",
+                    label: this.i18n.note.showActive,
+                    click: () => {
+                        this.showArchived = false;
+                        this.historyService.setShowArchived(false);
+                        this.renderDockerToolbar();
+                        this.renderDockHistory();
+                    }
+                }, {
+                    icon: this.showArchived ? "iconSelect" : "",
+                    label: this.i18n.note.showArchived,
+                    click: () => {
+                        this.showArchived = true;
+                        this.historyService.setShowArchived(true);
+                        // console.log("this.showArchived",this.showArchived);
+                        this.renderDockerToolbar();
+                        this.renderDockHistory();
+                    }
+                }]
+            });
+
+            // 添加其他过滤选项
+            menu.addItem({
+                icon: "iconSort",
+                label: this.i18n.note.sort,
+                type: "submenu",
+                submenu: [{
+                    icon: this.isDescending ? "iconSelect" : "",
+                    label: this.i18n.note.sortByTimeDesc,
+                    click: () => {
+                        this.isDescending = true;
+                        // 根据当前状态选择要排序的数据源
+                        if (this.showArchived) {
+                            this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
+                        } else {
+                            this.data[DOCK_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
+                        }
+                        // renderDock(true);
+                        this.renderDockHistory();
+                    }
+                }, {
+                    icon: !this.isDescending ? "iconSelect" : "",
+                    label: this.i18n.note.sortByTimeAsc,
+                    click: () => {
+                        this.isDescending = false;
+                        // 根据当前状态选择要排序的数据源
+                        if (this.showArchived) {
+                            this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
+                        } else {
+                            this.data[DOCK_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
+                        }
+                        
+                        this.renderDockHistory();
+                    }
+                }]
+            });
+
+            menu.open({
+                x: rect.right,
+                y: rect.bottom,
+                isLeft: true,
+            });
+        });
+
+        // 批量选择相关的事件处理保持不变
+        const selectAllBtn = container.querySelector('.select-all-btn') as HTMLButtonElement;
+        const batchDeleteBtn = container.querySelector('.batch-delete-btn') as HTMLButtonElement;
+        const cancelSelectBtn = container.querySelector('.cancel-select-btn') as HTMLButtonElement;
+
+        if (selectAllBtn && batchDeleteBtn && cancelSelectBtn) {
+            // 取消选择
+            cancelSelectBtn.onclick = () => {
+                batchToolbar.classList.add('fn__none');
+                normalToolbar.classList.remove('fn__none');
+                this.isBatchSelect = false;
+                this.renderDockHistory();
+            };
+
+            // 全选/取消全选
+            selectAllBtn.onclick = () => {
+                let historyList = element.querySelector('.history-list');
+                const inputs = historyList.querySelectorAll('.batch-checkbox input') as NodeListOf<HTMLInputElement>;
+                const allChecked = Array.from(inputs).every(input => input.checked);
+                inputs.forEach(input => input.checked = !allChecked);
+                selectAllBtn.textContent = allChecked ? this.i18n.note.selectAll : this.i18n.note.deselectAll;
+            };
+
+            // 批量删除
+            batchDeleteBtn.onclick = async () => {
+                const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                    .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
+
+                if (selectedTimestamps.length === 0) {
+                    showMessage(this.i18n.note.noItemSelected);
+                    return;
+                }
+
+                confirm(this.i18n.note.batchDelete, this.i18n.note.batchDeleteConfirm, async () => {
+                    try {
+                        this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
+                            .filter(item => !selectedTimestamps.includes(item.timestamp));
+
+                        await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+
+                        cancelSelectBtn.click();
+                        this.renderDockHistory();
+
+                        // showMessage(this.i18n.note.batchDeleteSuccess);
+                    } catch (error) {
+                        showMessage(this.i18n.note.batchDeleteFailed);
+                    }
+                });
+            };
+        }
+
+        // 添加标签过滤功能
+        const filterBtn = container.querySelector('.filter-btn');
+        const filterPanel = container.querySelector('.filter-panel') as HTMLElement;
+
+        
+        filterBtn.onclick = () => {
+            const filterPanel = container.querySelector('.filter-panel') as HTMLElement;
+            if (filterPanel) {
+                const isVisible = filterPanel.style.display !== 'none';
+                filterPanel.style.display = isVisible ? 'none' : 'block';
+
+                // 当面板显示时，重新绑定标签点击事件
+                if (!isVisible) {
+                    filterPanel.querySelectorAll('.filter-tag').forEach(tag => {
+                        // 移除旧的事件监听器
+                        tag.replaceWith(tag.cloneNode(true));
+
+                        // 重新获取元素并添加事件监听器
+                        const newTag = filterPanel.querySelector(`[data-tag="${tag.getAttribute('data-tag')}"]`);
+                        if (newTag) {
+                            newTag.addEventListener('click', () => {
+                                const tagText = newTag.getAttribute('data-tag');
+                                const isSelected = newTag.getAttribute('data-selected') === 'true';
+
+                                if (isSelected) {
+                                    this.selectedTags = this.selectedTags.filter(t => t !== tagText);
+                                    newTag.style.backgroundColor = 'var(--b3-theme-surface)';
+                                    newTag.style.color = 'var(--b3-theme-on-surface)';
+                                    newTag.style.border = '1px solid var(--b3-border-color)';
+                                } else {
+                                    this.selectedTags.push(tagText);
+                                    newTag.style.backgroundColor = 'var(--b3-theme-primary)';
+                                    newTag.style.color = 'var(--b3-theme-on-primary)';
+                                    newTag.style.border = '1px solid var(--b3-theme-primary)';
+                                }
+                                newTag.setAttribute('data-selected', (!isSelected).toString());
+
+                                // 更新过滤状态小圆点
+                                const indicator = filterBtn.querySelector('div');
+                                if (this.selectedTags.length > 0) {
+                                    if (!indicator) {
+                                        filterBtn.insertAdjacentHTML('beforeend', `
+                                            <div style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);"></div>
+                                        `);
+                                    }
+                                } else if (indicator) {
+                                    indicator.remove();
+                                }
+
+                                // 重新渲染列表
+                                this.renderDockHistory();
+                            });
+                        }
+                    });
+                }
+            }
+        };
+        // 批量复制
+        const batchCopyBtn = container.querySelector('.batch-copy-btn') as HTMLButtonElement;
+        
+        batchCopyBtn.onclick = async () => {
+            let historyList = element.querySelector('.history-list');
+            const selectedItems = Array.from(historyList.querySelectorAll('.batch-checkbox input:checked'))
+                .map(input => {
+                    const historyItem = (input as HTMLInputElement).closest('.history-item');
+                    return historyItem?.querySelector('[data-text]')?.getAttribute('data-text') || '';
+                })
+                .filter(text => text);
+
+            if (selectedItems.length === 0) {
+                showMessage(this.i18n.note.noItemSelected);
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(selectedItems.join('\n\n'));
+                showMessage(this.i18n.note.copySuccess);
+                cancelSelectBtn.click(); // 复制后自动退出选择模式
+            } catch (err) {
+                console.error('批量复制失败:', err);
+                showMessage(this.i18n.note.copyFailed);
+            }
+        };
+
+        // 批量归档/取消归档
+        const batchArchiveBtn = container.querySelector('.batch-archive-btn') as HTMLButtonElement;
+        if (batchArchiveBtn) {
+            batchArchiveBtn.onclick = async () => {
+                const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                    .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
+
+                if (selectedTimestamps.length === 0) {
+                    showMessage(this.i18n.note.noItemSelected);
+                    return;
+                }
+
+                const confirmMessage = this.showArchived ?
+                    this.i18n.note.batchUnarchiveConfirm :
+                    this.i18n.note.batchArchiveConfirm;
+
+                confirm(
+                    this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
+                    confirmMessage,
+                    async () => {
+                        try {
+                            if (this.showArchived) {
+                                // 批量取消归档
+                                const itemsToUnarchive = this.data[ARCHIVE_STORAGE_NAME].history
+                                    .filter(item => selectedTimestamps.includes(item.timestamp));
+
+                                // 从归档中移除
+                                this.data[ARCHIVE_STORAGE_NAME].history =
+                                    this.data[ARCHIVE_STORAGE_NAME].history
+                                        .filter(item => !selectedTimestamps.includes(item.timestamp));
+
+                                // 添加到活动记录
+                                this.data[DOCK_STORAGE_NAME].history.unshift(...itemsToUnarchive);
+                            } else {
+                                // 批量归档
+                                const itemsToArchive = this.data[DOCK_STORAGE_NAME].history
+                                    .filter(item => selectedTimestamps.includes(item.timestamp));
+
+                                // 从活动记录中移除
+                                this.data[DOCK_STORAGE_NAME].history =
+                                    this.data[DOCK_STORAGE_NAME].history
+                                        .filter(item => !selectedTimestamps.includes(item.timestamp));
+
+                                // 添加到归档
+                                this.data[ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
+                            }
+
+                            // 保存更改
+                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
+
+                            showMessage(this.showArchived ?
+                                this.i18n.note.batchUnarchiveSuccess :
+                                this.i18n.note.batchArchiveSuccess
+                            );
+
+                            cancelSelectBtn.click(); // 操作完成后退出选择模式
+                            this.renderDockHistory();
+                        } catch (error) {
+                            console.error('批量归档/取消归档失败:', error);
+                            showMessage(this.showArchived ?
+                                this.i18n.note.batchUnarchiveFailed :
+                                this.i18n.note.batchArchiveFailed
+                            );
+                        }
+                    }
+                );
+            };
+        }
+
+        // 批量合并功能
+        const batchMergeBtn = container.querySelector('.batch-merge-btn') as HTMLButtonElement;
+        if (batchMergeBtn) {
+            batchMergeBtn.onclick = async () => {
+                const selectedItems = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                    .map(input => {
+                        const historyItem = (input as HTMLInputElement).closest('.history-item');
+                        return {
+                            timestamp: Number((input as HTMLInputElement).getAttribute('data-timestamp')),
+                            text: historyItem?.querySelector('[data-text]')?.getAttribute('data-text') || '',
+                            tags: Array.from(historyItem?.querySelectorAll('.b3-chip__content') || []).map(tag => tag.textContent)
+                        };
+                    })
+                    .filter(item => item.text);
+
+                if (selectedItems.length === 0) {
+                    showMessage(this.i18n.note.noItemSelected);
+                    return;
+                }
+
+                // 合并内容和标签
+                const mergedText = selectedItems.map(item => item.text).join('\n\n');
+                const mergedTags = Array.from(new Set(selectedItems.flatMap(item => item.tags)));
+
+                // 创建新的小记
+                await this.saveContent(mergedText, mergedTags);
+                showMessage(this.i18n.note.mergeSuccess);
+
+                // 询问是否删除已合并的小记
+                confirm(this.i18n.note.mergeDeleteConfirm, this.i18n.note.mergeDeleteConfirmTitle, async () => {
+                    try {
+                        // 删除已合并的小记
+                        const timestamps = selectedItems.map(item => item.timestamp);
+                        this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
+                            .filter(item => !timestamps.includes(item.timestamp));
+
+                        // 保存更改
+                        await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                        showMessage(this.i18n.note.mergeDeleteSuccess);
+                    } catch (error) {
+                        console.error('删除已合并的小记失败:', error);
+                        showMessage(this.i18n.note.mergeDeleteFailed);
+                    }
+
+                    // 取消选择模式
+                    cancelSelectBtn.click();
+                    this.renderDockHistory();
+                }, () => {
+                    // 用户取消删除，只取消选择模式
+                    cancelSelectBtn.click();
+                    this.renderDockHistory();
+                });
+            };
+        }
+
+        // 批量标签修改功能
+        const batchTagBtn = container.querySelector('.batch-tag-btn') as HTMLButtonElement;
+        if (batchTagBtn) {
+            batchTagBtn.onclick = () => {
+                const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
+                    .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
+
+                if (selectedTimestamps.length === 0) {
+                    showMessage(this.i18n.note.noItemSelected);
+                    return;
+                }
+
+                // 创建标签面板
+                const tagPanel = document.createElement('div');
+                tagPanel.className = 'tag-panel';
+                tagPanel.style.cssText = `
+                    position: fixed;
+                    z-index: 205;
+                    width: 133px;
+                    height: 150px;
+                    background: var(--b3-menu-background);
+                    border: 1px solid var(--b3-border-color);
+                    border-radius: var(--b3-border-radius);
+                    box-shadow: var(--b3-dialog-shadow);
+                    display: flex;
+                    flex-direction: column;
+                    padding: 0;
+                    overflow: hidden;
+                `;
+
+                // 计算位置
+                const btnRect = batchTagBtn.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const panelHeight = 150;
+                const margin = 8;
+
+                // 判断是否有足够空间在上方显示
+                const showAbove = btnRect.top > panelHeight + margin;
+                const top = showAbove ?
+                    btnRect.top - panelHeight - margin :
+                    btnRect.bottom + margin;
+
+                tagPanel.style.top = `${top}px`;
+                tagPanel.style.left = `${btnRect.left}px`;
+
+                // 如果面板会超出视口右侧，则向左对齐
+                if (btnRect.left + 133 > window.innerWidth) {
+                    tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`;
+                }
+
+                // 获取所有已有标签
+                const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                    ?.flatMap(item => item.tags || []) || []));
+
+                // 修改面板内容结构
+                tagPanel.innerHTML = `
+                    <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
+                        <input type="text" 
+                            class="b3-text-field fn__flex-1 tag-input" 
+                            placeholder="${this.i18n.note.addTag}..."
+                            style="width: 100%; background: var(--b3-theme-background);">
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
+                        <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
+                            ${this.i18n.note.existingTags}
+                        </div>
+                        <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${allTags.length > 0 ?
+                        allTags
+                            .sort((a, b) => {
+                                const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                return countB - countA;
+                            })
+                            .map(tag => `
+                                            <div class="history-tag b3-chip b3-chip--middle" 
+                                                style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
+                                                data-tag="${tag}">
+                                                <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    ${tag}
+                                                </span>
+                                                <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                </span>
+                                            </div>
+                                        `).join('')
+                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                                        ${this.i18n.note.noTags}
+                                       </div>`
+                    }
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 将面板添加到文档根节点
+                document.body.appendChild(tagPanel);
+
+                // 获取输入框元素
+                const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
+                tagInput.focus();
+
+                // 添加标签的函数
+                const addTag = async (tagText: string) => {
+                    if (tagText.trim()) {
+                        // 更新选中小记的标签
+                        const updatedItems = [];
+                        for (const timestamp of selectedTimestamps) {
+                            const note = this.data[DOCK_STORAGE_NAME].history.find(note => note.timestamp === timestamp);
+                            if (note) {
+                                note.tags = [tagText.trim()]; // 直接覆盖原有标签
+                                updatedItems.push(note);
+                            }
+                        }
+
+                        if (updatedItems.length > 0) {
+                            // 保存更改
+                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                            showMessage(this.i18n.note.tagSuccess);
+
+                            // 取消选择模式并关闭面板
+                            const cancelSelectBtn = container.querySelector('.cancel-select-btn');
+                            if (cancelSelectBtn) {
+                                (cancelSelectBtn as HTMLElement).click();
+                            }
+                            tagPanel.remove();
+                            document.removeEventListener('click', closePanel);
+                            this.renderDockHistory();
+                        }
+                    }
+                };
+
+                // 回车添加标签
+                tagInput.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const searchText = tagInput.value.trim();
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
+                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+
+                            if (matchingTag) {
+                                // 如果有完全匹配的标签，直接使用该标签
+                                await addTag(matchingTag.getAttribute('data-tag'));
+                            } else {
+                                // 如果没有完全匹配的标签，创建新标签
+                                await addTag(searchText);
+                            }
+                        }
+                    }
+                });
+
+                // 点击历史标签直接添加
+                tagPanel.addEventListener('click', async (e) => {
+                    const target = e.target as HTMLElement;
+                    const tagChip = target.closest('.history-tag') as HTMLElement;
+                    if (tagChip) {
+                        const tagText = tagChip.getAttribute('data-tag');
+                        if (tagText) {
+                            await addTag(tagText);
+                        }
+                    }
+                });
+
+                // 添加搜索功能
+                tagInput.addEventListener('input', (e) => {
+                    const searchText = (e.target as HTMLInputElement).value.toLowerCase();
+                    const historyTags = tagPanel.querySelectorAll('.history-tag');
+
+                    historyTags.forEach(tag => {
+                        const tagText = tag.getAttribute('data-tag').toLowerCase();
+                        if (tagText.includes(searchText)) {
+                            (tag as HTMLElement).style.display = 'flex';
+                        } else {
+                            (tag as HTMLElement).style.display = 'none';
+                        }
+                    });
+
+                    // 如果没有匹配的标签，显示"无匹配标签"提示
+                    const visibleTags = Array.from(historyTags).filter(tag =>
+                        (tag as HTMLElement).style.display !== 'none'
+                    );
+
+                    const noMatchMessage = tagPanel.querySelector('.no-match-message');
+                    if (visibleTags.length === 0 && searchText) {
+                        if (!noMatchMessage) {
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'no-match-message';
+                            messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
+                            messageDiv.textContent = this.i18n.note.noMatchingTags;
+                            tagPanel.querySelector('.history-tags').appendChild(messageDiv);
+                        }
+                    } else if (noMatchMessage) {
+                        noMatchMessage.remove();
+                    }
+                });
+
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
+                    }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签悬停效果
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        (tag as HTMLElement).style.backgroundColor = '';
+                    });
+                });
+            };
+        }
+
+         // 设置搜索功能
+         this.setupSearchFeature(element);
+
+         // 设置排序功能
+         this.setupSortFeature(element);
+ 
+         // // 设置标签过滤功能
+         this.setupFilterFeature(element);
+    }
+    private renderDockHistory(){
+        let element = this.element;
         this.historyService.setIsDescending(this.isDescending);
         this.historyService.setShowArchived(this.showArchived);
-        const filteredHistory = this.historyService.getFilteredHistory(showAll);
+        const filteredHistory = this.historyService.getFilteredHistory(true);
         let historyHtml = '';
 
         // 添加归档状态指示
@@ -442,24 +1020,265 @@ export default class PluginSample extends Plugin {
             historyHtml += this.renderPinnedHistory(filteredHistory.pinnedItems);
         }
 
-        // 渲染非置顶记录
-        if (filteredHistory.unpinnedItems.length > 0) {
-            historyHtml += this.renderUnpinnedHistory(filteredHistory.unpinnedItems, filteredHistory.pinnedItems.length > 0);
+        // 渲染非置顶记录，但只显示当前限制数量的记录
+        const displayedUnpinnedItems = filteredHistory.unpinnedItems.slice(0, this.currentDisplayCount);
+        if (displayedUnpinnedItems.length > 0) {
+            historyHtml += this.renderUnpinnedHistory(displayedUnpinnedItems, filteredHistory.pinnedItems.length > 0);
         }
 
         // 添加加载更多按钮
-        const totalUnpinnedCount = this.historyService.getTotalUnpinnedCount();
-        if (totalUnpinnedCount > filteredHistory.unpinnedItems.length) {
-            historyHtml += this.renderLoadMoreButton(filteredHistory.unpinnedItems.length, totalUnpinnedCount);
-        } else if (filteredHistory.unpinnedItems.length > 0) {
+        const totalUnpinnedCount = filteredHistory.unpinnedItems.length;
+        console.log("totalUnpinnedCount", totalUnpinnedCount);
+        if (totalUnpinnedCount > this.currentDisplayCount) {
+            historyHtml += this.renderLoadMoreButton(this.currentDisplayCount, totalUnpinnedCount);
+        } else if (displayedUnpinnedItems.length > 0) {
             historyHtml += this.renderNoMoreItems();
         }
 
-        return `
-        <div class="history-content">
-            ${historyHtml}
-        </div>`;
+        let historyContent = `<div class="history-content">${historyHtml}</div>`;
+        element.querySelector('.history-list').innerHTML = historyContent;
+
+
+        const loadMoreBtn = element.querySelector('.load-more-btn');
+        if (loadMoreBtn) {
+            loadMoreBtn.onclick = () => {
+                // 增加显示数量
+                this.currentDisplayCount += ITEMS_PER_PAGE;
+
+                // 获取历史内容容器
+                const historyContent = element.querySelector('.history-content');
+                if (historyContent) {
+                    // 获取新的要显示的记录
+                    const newItems = filteredHistory.unpinnedItems.slice(
+                        this.currentDisplayCount - ITEMS_PER_PAGE, 
+                        this.currentDisplayCount
+                    );
+
+                    // 渲染并追加新的记录
+                    if (newItems.length > 0) {
+                        const newContent = this.renderUnpinnedHistory(newItems, false);
+                        // 将新内容插入到加载更多按钮之前
+                        loadMoreBtn.parentElement.insertAdjacentHTML('beforebegin', newContent);
+                    }
+
+                    // 更新加载更多按钮的文本和显示状态
+                    const loadMoreContainer = loadMoreBtn.parentElement;
+                    const noMoreContainer = element.querySelector('.no-more-container');
+                    
+                    if (totalUnpinnedCount > this.currentDisplayCount) {
+                        // 还有更多内容可以加载
+                        loadMoreBtn.textContent = `${this.i18n.note.loadMore} (${this.i18n.note.showing
+                            .replace('${shown}', this.currentDisplayCount.toString())
+                            .replace('${total}', totalUnpinnedCount.toString())})`;
+                        loadMoreContainer.style.display = '';
+                        if (noMoreContainer) noMoreContainer.style.display = 'none';
+                    } else {
+                        // 没有更多内容了
+                        loadMoreContainer.style.display = 'none';
+                        if (noMoreContainer) {
+                            noMoreContainer.style.display = '';
+                        } else {
+                            // 如果没有"没有更多"提示元素，则创建一个
+                            historyContent.insertAdjacentHTML('beforeend', `
+                                <div class="fn__flex-center no-more-container" style="padding: 16px 0; color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                                    ${this.i18n.note.noMore}
+                                </div>`
+                            );
+                        }
+                    }
+
+                    // 重新绑定新添加内容的事件处理
+                    this.setupHistoryListEvents();
+                }
+            };
+        }
+
+        // 监听历史记录点击事件
+        this.setupHistoryListEvents();
     }
+
+       // 设置历史小记中的编辑、复制、删除事件
+    private setupHistoryListEvents() {
+        let element = this.element;
+        let historyList =  element.querySelector('.history-list')
+        historyList.addEventListener('click',async (e)=>{
+            const target = e.target as HTMLElement;
+            const moreBtn = target.closest('.more-btn') as HTMLElement;
+            const copyBtn = target.closest('.copy-btn') as HTMLElement;
+            const editBtn = target.closest('.edit-btn') as HTMLElement;
+            const toggleBtn = target.closest('.toggle-text');
+
+            if (copyBtn) {
+                e.stopPropagation();
+                const textContainer = copyBtn.closest('.history-item').querySelector('[data-text]');
+                if (textContainer) {
+                    const text = textContainer.getAttribute('data-text') || '';
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        showMessage(this.i18n.note.copySuccess);
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        showMessage(this.i18n.note.copyFailed);
+                    }
+                }
+            } else if (editBtn) {
+                e.stopPropagation();
+                const timestamp = Number(editBtn.getAttribute('data-timestamp'));
+                const textContainer = editBtn.closest('.history-item').querySelector('[data-text]');
+                if (textContainer) {
+                    await this.editHistoryItem(timestamp)
+                }
+            } else if (moreBtn) {
+                e.stopPropagation();
+                const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
+                const rect = moreBtn.getBoundingClientRect();
+
+                // 获取当前记录项
+                const currentItem = this.showArchived ?
+                    this.data[ARCHIVE_STORAGE_NAME].history.find(
+                        item => item.timestamp === timestamp
+                    ) :
+                    this.data[DOCK_STORAGE_NAME].history.find(
+                        item => item.timestamp === timestamp
+                    );
+
+                const menu = new Menu("historyItemMenu");
+                menu.addItem({
+                    icon: "iconPin",
+                    label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
+                    click: async () => {
+                        this.historyService.toggleItemPin(timestamp);
+                    }
+                });
+
+                // 添加归档/取消归档选项
+                menu.addItem({
+                    icon: "iconArchive",
+                    label: this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
+                    click: async () => {
+                        if (this.showArchived) {
+                            // 从归档中恢复
+                            const index = this.data[ARCHIVE_STORAGE_NAME].history.findIndex(
+                                i => i.timestamp === timestamp
+                            );
+                            if (index !== -1) {
+                                const item = this.data[ARCHIVE_STORAGE_NAME].history.splice(index, 1)[0];
+                                this.data[DOCK_STORAGE_NAME].history.unshift(item);
+                                await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
+                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+                                showMessage(this.i18n.note.unarchiveSuccess);
+                            }
+                        } else {
+                            await this.historyService.archiveItem(timestamp);
+                        }
+                        this.renderDockHistory();
+                    }
+                });
+
+                menu.addItem({
+                    icon: "iconTrashcan",
+                    label: this.i18n.note.delete,
+                    click: async () => {
+                        confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
+                            // 根据当前状态选择正确的数据源
+                            const storageKey = this.showArchived ? ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
+
+                            // 从对应的数据源中删除
+                            const index = this.data[storageKey].history.findIndex(
+                                i => i.timestamp === timestamp
+                            );
+
+                            if (index !== -1) {
+                                this.data[storageKey].history.splice(index, 1);
+                                await this.saveData(storageKey, this.data[storageKey]);
+                                // showMessage(this.i18n.note.deleteSuccess);
+                                this.renderDockHistory();
+                            }
+                        });
+                    }
+                });
+
+                menu.open({
+                    x: rect.right,
+                    y: rect.bottom,
+                    isLeft: true,
+                });
+            } else if (toggleBtn) {
+                const textContent = toggleBtn.closest('.text-content');
+                const collapsedText = textContent.querySelector('.collapsed-text');
+                const expandedText = textContent.querySelector('.expanded-text');
+
+                if (collapsedText.style.display !== 'none') {
+                    // 展开
+                    collapsedText.style.display = 'none';
+                    expandedText.style.display = 'inline';
+                    toggleBtn.innerHTML = `${this.i18n.note.collapse}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(180deg); transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>`;
+                } else {
+                    // 折叠
+                    collapsedText.style.display = 'inline';
+                    expandedText.style.display = 'none';
+                    toggleBtn.innerHTML = `${this.i18n.note.expand}
+                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(0deg); transition: transform 0.2s ease;">
+                            <use xlink:href="#iconDown"></use>
+                        </svg>`;
+                }
+                e.stopPropagation();
+            }
+        });
+           // 添加任务列表勾选框事件处理
+        historyList.addEventListener('change', async (e) => {
+            const target = e.target as HTMLInputElement;
+            if (target.classList.contains('task-list-item-checkbox')) {
+                const timestamp = Number(target.closest('.task-list-item').getAttribute('data-timestamp'));
+                const originalMark = target.getAttribute('data-original');
+                const newMark = target.checked ? '[x]' : '[ ]';
+
+                // 更新数据
+                const note = this.data[DOCK_STORAGE_NAME].history.find(
+                    item => item.timestamp === timestamp
+                );
+
+                if (note) {
+                    // 获取当前任务项的完整文本
+                    const taskItemText = target.nextElementSibling.textContent.trim();
+
+                    // 使用更精确的替换方法
+                    const oldTaskItem = `${originalMark} ${taskItemText}`;
+                    const newTaskItem = `${newMark} ${taskItemText}`;
+                    note.text = note.text.replace(oldTaskItem, newTaskItem);
+
+                    // 保存更改
+                    await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+
+                    // 更新 data-original 属性
+                    target.setAttribute('data-original', newMark);
+
+                    // 添加视觉反馈
+                    const textSpan = target.nextElementSibling as HTMLElement;
+                    if (textSpan) {
+                        textSpan.style.textDecoration = target.checked ? 'line-through' : 'none';
+                        textSpan.style.opacity = target.checked ? '0.6' : '1';
+                    }
+
+                    // 可选：添加操作成功的提示
+                    showMessage(target.checked ? '已完成任务' : '已取消完成');
+                }
+            }
+        });
+
+    }
+
+    private bindDockPanelEvents() {
+        let element = this.element;
+
+        // 设置导出功能
+        this.setupExportFeature(element);
+        this.setupImageUpload(element);
+    };
+
 
     // 渲染置顶记录
     private renderPinnedHistory(pinnedHistory: Array<{ text: string, timestamp: number, isPinned?: boolean, tags?: string[] }>) {
@@ -560,7 +1379,7 @@ export default class PluginSample extends Plugin {
         return `
             <div class="fn__flex" style="gap: 8px;">
                 <!-- 添加复选框，默认隐藏 -->
-                <div class="batch-checkbox fn__none" style="padding-top: 2px;">
+                <div class="${this.isBatchSelect? 'batch-checkbox' : 'batch-checkbox fn__none'}" style="padding-top: 2px;">
                     <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
                 </div>
                 <div class="fn__flex-1">
@@ -646,7 +1465,7 @@ export default class PluginSample extends Plugin {
     }
 
     // 创建新笔记
-    private async createNewNote(dock: any) {
+    private async createNewNote() {
         // 如果已经有窗口在打开中,则返回
         if (this.isCreatingNote) {
             return false;
@@ -726,7 +1545,7 @@ export default class PluginSample extends Plugin {
                             .map(tag => tag.getAttribute('data-tag'));
 
                         if (text.trim()) {
-                            await this.saveContent(dock, text, tags);
+                            await this.saveContent(text, tags);
                             showMessage(this.i18n.note.saveSuccess);
                             dialog.destroy();
                             // 清空临时内容和标签
@@ -754,7 +1573,7 @@ export default class PluginSample extends Plugin {
     }
 
     // 编辑历史记录
-    private async editHistoryItem(dock: any, timestamp: number, oldText: string) {
+    private async editHistoryItem(timestamp: number) {
         try {
             const success = await this.historyService.openEditDialog(timestamp,
                 {
@@ -765,7 +1584,7 @@ export default class PluginSample extends Plugin {
             );
             if (success) {
                 showMessage(this.i18n.note.editSuccess);
-                dock.renderDock(false);
+                this.renderDockHistory();
             }
         } catch (error) {
             console.error('Error editing history item:', error);
@@ -773,32 +1592,17 @@ export default class PluginSample extends Plugin {
         }
     }
 
-    // 删除历史记录
-    private async deleteHistoryItem(timestamp: number, renderDock: (showAll: boolean) => void) {
-        let isDelete = await confirm(this.i18n.note.confirmDelete)
-        console.log("isDelete", isDelete);
-        if (isDelete) {
-            console.log("deleteHistoryItem");
-            const success = await this.historyService.deleteHistoryItem(timestamp);
-            if (success) {
-                showMessage(this.i18n.note.deleteSuccess);
-                renderDock(false);
-            }
-        }
-    }
-
     // 保存内容并更新历史记录
-    private async saveContent(dock: any, text: string, tags: string[] = []) {
+    private async saveContent(text: string, tags: string[] = []) {
         const success = await this.historyService.saveContent({ text, tags });
 
         if (success) {
-            showMessage(this.i18n.note.saveSuccess);
-            dock.renderDock(false);
+            this.initDockPanel();
         }
     }
 
     // 创建编辑器模板
-    private getEditorTemplate(text: string = '', placeholder: string = '在这里输入你的想法...') {
+    private getEditorTemplate(text: string = '', placeholder: string = this.i18n.note.placeholder) {
         return `
             <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
                 <textarea class="fn__flex-1" 
@@ -828,7 +1632,7 @@ export default class PluginSample extends Plugin {
                             </button>
                             <input type="file" class="fn__none image-upload-input" accept="image/*" multiple>
                         </div>
-                        <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center" data-type="save" aria-label="${adaptHotkey('⌘Enter')}" style="padding: 4px 8px; gap: 4px;">
+                        <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center main_save_btn" data-type="save" aria-label="${adaptHotkey('⌘Enter')}" style="padding: 4px 8px; gap: 4px;">
                             <span>${this.i18n.note.save}</span>
                         </button>
                     </div>
@@ -850,7 +1654,7 @@ export default class PluginSample extends Plugin {
                 console.log('History:', this.data[DOCK_STORAGE_NAME]?.history);
 
                 // 获取所有标签并去重
-                const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                const allTags = Array.from(new Set(this.historyService.getCurrentData()
                     ?.filter(item => item && Array.isArray(item.tags))
                     .flatMap(item => item.tags || [])
                 ));
@@ -913,8 +1717,8 @@ export default class PluginSample extends Plugin {
                                 ${allTags.length > 0 ?
                         allTags
                             .sort((a, b) => {
-                                const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
-                                const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
                                 return countB - countA;
                             })
                             .map(tag => `
@@ -925,13 +1729,13 @@ export default class PluginSample extends Plugin {
                                                     ${tag}
                                                 </span>
                                                 <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                    ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
                                                 </span>
                                             </div>
                                         `).join('')
                         : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                                        ${this.i18n.note.noTags}
-                                       </div>`
+                                ${this.i18n.note.noTags}
+                               </div>`
                     }
                             </div>
                         </div>
@@ -1104,834 +1908,6 @@ export default class PluginSample extends Plugin {
         }
     }
 
-    // 设置历史列表事件
-    private setupHistoryListEvents(historyList: HTMLElement, renderDock: (showAll: boolean) => void, showAll: boolean) {
-        historyList.onclick = async (e) => {
-            const target = e.target as HTMLElement;
-            const moreBtn = target.closest('.more-btn') as HTMLElement;
-            const copyBtn = target.closest('.copy-btn') as HTMLElement;
-            const editBtn = target.closest('.edit-btn') as HTMLElement;
-
-            if (copyBtn) {
-                e.stopPropagation();
-                const textContainer = copyBtn.closest('.history-item').querySelector('[data-text]');
-                if (textContainer) {
-                    const text = textContainer.getAttribute('data-text') || '';
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        showMessage(this.i18n.note.copySuccess);
-                    } catch (err) {
-                        console.error('复制失败:', err);
-                        showMessage(this.i18n.note.copyFailed);
-                    }
-                }
-            } else if (editBtn) {
-                e.stopPropagation();
-                const timestamp = Number(editBtn.getAttribute('data-timestamp'));
-                const textContainer = editBtn.closest('.history-item').querySelector('[data-text]');
-                if (textContainer) {
-                    const text = textContainer.getAttribute('data-text') || '';
-                    if (await this.editHistoryItem(this.dock, timestamp, text)) {
-                        renderDock(false);
-                    }
-                }
-            } else if (moreBtn) {
-                e.stopPropagation();
-                const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
-                const rect = moreBtn.getBoundingClientRect();
-
-                // 获取当前记录项
-                const currentItem = this.showArchived ?
-                    this.data[ARCHIVE_STORAGE_NAME].history.find(
-                        item => item.timestamp === timestamp
-                    ) :
-                    this.data[DOCK_STORAGE_NAME].history.find(
-                        item => item.timestamp === timestamp
-                    );
-
-                const menu = new Menu("historyItemMenu");
-                menu.addItem({
-                    icon: "iconPin",
-                    label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
-                    click: async () => {
-                        this.historyService.toggleItemPin(timestamp);
-                    }
-                });
-
-                // 添加归档/取消归档选项
-                menu.addItem({
-                    icon: "iconArchive",
-                    label: this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
-                    click: async () => {
-                        if (this.showArchived) {
-                            // 从归档中恢复
-                            const index = this.data[ARCHIVE_STORAGE_NAME].history.findIndex(
-                                i => i.timestamp === timestamp
-                            );
-                            if (index !== -1) {
-                                const item = this.data[ARCHIVE_STORAGE_NAME].history.splice(index, 1)[0];
-                                this.data[DOCK_STORAGE_NAME].history.unshift(item);
-                                await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
-                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                showMessage(this.i18n.note.unarchiveSuccess);
-                            }
-                        } else {
-                            // 使用新的归档方法
-                            await this.archiveItem(timestamp, renderDock);
-                        }
-                        this.dock.renderDock(true);
-                    }
-                });
-
-                menu.addItem({
-                    icon: "iconTrashcan",
-                    label: this.i18n.note.delete,
-                    click: async () => {
-                        confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
-                            // 根据当前状态选择正确的数据源
-                            const storageKey = this.showArchived ? ARCHIVE_STORAGE_NAME : DOCK_STORAGE_NAME;
-
-                            // 从对应的数据源中删除
-                            const index = this.data[storageKey].history.findIndex(
-                                i => i.timestamp === timestamp
-                            );
-
-                            if (index !== -1) {
-                                this.data[storageKey].history.splice(index, 1);
-                                await this.saveData(storageKey, this.data[storageKey]);
-                                showMessage(this.i18n.note.deleteSuccess);
-                                // 使用 this.dock.renderDock 而不是 renderDock
-                                this.dock.renderDock(false);
-                            }
-                        });
-                    }
-                });
-
-                menu.open({
-                    x: rect.right,
-                    y: rect.bottom,
-                    isLeft: true,
-                });
-            }
-        };
-
-        // 处理展开/折叠按钮
-        historyList.addEventListener('click', (e) => {
-            const target = e.target as HTMLElement;
-            const toggleBtn = target.closest('.toggle-text');
-            if (toggleBtn) {
-                const textContent = toggleBtn.closest('.text-content');
-                const collapsedText = textContent.querySelector('.collapsed-text');
-                const expandedText = textContent.querySelector('.expanded-text');
-
-                if (collapsedText.style.display !== 'none') {
-                    // 展开
-                    collapsedText.style.display = 'none';
-                    expandedText.style.display = 'inline';
-                    toggleBtn.innerHTML = `${this.i18n.note.collapse}
-                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(180deg); transition: transform 0.2s ease;">
-                            <use xlink:href="#iconDown"></use>
-                        </svg>`;
-                } else {
-                    // 折叠
-                    collapsedText.style.display = 'inline';
-                    expandedText.style.display = 'none';
-                    toggleBtn.innerHTML = `${this.i18n.note.expand}
-                        <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transform: rotate(0deg); transition: transform 0.2s ease;">
-                            <use xlink:href="#iconDown"></use>
-                        </svg>`;
-                }
-                e.stopPropagation();
-            }
-        });
-
-        // 添加批量选择相关的事件处理
-        const container = historyList.closest('.fn__flex-1.plugin-sample__custom-dock');
-        if (container) {
-            const filterMenuBtn = container.querySelector('.filter-menu-btn');
-            const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
-            const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
-            const checkboxes = container.querySelectorAll('.batch-checkbox') as NodeListOf<HTMLElement>;
-
-            if (filterMenuBtn) {
-                filterMenuBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const rect = filterMenuBtn.getBoundingClientRect();
-                    const menu = new Menu("filterMenu");
-
-                    // 添加批量选择选项
-                    menu.addItem({
-                        icon: "iconCheck",
-                        label: this.i18n.note.batchSelect,
-                        click: () => {
-                            // 重置所有复选框为未选中状态
-                            checkboxes.forEach(checkbox => {
-                                checkbox.classList.remove('fn__none');
-                                const input = checkbox.querySelector('input') as HTMLInputElement;
-                                if (input) {
-                                    input.checked = false;
-                                }
-                            });
-                            // 重置全选按钮文本
-                            if (selectAllBtn) {
-                                selectAllBtn.textContent = this.i18n.note.selectAll;
-                            }
-                            batchToolbar.classList.remove('fn__none');
-                            normalToolbar.classList.add('fn__none');
-                        }
-                    });
-
-                    menu.addSeparator();
-
-                    // 修改为状态过滤选项
-                    menu.addItem({
-                        icon: "iconStatus",
-                        label: this.i18n.note.status,
-                        type: "submenu",
-                        submenu: [{
-                            icon: !this.showArchived ? "iconSelect" : "",
-                            label: this.i18n.note.showActive,
-                            click: () => {
-                                this.showArchived = false;
-                                renderDock(true);
-                            }
-                        }, {
-                            icon: this.showArchived ? "iconSelect" : "",
-                            label: this.i18n.note.showArchived,
-                            click: () => {
-                                this.showArchived = true;
-                                renderDock(true);
-                            }
-                        }]
-                    });
-
-                    // 添加其他过滤选项
-                    menu.addItem({
-                        icon: "iconSort",
-                        label: this.i18n.note.sort,
-                        type: "submenu",
-                        submenu: [{
-                            icon: this.isDescending ? "iconSelect" : "",
-                            label: this.i18n.note.sortByTimeDesc,
-                            click: () => {
-                                this.isDescending = true;
-                                // 根据当前状态选择要排序的数据源
-                                if (this.showArchived) {
-                                    this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
-                                } else {
-                                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
-                                }
-                                renderDock(true);
-                            }
-                        }, {
-                            icon: !this.isDescending ? "iconSelect" : "",
-                            label: this.i18n.note.sortByTimeAsc,
-                            click: () => {
-                                this.isDescending = false;
-                                // 根据当前状态选择要排序的数据源
-                                if (this.showArchived) {
-                                    this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
-                                } else {
-                                    this.data[DOCK_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
-                                }
-                                renderDock(true);
-                            }
-                        }]
-                    });
-
-                    menu.open({
-                        x: rect.right,
-                        y: rect.bottom,
-                        isLeft: true,
-                    });
-                });
-            }
-
-            // 批量选择相关的事件处理保持不变
-            const selectAllBtn = container.querySelector('.select-all-btn') as HTMLButtonElement;
-            const batchDeleteBtn = container.querySelector('.batch-delete-btn') as HTMLButtonElement;
-            const cancelSelectBtn = container.querySelector('.cancel-select-btn') as HTMLButtonElement;
-
-            if (selectAllBtn && batchDeleteBtn && cancelSelectBtn) {
-                // 取消选择
-                cancelSelectBtn.onclick = () => {
-                    batchToolbar.classList.add('fn__none');
-                    normalToolbar.classList.remove('fn__none');
-                    checkboxes.forEach(checkbox => {
-                        checkbox.classList.add('fn__none');
-                        const input = checkbox.querySelector('input');
-                        if (input) input.checked = false;
-                    });
-                };
-
-                // 全选/取消全选
-                selectAllBtn.onclick = () => {
-                    const inputs = container.querySelectorAll('.batch-checkbox input') as NodeListOf<HTMLInputElement>;
-                    const allChecked = Array.from(inputs).every(input => input.checked);
-                    inputs.forEach(input => input.checked = !allChecked);
-                    selectAllBtn.textContent = allChecked ? this.i18n.note.selectAll : this.i18n.note.deselectAll;
-                };
-
-                // 批量删除
-                batchDeleteBtn.onclick = async () => {
-                    const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
-                        .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
-
-                    if (selectedTimestamps.length === 0) {
-                        showMessage(this.i18n.note.noItemSelected);
-                        return;
-                    }
-
-                    confirm(this.i18n.note.batchDelete, this.i18n.note.batchDeleteConfirm, async () => {
-                        try {
-                            this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
-                                .filter(item => !selectedTimestamps.includes(item.timestamp));
-
-                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-
-                            cancelSelectBtn.click();
-                            renderDock(false);
-
-                            showMessage(this.i18n.note.batchDeleteSuccess);
-                        } catch (error) {
-                            console.error('Batch delete failed:', error);
-                            showMessage(this.i18n.note.batchDeleteFailed);
-                        }
-                    });
-                };
-            }
-
-            // 添加标签过滤功能
-            const filterBtn = container.querySelector('.filter-btn');
-            const filterPanel = container.querySelector('.filter-panel') as HTMLElement;
-
-            if (filterBtn) {
-                filterBtn.onclick = () => {
-                    const filterPanel = container.querySelector('.filter-panel') as HTMLElement;
-                    if (filterPanel) {
-                        const isVisible = filterPanel.style.display !== 'none';
-                        filterPanel.style.display = isVisible ? 'none' : 'block';
-
-                        // 当面板显示时，重新绑定标签点击事件
-                        if (!isVisible) {
-                            filterPanel.querySelectorAll('.filter-tag').forEach(tag => {
-                                // 移除旧的事件监听器
-                                tag.replaceWith(tag.cloneNode(true));
-
-                                // 重新获取元素并添加事件监听器
-                                const newTag = filterPanel.querySelector(`[data-tag="${tag.getAttribute('data-tag')}"]`);
-                                if (newTag) {
-                                    newTag.addEventListener('click', () => {
-                                        const tagText = newTag.getAttribute('data-tag');
-                                        const isSelected = newTag.getAttribute('data-selected') === 'true';
-
-                                        if (isSelected) {
-                                            this.selectedTags = this.selectedTags.filter(t => t !== tagText);
-                                            newTag.style.backgroundColor = 'var(--b3-theme-surface)';
-                                            newTag.style.color = 'var(--b3-theme-on-surface)';
-                                            newTag.style.border = '1px solid var(--b3-border-color)';
-                                        } else {
-                                            this.selectedTags.push(tagText);
-                                            newTag.style.backgroundColor = 'var(--b3-theme-primary)';
-                                            newTag.style.color = 'var(--b3-theme-on-primary)';
-                                            newTag.style.border = '1px solid var(--b3-theme-primary)';
-                                        }
-                                        newTag.setAttribute('data-selected', (!isSelected).toString());
-
-                                        // 更新过滤状态小圆点
-                                        const indicator = filterBtn.querySelector('div');
-                                        if (this.selectedTags.length > 0) {
-                                            if (!indicator) {
-                                                filterBtn.insertAdjacentHTML('beforeend', `
-                                                    <div style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);"></div>
-                                                `);
-                                            }
-                                        } else if (indicator) {
-                                            indicator.remove();
-                                        }
-
-                                        // 重新渲染列表
-                                        renderDock(true);
-                                    });
-                                }
-                            });
-                        }
-                    }
-                };
-            }
-
-            // 批量复制
-            const batchCopyBtn = container.querySelector('.batch-copy-btn') as HTMLButtonElement;
-            if (batchCopyBtn) {
-                batchCopyBtn.onclick = async () => {
-                    const selectedItems = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
-                        .map(input => {
-                            const historyItem = (input as HTMLInputElement).closest('.history-item');
-                            return historyItem?.querySelector('[data-text]')?.getAttribute('data-text') || '';
-                        })
-                        .filter(text => text);
-
-                    if (selectedItems.length === 0) {
-                        showMessage(this.i18n.note.noItemSelected);
-                        return;
-                    }
-
-                    try {
-                        await navigator.clipboard.writeText(selectedItems.join('\n\n'));
-                        showMessage(this.i18n.note.copySuccess);
-                        cancelSelectBtn.click(); // 复制后自动退出选择模式
-                    } catch (err) {
-                        console.error('批量复制失败:', err);
-                        showMessage(this.i18n.note.copyFailed);
-                    }
-                };
-            }
-
-            // 批量归档/取消归档
-            const batchArchiveBtn = container.querySelector('.batch-archive-btn') as HTMLButtonElement;
-            if (batchArchiveBtn) {
-                batchArchiveBtn.onclick = async () => {
-                    const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
-                        .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
-
-                    if (selectedTimestamps.length === 0) {
-                        showMessage(this.i18n.note.noItemSelected);
-                        return;
-                    }
-
-                    const confirmMessage = this.showArchived ?
-                        this.i18n.note.batchUnarchiveConfirm :
-                        this.i18n.note.batchArchiveConfirm;
-
-                    confirm(
-                        this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
-                        confirmMessage,
-                        async () => {
-                            try {
-                                if (this.showArchived) {
-                                    // 批量取消归档
-                                    const itemsToUnarchive = this.data[ARCHIVE_STORAGE_NAME].history
-                                        .filter(item => selectedTimestamps.includes(item.timestamp));
-
-                                    // 从归档中移除
-                                    this.data[ARCHIVE_STORAGE_NAME].history =
-                                        this.data[ARCHIVE_STORAGE_NAME].history
-                                            .filter(item => !selectedTimestamps.includes(item.timestamp));
-
-                                    // 添加到活动记录
-                                    this.data[DOCK_STORAGE_NAME].history.unshift(...itemsToUnarchive);
-                                } else {
-                                    // 批量归档
-                                    const itemsToArchive = this.data[DOCK_STORAGE_NAME].history
-                                        .filter(item => selectedTimestamps.includes(item.timestamp));
-
-                                    // 从活动记录中移除
-                                    this.data[DOCK_STORAGE_NAME].history =
-                                        this.data[DOCK_STORAGE_NAME].history
-                                            .filter(item => !selectedTimestamps.includes(item.timestamp));
-
-                                    // 添加到归档
-                                    this.data[ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
-                                }
-
-                                // 保存更改
-                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
-
-                                showMessage(this.showArchived ?
-                                    this.i18n.note.batchUnarchiveSuccess :
-                                    this.i18n.note.batchArchiveSuccess
-                                );
-
-                                cancelSelectBtn.click(); // 操作完成后退出选择模式
-                                renderDock(false);
-                            } catch (error) {
-                                console.error('批量归档/取消归档失败:', error);
-                                showMessage(this.showArchived ?
-                                    this.i18n.note.batchUnarchiveFailed :
-                                    this.i18n.note.batchArchiveFailed
-                                );
-                            }
-                        }
-                    );
-                };
-            }
-
-            // 批量合并功能
-            const batchMergeBtn = container.querySelector('.batch-merge-btn') as HTMLButtonElement;
-            if (batchMergeBtn) {
-                batchMergeBtn.onclick = async () => {
-                    const selectedItems = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
-                        .map(input => {
-                            const historyItem = (input as HTMLInputElement).closest('.history-item');
-                            return {
-                                timestamp: Number((input as HTMLInputElement).getAttribute('data-timestamp')),
-                                text: historyItem?.querySelector('[data-text]')?.getAttribute('data-text') || '',
-                                tags: Array.from(historyItem?.querySelectorAll('.b3-chip__content') || []).map(tag => tag.textContent)
-                            };
-                        })
-                        .filter(item => item.text);
-
-                    if (selectedItems.length === 0) {
-                        showMessage(this.i18n.note.noItemSelected);
-                        return;
-                    }
-
-                    // 合并内容和标签
-                    const mergedText = selectedItems.map(item => item.text).join('\n\n');
-                    const mergedTags = Array.from(new Set(selectedItems.flatMap(item => item.tags)));
-
-                    // 创建新的小记
-                    await this.saveContent(this.dock, mergedText, mergedTags);
-                    showMessage(this.i18n.note.mergeSuccess);
-
-                    // 询问是否删除已合并的小记
-                    confirm(this.i18n.note.mergeDeleteConfirm, this.i18n.note.mergeDeleteConfirmTitle, async () => {
-                        try {
-                            // 删除已合并的小记
-                            const timestamps = selectedItems.map(item => item.timestamp);
-                            this.data[DOCK_STORAGE_NAME].history = this.data[DOCK_STORAGE_NAME].history
-                                .filter(item => !timestamps.includes(item.timestamp));
-
-                            // 保存更改
-                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                            showMessage(this.i18n.note.mergeDeleteSuccess);
-                        } catch (error) {
-                            console.error('删除已合并的小记失败:', error);
-                            showMessage(this.i18n.note.mergeDeleteFailed);
-                        }
-
-                        // 取消选择模式
-                        cancelSelectBtn.click();
-                        renderDock(false);
-                    }, () => {
-                        // 用户取消删除，只取消选择模式
-                        cancelSelectBtn.click();
-                        renderDock(false);
-                    });
-                };
-            }
-
-            // 批量标签修改功能
-            const batchTagBtn = container.querySelector('.batch-tag-btn') as HTMLButtonElement;
-            if (batchTagBtn) {
-                batchTagBtn.onclick = () => {
-                    const selectedTimestamps = Array.from(container.querySelectorAll('.batch-checkbox input:checked'))
-                        .map(input => Number((input as HTMLInputElement).getAttribute('data-timestamp')));
-
-                    if (selectedTimestamps.length === 0) {
-                        showMessage(this.i18n.note.noItemSelected);
-                        return;
-                    }
-
-                    // 创建标签面板
-                    const tagPanel = document.createElement('div');
-                    tagPanel.className = 'tag-panel';
-                    tagPanel.style.cssText = `
-                        position: fixed;
-                        z-index: 205;
-                        width: 133px;
-                        height: 150px;
-                        background: var(--b3-menu-background);
-                        border: 1px solid var(--b3-border-color);
-                        border-radius: var(--b3-border-radius);
-                        box-shadow: var(--b3-dialog-shadow);
-                        display: flex;
-                        flex-direction: column;
-                        padding: 0;
-                        overflow: hidden;
-                    `;
-
-                    // 计算位置
-                    const btnRect = batchTagBtn.getBoundingClientRect();
-                    const viewportHeight = window.innerHeight;
-                    const panelHeight = 150;
-                    const margin = 8;
-
-                    // 判断是否有足够空间在上方显示
-                    const showAbove = btnRect.top > panelHeight + margin;
-                    const top = showAbove ?
-                        btnRect.top - panelHeight - margin :
-                        btnRect.bottom + margin;
-
-                    tagPanel.style.top = `${top}px`;
-                    tagPanel.style.left = `${btnRect.left}px`;
-
-                    // 如果面板会超出视口右侧，则向左对齐
-                    if (btnRect.left + 133 > window.innerWidth) {
-                        tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`;
-                    }
-
-                    // 获取所有已有标签
-                    const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
-                        ?.flatMap(item => item.tags || []) || []));
-
-                    // 修改面板内容结构
-                    tagPanel.innerHTML = `
-                        <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
-                            <input type="text" 
-                                class="b3-text-field fn__flex-1 tag-input" 
-                                placeholder="${this.i18n.note.addTag}..."
-                                style="width: 100%; background: var(--b3-theme-background);">
-                        </div>
-                        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
-                            <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
-                                ${this.i18n.note.existingTags}
-                            </div>
-                            <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    ${allTags.length > 0 ?
-                            allTags
-                                .sort((a, b) => {
-                                    const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
-                                    const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
-                                    return countB - countA;
-                                })
-                                .map(tag => `
-                                                <div class="history-tag b3-chip b3-chip--middle" 
-                                                    style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
-                                                    data-tag="${tag}">
-                                                    <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                        ${tag}
-                                                    </span>
-                                                    <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                        ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
-                                                    </span>
-                                                </div>
-                                            `).join('')
-                            : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                                            ${this.i18n.note.noTags}
-                                           </div>`
-                        }
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    // 将面板添加到文档根节点
-                    document.body.appendChild(tagPanel);
-
-                    // 获取输入框元素
-                    const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
-                    tagInput.focus();
-
-                    // 添加标签的函数
-                    const addTag = async (tagText: string) => {
-                        if (tagText.trim()) {
-                            // 更新选中小记的标签
-                            const updatedItems = [];
-                            for (const timestamp of selectedTimestamps) {
-                                const note = this.data[DOCK_STORAGE_NAME].history.find(note => note.timestamp === timestamp);
-                                if (note) {
-                                    note.tags = [tagText.trim()]; // 直接覆盖原有标签
-                                    updatedItems.push(note);
-                                }
-                            }
-
-                            if (updatedItems.length > 0) {
-                                // 保存更改
-                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                showMessage(this.i18n.note.tagSuccess);
-
-                                // 取消选择模式并关闭面板
-                                const cancelSelectBtn = container.querySelector('.cancel-select-btn');
-                                if (cancelSelectBtn) {
-                                    (cancelSelectBtn as HTMLElement).click();
-                                }
-                                tagPanel.remove();
-                                document.removeEventListener('click', closePanel);
-                                this.dock.renderDock(false);
-                            }
-                        }
-                    };
-
-                    // 回车添加标签
-                    tagInput.addEventListener('keydown', async (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const searchText = tagInput.value.trim();
-                            if (searchText) {
-                                // 检查是否有匹配的已有标签
-                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                                if (matchingTag) {
-                                    // 如果有完全匹配的标签，直接使用该标签
-                                    await addTag(matchingTag.getAttribute('data-tag'));
-                                } else {
-                                    // 如果没有完全匹配的标签，创建新标签
-                                    await addTag(searchText);
-                                }
-                            }
-                        }
-                    });
-
-                    // 点击历史标签直接添加
-                    tagPanel.addEventListener('click', async (e) => {
-                        const target = e.target as HTMLElement;
-                        const tagChip = target.closest('.history-tag') as HTMLElement;
-                        if (tagChip) {
-                            const tagText = tagChip.getAttribute('data-tag');
-                            if (tagText) {
-                                await addTag(tagText);
-                            }
-                        }
-                    });
-
-                    // 添加搜索功能
-                    tagInput.addEventListener('input', (e) => {
-                        const searchText = (e.target as HTMLInputElement).value.toLowerCase();
-                        const historyTags = tagPanel.querySelectorAll('.history-tag');
-
-                        historyTags.forEach(tag => {
-                            const tagText = tag.getAttribute('data-tag').toLowerCase();
-                            if (tagText.includes(searchText)) {
-                                (tag as HTMLElement).style.display = 'flex';
-                            } else {
-                                (tag as HTMLElement).style.display = 'none';
-                            }
-                        });
-
-                        // 如果没有匹配的标签，显示"无匹配标签"提示
-                        const visibleTags = Array.from(historyTags).filter(tag =>
-                            (tag as HTMLElement).style.display !== 'none'
-                        );
-
-                        const noMatchMessage = tagPanel.querySelector('.no-match-message');
-                        if (visibleTags.length === 0 && searchText) {
-                            if (!noMatchMessage) {
-                                const messageDiv = document.createElement('div');
-                                messageDiv.className = 'no-match-message';
-                                messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
-                                messageDiv.textContent = this.i18n.note.noMatchingTags;
-                                tagPanel.querySelector('.history-tags').appendChild(messageDiv);
-                            }
-                        } else if (noMatchMessage) {
-                            noMatchMessage.remove();
-                        }
-                    });
-
-                    // 点击其他地方关闭面板
-                    const closePanel = (e: MouseEvent) => {
-                        if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
-                            tagPanel.remove();
-                            document.removeEventListener('click', closePanel);
-                        }
-                    };
-
-                    // 延迟添加点击事件，避免立即触发
-                    setTimeout(() => {
-                        document.addEventListener('click', closePanel);
-                    }, 0);
-
-                    // 添加标签悬停效果
-                    tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                        tag.addEventListener('mouseenter', () => {
-                            (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
-                        });
-                        tag.addEventListener('mouseleave', () => {
-                            (tag as HTMLElement).style.backgroundColor = '';
-                        });
-                    });
-                };
-            }
-
-            // 添加任务列表勾选框事件处理
-            historyList.addEventListener('change', async (e) => {
-                const target = e.target as HTMLInputElement;
-                if (target.classList.contains('task-list-item-checkbox')) {
-                    const timestamp = Number(target.closest('.task-list-item').getAttribute('data-timestamp'));
-                    const originalMark = target.getAttribute('data-original');
-                    const newMark = target.checked ? '[x]' : '[ ]';
-
-                    // 更新数据
-                    const note = this.data[DOCK_STORAGE_NAME].history.find(
-                        item => item.timestamp === timestamp
-                    );
-
-                    if (note) {
-                        // 获取当前任务项的完整文本
-                        const taskItemText = target.nextElementSibling.textContent.trim();
-
-                        // 使用更精确的替换方法
-                        const oldTaskItem = `${originalMark} ${taskItemText}`;
-                        const newTaskItem = `${newMark} ${taskItemText}`;
-                        note.text = note.text.replace(oldTaskItem, newTaskItem);
-
-                        // 保存更改
-                        await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-
-                        // 更新 data-original 属性
-                        target.setAttribute('data-original', newMark);
-
-                        // 添加视觉反馈
-                        const textSpan = target.nextElementSibling as HTMLElement;
-                        if (textSpan) {
-                            textSpan.style.textDecoration = target.checked ? 'line-through' : 'none';
-                            textSpan.style.opacity = target.checked ? '0.6' : '1';
-                        }
-
-                        // 可选：添加操作成功的提示
-                        showMessage(target.checked ? '已完成任务' : '已取消完成');
-                    }
-                }
-            });
-
-            // 处理加载更多按钮点击事件
-            const loadMoreBtn = historyList.querySelector('.load-more-btn');
-            if (loadMoreBtn) {
-                loadMoreBtn.onclick = () => {
-                    this.currentDisplayCount += ITEMS_PER_PAGE;
-
-                    // 获取历史内容容器
-                    const historyContent = historyList.querySelector('.history-content');
-                    if (historyContent) {
-                        // 移除加载更多按钮和"没有更多"提示
-                        const oldLoadMore = historyContent.querySelector('.load-more-btn')?.parentElement;
-                        const noMoreItems = historyContent.querySelector('.fn__flex-center');
-                        if (oldLoadMore) oldLoadMore.remove();
-                        if (noMoreItems) noMoreItems.remove();
-
-                        // 渲染新的历史记录并追加
-                        const newContent = this.renderHistory([], showAll, true);
-
-                        // 将新内容插入到历史记录列表的末尾
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = newContent;
-                        while (tempDiv.firstChild) {
-                            historyContent.appendChild(tempDiv.firstChild);
-                        }
-
-                        // 获取源数据
-                        const sourceData = this.showArchived ?
-                            this.data[ARCHIVE_STORAGE_NAME].history :
-                            this.data[DOCK_STORAGE_NAME].history;
-
-                        // 过滤数据
-                        const filteredHistory = this.selectedTags.length > 0
-                            ? sourceData.filter(item =>
-                                this.selectedTags.some(tag => item.tags?.includes(tag))
-                            )
-                            : sourceData;
-
-                        const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
-
-                        // 添加新的加载更多按钮或"没有更多"提示
-                        if (unpinnedHistory.length > this.currentDisplayCount) {
-                            historyContent.insertAdjacentHTML('beforeend',
-                                this.renderLoadMoreButton(this.currentDisplayCount, unpinnedHistory.length)
-                            );
-                        } else {
-                            historyContent.insertAdjacentHTML('beforeend', this.renderNoMoreItems());
-                        }
-
-                        // 为新添加的内容绑定事件
-                        this.setupHistoryListEvents(historyContent, renderDock, showAll);
-                    }
-                };
-            }
-        }
-    }
 
     // 设置搜索功能
     private setupSearchFeature(container: HTMLElement) {
@@ -1963,16 +1939,16 @@ export default class PluginSample extends Plugin {
 
                 if (!searchText) {
                     this.currentDisplayCount = ITEMS_PER_PAGE;
-                    this.dock.renderDock(false);
+                    this.renderDockHistory();
                     return;
                 }
                 // 在选定的数据源中搜索
                 const filteredHistory = this.historyService.searchHistory(searchText);
-                console.log("filteredHistory",filteredHistory);
+                console.log("filteredHistory", filteredHistory);
 
                 // 只更新历史记录内容部分
                 const historyContent = container.querySelector('.history-content');
-                console.log("historyContent",historyContent);
+                console.log("historyContent", historyContent);
                 if (historyContent) {
                     const pinnedHistory = filteredHistory.filter(item => item.isPinned);
                     const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
@@ -2011,7 +1987,7 @@ export default class PluginSample extends Plugin {
                     });
 
                     // 重新绑定事件
-                    this.setupHistoryListEvents(historyContent, this.dock.renderDock, true);
+                    this.setupHistoryListEvents();
                 }
             };
 
@@ -2026,7 +2002,7 @@ export default class PluginSample extends Plugin {
     }
 
     // 设置排序功能
-    private setupSortFeature(container: HTMLElement, renderDock: (showAll: boolean) => void) {
+    private setupSortFeature(container: HTMLElement) {
         const sortBtn = container.querySelector('.sort-btn');
         if (sortBtn) {
             const sortIcon = sortBtn.querySelector('svg');
@@ -2043,13 +2019,13 @@ export default class PluginSample extends Plugin {
                     sortIcon.style.transform = this.isDescending ? 'rotate(0deg)' : 'rotate(180deg)';
                 }
 
-                renderDock(true);
+                this.initDockPanel();
             };
         }
     }
 
     // 设置标签过滤功能
-    private setupFilterFeature(container: HTMLElement, renderDock: (showAll: boolean) => void) {
+    private setupFilterFeature(container: HTMLElement) {
         const filterBtn = container.querySelector('.filter-btn');
         const filterPanel = container.querySelector('.filter-panel');
         if (filterBtn && filterPanel) {
@@ -2062,7 +2038,7 @@ export default class PluginSample extends Plugin {
             };
 
             // 获取所有标签及其使用次数
-            const tagUsage = this.data[DOCK_STORAGE_NAME]?.history
+            const tagUsage = this.historyService.getCurrentData()
                 .flatMap(item => item.tags || [])
                 .reduce((acc, tag) => {
                     acc[tag] = (acc[tag] || 0) + 1;
@@ -2152,9 +2128,9 @@ export default class PluginSample extends Plugin {
             const filterTags = filterPanel.querySelectorAll('.filter-tag');
             filterTags.forEach(tag => {
                 tag.addEventListener('click', () => {
+                    console.log("tag.addEventListener");
                     const isSelected = tag.getAttribute('data-selected') === 'true';
                     tag.setAttribute('data-selected', (!isSelected).toString());
-
                     if (!isSelected) {
                         tag.style.backgroundColor = 'var(--b3-theme-primary)';
                         tag.style.color = 'var(--b3-theme-on-primary)';
@@ -2173,7 +2149,6 @@ export default class PluginSample extends Plugin {
                     const filterPanelDisplay = filterPanel.style.display;
                     const filterBtnColor = filterBtn.style.color;
 
-                    renderDock(true);
 
                     const newFilterPanel = container.querySelector('.filter-panel');
                     const newFilterBtn = container.querySelector('.filter-btn');
@@ -2181,6 +2156,8 @@ export default class PluginSample extends Plugin {
                         newFilterPanel.style.display = filterPanelDisplay;
                         newFilterBtn.style.color = filterBtnColor;
                     }
+                    this.historyService.updateSelectedTags(this.selectedTags);
+                    this.renderDockHistory();
                 });
             });
         }
@@ -2218,7 +2195,7 @@ export default class PluginSample extends Plugin {
                     link.click();
                     document.body.removeChild(link);
 
-                    showMessage(this.i18n.note.exportSuccess);
+                    // showMessage(this.i18n.note.exportSuccess);
                 } catch (error) {
                     console.error('Export failed:', error);
                     showMessage('导出失败');
@@ -2293,120 +2270,6 @@ export default class PluginSample extends Plugin {
                 uploadInput.value = '';
             });
         }
-    }
-
-    private async archiveItem(timestamp: number, renderDock: (showAll: boolean) => void) {
-        const success = await this.historyService.archiveItem(timestamp, async (data) => {
-            this.data[DOCK_STORAGE_NAME].history = data.history;
-            this.data[ARCHIVE_STORAGE_NAME].history = data.archivedHistory;
-            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-            await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
-        });
-
-        if (success) {
-            showMessage(this.i18n.note.archiveSuccess);
-            renderDock(false);
-        }
-    }
-
-
-    private renderHistoryItem(item: HistoryItem, showDivider: boolean = true): string {
-        const html = `
-            <div class="history-item" data-timestamp="${item.timestamp}" style="
-                padding: 12px;
-                background: var(--b3-theme-background);
-                border-radius: 4px;
-                margin-bottom: ${showDivider ? '8px' : '0'};
-                position: relative;
-                ${item.isPinned ? 'border: 1px solid var(--b3-theme-primary);' : 'border: 1px solid var(--b3-border-color);'}
-            ">
-                <div class="fn__flex" style="justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                    <div class="fn__flex-1" style="margin-right: 8px;">
-                        <div class="markdown-content" style="margin-bottom: 8px;">
-                            ${this.renderMarkdown(item.text)}
-                        </div>
-                        ${this.renderTags(item.tags || [])}
-                    </div>
-                    <div class="fn__flex" style="gap: 4px;">
-                        ${this.renderItemButtons(item)}
-                    </div>
-                </div>
-                <div style="font-size: 12px; color: var(--b3-theme-on-surface); opacity: 0.68;">
-                    ${new Date(item.timestamp).toLocaleString()}
-                </div>
-                ${item.isPinned ? `
-                    <div style="position: absolute; top: -6px; right: -6px; background: var(--b3-theme-primary); color: var(--b3-theme-on-primary); padding: 2px 4px; border-radius: 4px; font-size: 10px;">
-                        ${this.i18n.note.pinned}
-                    </div>
-                ` : ''}
-            </div>
-        `;
-
-        // 在元素渲染完成后绑定事件
-        setTimeout(() => {
-            const itemElement = document.querySelector(`[data-timestamp="${item.timestamp}"]`);
-            if (itemElement) {
-                this.setupItemEvents(itemElement, item.timestamp);
-            }
-        }, 0);
-
-        return html;
-    }
-
-    private setupItemEvents(element: HTMLElement, timestamp: number) {
-        // 编辑按钮
-        const editBtn = element.querySelector('.edit-btn');
-        if (editBtn) {
-            editBtn.addEventListener('click', () => {
-                const item = this.historyService.getHistoryItem(timestamp);
-                if (item) {
-                    this.editHistoryItem(this.dock, timestamp, item.text);
-                }
-            });
-        }
-
-        // 删除按钮
-        const deleteBtn = element.querySelector('.delete-btn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', async () => {
-                if (await confirm(this.i18n.note.confirmDelete)) {
-                    const success = await this.historyService.deleteHistoryItem(timestamp);
-                    if (success) {
-                        showMessage(this.i18n.note.deleteSuccess);
-                        this.dock.renderDock(false);
-                    }
-                }
-            });
-        }
-
-        // 归档按钮
-        const archiveBtn = element.querySelector('.archive-btn');
-        if (archiveBtn) {
-            archiveBtn.addEventListener('click', async () => {
-                const success = await this.historyService.archiveItem(timestamp);
-                if (success) {
-                    showMessage(this.i18n.note.archiveSuccess);
-                    this.dock.renderDock(false);
-                }
-            });
-        }
-    }
-
-    private renderItemButtons(item: HistoryItem): string {
-        return `
-            <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__w" aria-label="${this.i18n.note.edit}" style="padding: 4px;">
-                <svg class="b3-button__icon"><use xlink:href="#iconEdit"></use></svg>
-            </button>
-            <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__w" aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}" style="padding: 4px;">
-                <svg class="b3-button__icon"><use xlink:href="#iconPin"></use></svg>
-            </button>
-            <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__w" aria-label="${this.i18n.note.archive}" style="padding: 4px;">
-                <svg class="b3-button__icon"><use xlink:href="#iconArchive"></use></svg>
-            </button>
-            <button class="b3-button b3-button--text delete-btn b3-tooltips b3-tooltips__w" aria-label="${this.i18n.note.delete}" style="padding: 4px;">
-                <svg class="b3-button__icon"><use xlink:href="#iconTrashcan"></use></svg>
-            </button>
-        `;
     }
 
 }

@@ -32,6 +32,7 @@ export interface RenderCallback {
     (showAll?: boolean): void;
 }
 export class HistoryService {
+    private i18n: any;
     private data: HistoryData;
     private isDescending: boolean = true;
     private selectedTags: string[] = [];
@@ -40,11 +41,12 @@ export class HistoryService {
     private readonly itemsPerPage: number;
     private parent: Plugin;
 
-    constructor(parent: Plugin, data: HistoryData, itemsPerPage: number = 10) {
+    constructor(parent: Plugin, data: HistoryData, itemsPerPage: number = 10, i18n: any) {
         this.parent = parent;
         this.data = data;
         this.itemsPerPage = itemsPerPage;
         this.currentDisplayCount = itemsPerPage;
+        this.i18n = i18n;
     }
 
     public setIsDescending(isDescending: boolean) {
@@ -89,7 +91,7 @@ export class HistoryService {
 
         // 根据 showAll 参数决定返回的非置顶项数量
         const slicedUnpinnedItems = showAll ?
-            unpinnedItems.slice(0, this.currentDisplayCount) :
+            unpinnedItems.slice(0, unpinnedItems.length) :
             unpinnedItems.slice(0, this.itemsPerPage);
 
         return {
@@ -127,6 +129,7 @@ export class HistoryService {
     }
 
     public updateSelectedTags(tags: string[]) {
+        console.log("updateSelectedTags", tags);
         this.selectedTags = tags;
     }
 

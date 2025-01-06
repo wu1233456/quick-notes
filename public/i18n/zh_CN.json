@@ -100,7 +100,8 @@
         "uploadImage": "上传图片",
         "uploadSuccess": "上传成功",
         "uploadFailed": "上传失败",
-        "editSuccess": "编辑成功"
+        "editSuccess": "编辑成功",
+        "placeholder": "在这里输入你的想法..."
     },
     "openTagPanel": "打开标签选择面板"
 }
