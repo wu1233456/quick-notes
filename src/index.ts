@@ -6,9 +6,7 @@ import {
     Menu,
     adaptHotkey,
     getFrontend,
-    IModel,
-    ICard,
-    ICardData
+    IModel
 } from "siyuan";
 import "@/index.scss";
 
@@ -26,21 +24,19 @@ export default class PluginQuickNote extends Plugin {
     private tempNoteContent: string = ''; // 添加临时内容存储
     private tempNoteTags: string[] = []; // 添加临时标签存储
 
-    customTab: () => IModel;
-    private isMobile: boolean;
-    private isDescending: boolean = true;
-    private element: HTMLElement;
-    private inputText: string;
-    private currentDisplayCount: number = ITEMS_PER_PAGE;
-    private selectedTags: string[] = [];
-    private showArchived: boolean = false;
-
-    private isBatchSelect: boolean = false;
+    private isDescending: boolean = true; //是否降序
+    private element: HTMLElement;  //侧边栏dock元素
+    private currentDisplayCount: number = ITEMS_PER_PAGE; //当前历史小记显示数量
+    private selectedTags: string[] = [];//过滤标签
+    private showArchived: boolean = false;//是否显示归档小记
+    private isBatchSelect: boolean = false;//是否处于批量选择状态
 
     private exportDialog: ExportDialog;
     private exportService: ExportService;
     private historyService: HistoryService;
 
+    // 在类定义开始处添加属性
+    private historyClickHandler: (e: MouseEvent) => Promise<void>;
 
     async onload() {
         await this.initData();
@@ -50,9 +46,11 @@ export default class PluginQuickNote extends Plugin {
 
     async onLayoutReady() {
         console.log("onLayoutReady");
+        // this.initDockPanel();
     }
 
     async onunload() {
+        this.cleanupEventListeners();
         console.log(this.i18n.byePlugin);
     }
 
@@ -146,13 +144,14 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private initDockPanel() {
+        console.log("initDockPanel");
         let element = this.element;
         element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="height: 100%;">
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column dock_quicknotes_container">
                                     <div class="topbar-container" style="width:100%"></div>
-                                    <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'width:95%;display:block' : 'width:95%;display:None'}" ></div>
-                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width:95%;"></div>
-                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px; width: 95%;">
+                                    <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'margin:0 8px;display:block' : 'display:None'}" ></div>
+                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; margin:0 8px;"></div>
+                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px;">
                                     </div>
                                 </div>
                             </div>`;
@@ -203,15 +202,12 @@ export default class PluginQuickNote extends Plugin {
             let element = this.element;
             const editorToggleBtn = element.querySelector('.editor_toggle_btn');
             editorToggleBtn.addEventListener('click',async ()=>{
-                console.log("editorToggleBtn");
-                console.log("toggle-editor");
                 const editorContainer = element.querySelector('.editor-container');
                 if (editorContainer) {
                     const isVisible = editorContainer.style.display !== 'none';
                     editorContainer.style.display = isVisible ? 'none' : 'block';
                     // 保存状态
                     this.data[CONFIG_DATA_NAME].editorVisible = !isVisible;
-                    console.log("this.data[CONFIG_DATA_NAME]", this.data[CONFIG_DATA_NAME]);
                     await this.saveData(CONFIG_DATA_NAME, this.data[CONFIG_DATA_NAME]);
                     // 更新按钮图标和提示文本
                     const icon = editorToggleBtn.querySelector('use');
@@ -403,6 +399,7 @@ export default class PluginQuickNote extends Plugin {
     }
     private bindDockerToolbarEvents(){
         let element = this.element;
+    
 
         // 添加批量选择相关的事件处理
         const container = element.querySelector('.toolbar-container');
@@ -1039,20 +1036,26 @@ export default class PluginQuickNote extends Plugin {
                     }
 
                     // 重新绑定新添加内容的事件处理
-                    this.setupHistoryListEvents();
+                    this.bindHistoryListEvents();
                 }
             };
         }
 
         // 监听历史记录点击事件
-        this.setupHistoryListEvents();
+        this.bindHistoryListEvents();
     }
 
        // 设置历史小记中的编辑、复制、删除事件
-    private setupHistoryListEvents() {
+    private bindHistoryListEvents() {
+        console.log("开始绑定历史小记事件")
         let element = this.element;
-        let historyList =  element.querySelector('.history-list')
-        historyList.addEventListener('click',async (e)=>{
+        let historyList = element.querySelector('.history-list');
+        
+        // 移除旧的事件监听器
+        historyList.removeEventListener('click', this.historyClickHandler);
+        
+        // 创建新的事件处理函数
+        this.historyClickHandler = async (e) => {
             const target = e.target as HTMLElement;
             const moreBtn = target.closest('.more-btn') as HTMLElement;
             const copyBtn = target.closest('.copy-btn') as HTMLElement;
@@ -1081,24 +1084,27 @@ export default class PluginQuickNote extends Plugin {
                 }
             } else if (moreBtn) {
                 e.stopPropagation();
+                console.log("moreBtn被点击")
                 const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
                 const rect = moreBtn.getBoundingClientRect();
-
+                
                 // 获取当前记录项
-                const currentItem = this.showArchived ?
-                    this.data[ARCHIVE_STORAGE_NAME].history.find(
-                        item => item.timestamp === timestamp
-                    ) :
-                    this.data[DOCK_STORAGE_NAME].history.find(
-                        item => item.timestamp === timestamp
-                    );
+                const currentItem = this.historyService.getHistoryItem(timestamp);
+                console.log("timestamp:", timestamp);
+                console.log("currentItem:", currentItem);
 
                 const menu = new Menu("historyItemMenu");
+                if (!menu) {
+                    console.error("Failed to create menu");
+                    return;
+                }
+
                 menu.addItem({
                     icon: "iconPin",
                     label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
                     click: async () => {
-                        this.historyService.toggleItemPin(timestamp);
+                        await this.historyService.toggleItemPin(timestamp);
+                        menu.close();
                         this.renderDockHistory();
                     }
                 });
@@ -1109,20 +1115,13 @@ export default class PluginQuickNote extends Plugin {
                     label: this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
                     click: async () => {
                         if (this.showArchived) {
-                            // 从归档中恢复
-                            const index = this.data[ARCHIVE_STORAGE_NAME].history.findIndex(
-                                i => i.timestamp === timestamp
-                            );
-                            if (index !== -1) {
-                                const item = this.data[ARCHIVE_STORAGE_NAME].history.splice(index, 1)[0];
-                                this.data[DOCK_STORAGE_NAME].history.unshift(item);
-                                await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
-                                await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                                showMessage(this.i18n.note.unarchiveSuccess);
-                            }
+                            await this.historyService.unarchiveItem(timestamp);
                         } else {
                             await this.historyService.archiveItem(timestamp);
                         }
+                        
+                        menu.close();
+                        this.renderDockerToolbar();
                         this.renderDockHistory();
                     }
                 });
@@ -1133,11 +1132,11 @@ export default class PluginQuickNote extends Plugin {
                     click: async () => {
                         confirm(this.i18n.note.delete, this.i18n.note.deleteConfirm, async () => {
                         this.historyService.deleteItem(timestamp);
+                        menu.close();
                         this.renderDockerToolbar();
                         this.renderDockHistory();
                     })}
                 });
-
                 menu.open({
                     x: rect.right,
                     y: rect.bottom,
@@ -1167,48 +1166,10 @@ export default class PluginQuickNote extends Plugin {
                 }
                 e.stopPropagation();
             }
-        });
-           // 添加任务列表勾选框事件处理
-        historyList.addEventListener('change', async (e) => {
-            const target = e.target as HTMLInputElement;
-            if (target.classList.contains('task-list-item-checkbox')) {
-                const timestamp = Number(target.closest('.task-list-item').getAttribute('data-timestamp'));
-                const originalMark = target.getAttribute('data-original');
-                const newMark = target.checked ? '[x]' : '[ ]';
+        };
 
-                // 更新数据
-                const note = this.data[DOCK_STORAGE_NAME].history.find(
-                    item => item.timestamp === timestamp
-                );
-
-                if (note) {
-                    // 获取当前任务项的完整文本
-                    const taskItemText = target.nextElementSibling.textContent.trim();
-
-                    // 使用更精确的替换方法
-                    const oldTaskItem = `${originalMark} ${taskItemText}`;
-                    const newTaskItem = `${newMark} ${taskItemText}`;
-                    note.text = note.text.replace(oldTaskItem, newTaskItem);
-
-                    // 保存更改
-                    await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-
-                    // 更新 data-original 属性
-                    target.setAttribute('data-original', newMark);
-
-                    // 添加视觉反馈
-                    const textSpan = target.nextElementSibling as HTMLElement;
-                    if (textSpan) {
-                        textSpan.style.textDecoration = target.checked ? 'line-through' : 'none';
-                        textSpan.style.opacity = target.checked ? '0.6' : '1';
-                    }
-
-                    // 可选：添加操作成功的提示
-                    showMessage(target.checked ? '已完成任务' : '已取消完成');
-                }
-            }
-        });
-
+        // 添加新的事件监听器
+        historyList.addEventListener('click', this.historyClickHandler);
     }
 
     private bindDockPanelEvents() {
@@ -1927,7 +1888,7 @@ export default class PluginQuickNote extends Plugin {
                     });
 
                     // 重新绑定事件
-                    this.setupHistoryListEvents();
+                    this.bindHistoryListEvents();
                 }
             };
 
@@ -2144,23 +2105,6 @@ export default class PluginQuickNote extends Plugin {
         }
     }
 
-    private showExportDialog() {
-        this.exportDialog.show(
-            {
-                history: this.data[DOCK_STORAGE_NAME].history,
-                archivedHistory: this.data[ARCHIVE_STORAGE_NAME]?.history
-            },
-            this.data[DOCK_STORAGE_NAME],
-            (filteredData, format) => {
-                if (this.exportService.exportData(filteredData, format)) {
-                    showMessage(this.i18n.note.exportSuccess);
-                } else {
-                    showMessage(this.i18n.note.exportFailed);
-                }
-            }
-        );
-    }
-
     // 在 createNewNote 和 editHistoryItem 方法中添加图片上传事件处理
     private setupImageUpload(container: HTMLElement) {
         const uploadBtn = container.querySelector('.upload-image-btn');
@@ -2209,6 +2153,13 @@ export default class PluginQuickNote extends Plugin {
                 // 清空 input，允许重复上传相同文件
                 uploadInput.value = '';
             });
+        }
+    }
+
+    private cleanupEventListeners() {
+        const historyList = this.element?.querySelector('.history-list');
+        if (historyList && this.historyClickHandler) {
+            historyList.removeEventListener('click', this.historyClickHandler);
         }
     }
 
