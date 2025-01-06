@@ -101,7 +101,7 @@
 - The image upload and preview functions have been added.
 - A new shortcut key "⌘K" (Windows: "Ctrl + K") for adding tags has been added. It enables you to quickly add tags, select tags with the up and down arrow keys, and confirm with the Enter key.
 - The experience of adding tags has been optimized, with support for tag searching and quick selection. 
-
+- The content in the new note window summoned by the shortcut keys will be temporarily saved. Input will not be lost due to closing the new note window until it is saved or the Siyuan software is restarted. 
 
 
 ### v1.0.7 (2024-01-04)
