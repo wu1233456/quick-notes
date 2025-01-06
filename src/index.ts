@@ -46,7 +46,6 @@ export default class PluginQuickNote extends Plugin {
 
     async onLayoutReady() {
         console.log("onLayoutReady");
-        // this.initDockPanel();
     }
 
     async onunload() {
@@ -178,7 +177,7 @@ export default class PluginQuickNote extends Plugin {
                 <use xlink:href="${this.data[CONFIG_DATA_NAME].editorVisible ? '#iconPreview' : '#iconEdit'}"></use>
             </svg>
         </span>
-        <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Refresh">
+        <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw refresh_btn" aria-label="Refresh">
             <svg class="block__logoicon">
                 <use xlink:href="#iconRefresh"></use>
             </svg>
@@ -217,21 +216,12 @@ export default class PluginQuickNote extends Plugin {
                     editorToggleBtn.setAttribute('aria-label', !isVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor);
                 }
             });
-            // element.querySelectorAll('button, .block__icon').forEach(button => {
-            //     const type = button.getAttribute('data-type');
-            //     if (type) {
-            //         button.onclick = async () => {
-            //             switch (type) {
-            //                 case 'refresh':
-            //                     this.initData();
-            //                     this.initDockPanel();
-            //                     break;
-            //                 case 'export':
-            //                     break;
-            //             }
-            //         };
-            //     }
-            // });
+            const refreshBtn = element.querySelector('.refresh_btn');
+            refreshBtn.addEventListener('click',async ()=>{
+                this.currentDisplayCount = ITEMS_PER_PAGE;
+                this.initData();
+                this.initDockPanel();
+            });
     }
     private renderDockerEditor(){
         let element = this.element;
@@ -1038,7 +1028,6 @@ export default class PluginQuickNote extends Plugin {
 
        // 设置历史小记中的编辑、复制、删除事件
     private bindHistoryListEvents() {
-        console.log("开始绑定历史小记事件")
         let element = this.element;
         let historyList = element.querySelector('.history-list');
         
@@ -2059,7 +2048,7 @@ export default class PluginQuickNote extends Plugin {
         if (exportBtn) {
             exportBtn.onclick = () => {
                 try {
-                    const exportData = this.data[DOCK_STORAGE_NAME].history.map(item => ({
+                    const exportData = this.historyService.getCurrentData().map(item => ({
                         '内容': item.text,
                         '标签': (item.tags || []).join(', '),
                         '时间': new Date(item.timestamp).toLocaleString(),
