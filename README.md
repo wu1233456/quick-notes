@@ -10,6 +10,7 @@
 - `⌘Enter` to save content quickly
 - `⌘K` to add tags quickly
 - Support image upload and preview
+- Support task lists. Entering "[]" allows you to create a task list. The historical notes will be rendered as checkboxes, and you can tick them to mark tasks as completed.
 
 ### 2. Markdown Support
 - Full Markdown syntax support
@@ -54,6 +55,7 @@
    - Press hotkey globally (Windows: `Ctrl+Shift+Y`, macOS: `⇧⌘Y`)
    - Click Quick Notes icon in toolbar
    - Use hotkey to save (Windows: `Ctrl+Enter`, macOS: `⌘Enter`)
+   - Enter "[]" to create a task list
 
 2. Tag Management:
    - Press hotkey to add tags while editing (Windows: `Ctrl+K`, macOS: `⌘K`)
@@ -92,6 +94,15 @@
 + - `⌘W`: Close Quick Notes window
 
 ## Changelog
+
+
+### v1.0.8 (2025-01-07)
+- A new task list feature has been added. Entering "[]" allows you to create a task list. Historical notes will be rendered as checkboxes, and you can tick them to mark tasks as completed.
+- The image upload and preview functions have been added.
+- A new shortcut key "⌘K" (Windows: "Ctrl + K") for adding tags has been added. It enables you to quickly add tags, select tags with the up and down arrow keys, and confirm with the Enter key.
+- The experience of adding tags has been optimized, with support for tag searching and quick selection. 
+
+
 
 ### v1.0.7 (2024-01-04)
 - Optimize global hotkey, support `⇧⌘Y` outside SiYuan
