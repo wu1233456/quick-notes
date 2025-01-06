@@ -58,8 +58,6 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private async initData() {
-        const frontEnd = getFrontend();
-        this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
         // 初始化配置数据
         this.data[CONFIG_DATA_NAME] = await this.loadData(CONFIG_DATA_NAME) || {
@@ -68,23 +66,20 @@ export default class PluginQuickNote extends Plugin {
         console.log("Config data loaded:", this.data[CONFIG_DATA_NAME]);
 
         // 初始化未归档小记数据
-        this.data[DOCK_STORAGE_NAME] = await this.loadData(DOCK_STORAGE_NAME) || {
+        let unarchive_history = await this.loadData(DOCK_STORAGE_NAME) || {
             history: []
         };
-        console.log("Dock data loaded:", this.data[DOCK_STORAGE_NAME]);
 
         // 初始化归档数据
-        this.data[ARCHIVE_STORAGE_NAME] = await this.loadData(ARCHIVE_STORAGE_NAME) || {
+        let archive_history = await this.loadData(ARCHIVE_STORAGE_NAME) || {
             history: []
         };
-        console.log("Archive data loaded:", this.data[ARCHIVE_STORAGE_NAME]);
 
         // 初始化历史服务
         const historyData: HistoryData = {
-            history: this.data[DOCK_STORAGE_NAME]?.history || [],
-            archivedHistory: this.data[ARCHIVE_STORAGE_NAME]?.history
+            history: unarchive_history.history || [],
+            archivedHistory: archive_history.history || []
         };
-        console.log("History data initialized:", historyData);
         
         this.historyService = new HistoryService(this, historyData, ITEMS_PER_PAGE, this.i18n);
 
@@ -470,12 +465,7 @@ export default class PluginQuickNote extends Plugin {
                     label: this.i18n.note.sortByTimeDesc,
                     click: () => {
                         this.isDescending = true;
-                        // 根据当前状态选择要排序的数据源
-                        if (this.showArchived) {
-                            this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
-                        } else {
-                            this.data[DOCK_STORAGE_NAME].history.sort((a, b) => b.timestamp - a.timestamp);
-                        }
+                        this.historyService.setIsDescending(true);
                         // renderDock(true);
                         this.renderDockHistory();
                     }
@@ -484,13 +474,7 @@ export default class PluginQuickNote extends Plugin {
                     label: this.i18n.note.sortByTimeAsc,
                     click: () => {
                         this.isDescending = false;
-                        // 根据当前状态选择要排序的数据源
-                        if (this.showArchived) {
-                            this.data[ARCHIVE_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
-                        } else {
-                            this.data[DOCK_STORAGE_NAME].history.sort((a, b) => a.timestamp - b.timestamp);
-                        }
-                        
+                        this.historyService.setIsDescending(false);
                         this.renderDockHistory();
                     }
                 }]
@@ -602,41 +586,18 @@ export default class PluginQuickNote extends Plugin {
                     async () => {
                         try {
                             if (this.showArchived) {
-                                // 批量取消归档
-                                const itemsToUnarchive = this.data[ARCHIVE_STORAGE_NAME].history
-                                    .filter(item => selectedTimestamps.includes(item.timestamp));
-
-                                // 从归档中移除
-                                this.data[ARCHIVE_STORAGE_NAME].history =
-                                    this.data[ARCHIVE_STORAGE_NAME].history
-                                        .filter(item => !selectedTimestamps.includes(item.timestamp));
-
-                                // 添加到活动记录
-                                this.data[DOCK_STORAGE_NAME].history.unshift(...itemsToUnarchive);
+                                this.historyService.batchUnarchiveItems(selectedTimestamps);
                             } else {
-                                // 批量归档
-                                const itemsToArchive = this.data[DOCK_STORAGE_NAME].history
-                                    .filter(item => selectedTimestamps.includes(item.timestamp));
-
-                                // 从活动记录中移除
-                                this.data[DOCK_STORAGE_NAME].history =
-                                    this.data[DOCK_STORAGE_NAME].history
-                                        .filter(item => !selectedTimestamps.includes(item.timestamp));
-
-                                // 添加到归档
-                                this.data[ARCHIVE_STORAGE_NAME].history.unshift(...itemsToArchive);
+                               this.historyService.batchArchiveItems(selectedTimestamps);
                             }
 
-                            // 保存更改
-                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
-                            await this.saveData(ARCHIVE_STORAGE_NAME, this.data[ARCHIVE_STORAGE_NAME]);
-
+                            
                             showMessage(this.showArchived ?
                                 this.i18n.note.batchUnarchiveSuccess :
                                 this.i18n.note.batchArchiveSuccess
                             );
 
-                            cancelSelectBtn.click(); // 操作完成后退出选择模式
+                            // cancelSelectBtn.click(); // 操作完成后退出选择模式
                             this.renderDockerToolbar();
                             this.renderDockHistory();
                         } catch (error) {
@@ -755,7 +716,7 @@ export default class PluginQuickNote extends Plugin {
                 }
 
                 // 获取所有已有标签
-                const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
+                const allTags = Array.from(new Set(this.historyService.getCurrentData()
                     ?.flatMap(item => item.tags || []) || []));
 
                 // 修改面板内容结构
@@ -775,8 +736,8 @@ export default class PluginQuickNote extends Plugin {
                                 ${allTags.length > 0 ?
                         allTags
                             .sort((a, b) => {
-                                const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
-                                const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
                                 return countB - countA;
                             })
                             .map(tag => `
@@ -787,7 +748,7 @@ export default class PluginQuickNote extends Plugin {
                                                     ${tag}
                                                 </span>
                                                 <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                    ${this.historyService.getCurrentData()?.filter(item => item.tags?.includes(tag)).length}
                                                 </span>
                                             </div>
                                         `).join('')
@@ -811,18 +772,9 @@ export default class PluginQuickNote extends Plugin {
                 const addTag = async (tagText: string) => {
                     if (tagText.trim()) {
                         // 更新选中小记的标签
-                        const updatedItems = [];
-                        for (const timestamp of selectedTimestamps) {
-                            const note = this.data[DOCK_STORAGE_NAME].history.find(note => note.timestamp === timestamp);
-                            if (note) {
-                                note.tags = [tagText.trim()]; // 直接覆盖原有标签
-                                updatedItems.push(note);
-                            }
-                        }
-
-                        if (updatedItems.length > 0) {
-                            // 保存更改
-                            await this.saveData(DOCK_STORAGE_NAME, this.data[DOCK_STORAGE_NAME]);
+            
+                        if (selectedTimestamps.length > 0) {
+                            this.historyService.batchUpdateTags(selectedTimestamps, [tagText.trim()]);
                             showMessage(this.i18n.note.tagSuccess);
 
                             // 取消选择模式并关闭面板
@@ -1009,9 +961,8 @@ export default class PluginQuickNote extends Plugin {
                     if (totalUnpinnedCount > this.currentDisplayCount) {
                         // 还有更多内容可以加载
                         loadMoreBtn.textContent = `${this.i18n.note.loadMore} (${this.i18n.note.showing
-                            .replace('${shown}', this.currentDisplayCount.toString())
-                            .replace('${total}', totalUnpinnedCount.toString())})`;
-                        loadMoreContainer.style.display = '';
+                            .replace('${num}', (totalUnpinnedCount - this.currentDisplayCount).toString())})`;
+                        loadMoreContainer.style.display = ''
                         if (noMoreContainer) noMoreContainer.style.display = 'none';
                     } else {
                         // 没有更多内容了
@@ -1414,8 +1365,7 @@ export default class PluginQuickNote extends Plugin {
             <div class="fn__flex-center" style="padding: 8px 8px 0;">
                 <button class="b3-button b3-button--outline load-more-btn">
                     ${this.i18n.note.loadMore} (${this.i18n.note.showing
-                .replace('${shown}', shown.toString())
-                .replace('${total}', total.toString())})
+                .replace('${num}', (total - shown).toString())}
                 </button>
             </div>`;
     }
@@ -1608,8 +1558,12 @@ export default class PluginQuickNote extends Plugin {
                     <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
                     <div class="fn__flex" style="justify-content: space-between; align-items: center;">
                         <div class="fn__flex" style="gap: 8px;">
-                            <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.addTag}">
-                                <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconTags"></use></svg>
+                            <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" 
+                                style="padding: 4px;" 
+                                aria-label="${this.i18n.note.addTag} ${adaptHotkey('⌘K')}">
+                                <svg class="b3-button__icon" style="height: 16px; width: 16px;">
+                                    <use xlink:href="#iconTags"></use>
+                                </svg>
                             </button>
                             <button class="b3-button b3-button--text upload-image-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.uploadImage}">
                                 <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconImage"></use></svg>
@@ -1633,17 +1587,12 @@ export default class PluginQuickNote extends Plugin {
             addTagBtn.onclick = (e) => {
                 e.stopPropagation();
 
-                // 添加调试日志
-                console.log('DOCK_STORAGE_NAME data:', this.data[DOCK_STORAGE_NAME]);
-                console.log('History:', this.data[DOCK_STORAGE_NAME]?.history);
 
                 // 获取所有标签并去重
                 const allTags = Array.from(new Set(this.historyService.getCurrentData()
                     ?.filter(item => item && Array.isArray(item.tags))
                     .flatMap(item => item.tags || [])
                 ));
-
-                console.log('Available tags:', allTags);
 
                 // 创建标签选择面板
                 const tagPanel = document.createElement('div');
@@ -1767,32 +1716,95 @@ export default class PluginQuickNote extends Plugin {
 
                 // 回车添加标签
                 tagInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addTag(tagInput.value);
-                        const textarea = container.querySelector('textarea');
-                        if (textarea) {
-                            // 将焦点设置到编辑框上
-                            textarea.focus();
-                        }
+                    const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
+                    const currentSelected = tagPanel.querySelector('.history-tag.selected');
+                    let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
+
+                    switch(e.key) {
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            if (historyTags.length > 0) {
+                                // 移除当前选中项的样式
+                                if (currentSelected) {
+                                    currentSelected.classList.remove('selected');
+                                    currentSelected.style.backgroundColor = '';
+                                }
+                                // 计算下一个索引
+                                currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
+                                // 添加新选中项的样式
+                                const nextTag = historyTags[currentIndex] as HTMLElement;
+                                nextTag.classList.add('selected');
+                                nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                                // 确保选中项可见
+                                nextTag.scrollIntoView({ block: 'nearest' });
+                            }
+                            break;
+
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            if (historyTags.length > 0) {
+                                // 移除当前选中项的样式
+                                if (currentSelected) {
+                                    currentSelected.classList.remove('selected');
+                                    currentSelected.style.backgroundColor = '';
+                                }
+                                // 计算上一个索引
+                                currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
+                                // 添加新选中项的样式
+                                const prevTag = historyTags[currentIndex] as HTMLElement;
+                                prevTag.classList.add('selected');
+                                prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                                // 确保选中项可见
+                                prevTag.scrollIntoView({ block: 'nearest' });
+                            }
+                            break;
+
+                        case 'Enter':
+                            e.preventDefault();
+                            const searchText = tagInput.value.trim();
+                            if (currentSelected) {
+                                // 如果有选中的标签，使用该标签
+                                addTag(currentSelected.getAttribute('data-tag'));
+                                const textarea = container.querySelector('textarea');
+                                if (textarea) {
+                                    textarea.focus();
+                                }
+                            } else if (searchText) {
+                                // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
+                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+
+                                if (matchingTag) {
+                                    // 如果有完全匹配的标签，使用该标签
+                                    addTag(matchingTag.getAttribute('data-tag'));
+                                } else {
+                                    // 如果没有匹配的标签，创建新标签
+                                    addTag(searchText);
+                                }
+
+                                const textarea = container.querySelector('textarea');
+                                if (textarea) {
+                                    textarea.focus();
+                                }
+                            }
+                            break;
                     }
                 });
 
-                // 点击历史标签直接添加
-                tagPanel.addEventListener('click', (e) => {
-                    const target = e.target as HTMLElement;
-                    const tagChip = target.closest('.history-tag') as HTMLElement;
-                    if (tagChip) {
-                        const tagText = tagChip.getAttribute('data-tag');
-                        addTag(tagText);
-                        const textarea = container.querySelector('textarea');
-                        if (textarea) {
-                            // 将焦点设置到编辑框上
-                            textarea.focus();
+                // 修改鼠标悬停事件处理，避免与键盘选择冲突
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        if (!tag.classList.contains('selected')) {
+                            tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
                         }
-                    }
+                    });
+                    
+                    tag.addEventListener('mouseleave', () => {
+                        if (!tag.classList.contains('selected')) {
+                            tag.style.backgroundColor = '';
+                        }
+                    });
                 });
-
 
                 // 点击其他地方关闭面板
                 const closePanel = (e: MouseEvent) => {
@@ -2158,7 +2170,7 @@ export default class PluginQuickNote extends Plugin {
                         history: this.historyService.getHistoryData(),
                         archivedHistory: this.historyService.getArchivedData()
                     },
-                    this.data[DOCK_STORAGE_NAME],
+                    this.historyService.getHistoryData(),
                     (filteredData, format) => {
                         // 导出回调
                         const success = this.exportService.exportData(filteredData, format);

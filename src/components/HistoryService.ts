@@ -437,11 +437,25 @@ export class HistoryService {
                     }
                 });
 
+                // 添加快捷键事件监听
+                const textarea = dialog.element.querySelector('textarea');
+                if (textarea) {
+                    textarea.addEventListener('keydown', (e) => {
+                        // 添加标签快捷键 (Cmd/Ctrl + K)
+                        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                            e.preventDefault();
+                            const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
+                            if (addTagBtn) {
+                                addTagBtn.click();
+                            }
+                        }
+                    });
+                }
+
                 // 绑定保存按钮事件
                 const saveBtn = dialog.element.querySelector('[data-type="save"]');
-                const textarea = dialog.element.querySelector('textarea');
                 if (saveBtn && textarea) {
-                    saveBtn.onclick = async () => {
+                    (saveBtn as HTMLElement).addEventListener('click', async () => {
                         const newText = textarea.value;
                         if (newText.trim()) {
                             const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
@@ -462,7 +476,7 @@ export class HistoryService {
                             }
                         }
                         resolve(false);
-                    };
+                    });
                 }
 
                 // 设置标签功能
@@ -553,6 +567,104 @@ export class HistoryService {
             return false;
         } catch (error) {
             console.error('Failed to update item content:', error);
+            return false;
+        }
+    }
+
+    public async batchArchiveItems(timestamps: number[]): Promise<boolean> {
+        try {
+            const itemsToArchive = timestamps
+                .map(timestamp => {
+                    const index = this.data.history.findIndex(item => item.timestamp === timestamp);
+                    if (index === -1) return null;
+                    const item = this.data.history[index];
+                    // 取消置顶状态
+                    if (item.isPinned) {
+                        item.isPinned = false;
+                    }
+                    // 从历史记录中移除
+                    this.data.history.splice(index, 1);
+                    return item;
+                })
+                .filter((item): item is HistoryItem => item !== null);
+
+            if (itemsToArchive.length === 0) return false;
+
+            // 初始化归档数组（如果不存在）
+            if (!this.data.archivedHistory) {
+                this.data.archivedHistory = [];
+            }
+
+            // 添加到归档
+            this.data.archivedHistory.push(...itemsToArchive);
+
+            // 保存两个存储位置的数据
+            await this.parent.saveData(DOCK_STORAGE_NAME, { history: this.data.history });
+            await this.parent.saveData(ARCHIVE_STORAGE_NAME, { history: this.data.archivedHistory });
+            return true;
+        } catch (error) {
+            console.error('Batch archive failed:', error);
+            return false;
+        }
+    }
+
+    public async batchUnarchiveItems(timestamps: number[]): Promise<boolean> {
+        try {
+            if (!this.data.archivedHistory) return false;
+
+            const itemsToUnarchive = timestamps
+                .map(timestamp => {
+                    const index = this.data.archivedHistory!.findIndex(item => item.timestamp === timestamp);
+                    if (index === -1) return null;
+                    const item = this.data.archivedHistory![index];
+                    // 从归档中移除
+                    this.data.archivedHistory!.splice(index, 1);
+                    return item;
+                })
+                .filter((item): item is HistoryItem => item !== null);
+
+            if (itemsToUnarchive.length === 0) return false;
+
+            // 添加到历史记录
+            this.data.history.unshift(...itemsToUnarchive);
+
+            // 保存更改
+            await this.parent.saveData(DOCK_STORAGE_NAME, { history: this.data.history });
+            await this.parent.saveData(ARCHIVE_STORAGE_NAME, { history: this.data.archivedHistory });
+            return true;
+        } catch (error) {
+            console.error('Batch unarchive failed:', error);
+            return false;
+        }
+    }
+
+    private async saveCurrentData(data: HistoryItem[]): Promise<void> {
+        await this.saveData(this.getStorageKey(), data);
+    }
+
+    public async batchUpdateTags(
+        timestamps: number[],
+        tags: string[]
+    ): Promise<boolean> {
+        try {
+            const sourceData = this.getCurrentData();
+            let updateCount = 0;
+
+            timestamps.forEach(timestamp => {
+                const item = sourceData.find(item => item.timestamp === timestamp);
+                if (item) {
+                    item.tags = [...tags];
+                    updateCount++;
+                }
+            });
+
+            if (updateCount > 0) {
+                await this.saveData(this.getStorageKey(), sourceData);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('批量更新标签失败:', error);
             return false;
         }
     }

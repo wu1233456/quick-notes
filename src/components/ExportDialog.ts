@@ -9,7 +9,7 @@ export class ExportDialog {
 
     public show(data: any, storageData: any, callback: (filteredData: any[], format: string) => void) {
         // 获取所有标签
-        const allTags = Array.from(new Set(storageData?.history
+        const allTags = Array.from(new Set(storageData
             ?.flatMap(item => item.tags || []) || []));
 
         const dialog = new Dialog({
