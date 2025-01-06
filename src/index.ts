@@ -249,6 +249,13 @@ export default class PluginQuickNote extends Plugin {
                         element.querySelector('.tags-list').innerHTML = '';
                     }
                 }
+                if((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    const addTagBtn = element.querySelector('.add-tag-btn') as HTMLElement;
+                    if (addTagBtn) {
+                        addTagBtn.click();
+                    }
+                }   
             });
 
             // 实时保存输入内容
@@ -962,7 +969,7 @@ export default class PluginQuickNote extends Plugin {
 
         // 添加加载更多按钮
         const totalUnpinnedCount = filteredHistory.unpinnedItems.length;
-        console.log("totalUnpinnedCount", totalUnpinnedCount);
+        // console.log("totalUnpinnedCount", totalUnpinnedCount);
         if (totalUnpinnedCount > this.currentDisplayCount) {
             historyHtml += this.renderLoadMoreButton(this.currentDisplayCount, totalUnpinnedCount);
         } else if (displayedUnpinnedItems.length > 0) {
@@ -1042,7 +1049,7 @@ export default class PluginQuickNote extends Plugin {
         // 创建新的事件处理函数
         this.historyClickHandler = async (e) => {
             const target = e.target as HTMLElement;
-            console.log("target", target);
+            // console.log("target", target);
             
             // 添加对复选框的处理
             if (target.classList.contains('task-list-item-checkbox')) {
@@ -1060,11 +1067,7 @@ export default class PluginQuickNote extends Plugin {
                     // 使用更精确的替换方法
                     const oldTaskItem = `${originalMark}${taskItemText}`;
                     const newTaskItem = `${newMark}${taskItemText}`;
-                    console.log("oldTaskItem", oldTaskItem);
-                    console.log("newTaskItem", newTaskItem);
-                    note.text = note.text.replace(oldTaskItem, newTaskItem);
-                    console.log("note.text", note.text);
-                    
+                    note.text = note.text.replace(oldTaskItem, newTaskItem);                   
                     await this.historyService.updateItemContent(timestamp, note.text);
                     
                     // 更新 data-original 属性
@@ -1108,14 +1111,11 @@ export default class PluginQuickNote extends Plugin {
                 await this.editHistoryItem(timestamp)
             } else if (moreBtn) {
                 e.stopPropagation();
-                console.log("moreBtn被点击")
                 const timestamp = Number(moreBtn.getAttribute('data-timestamp'));
                 const rect = moreBtn.getBoundingClientRect();
                 
                 // 获取当前记录项
                 const currentItem = this.historyService.getHistoryItem(timestamp);
-                console.log("timestamp:", timestamp);
-                console.log("currentItem:", currentItem);
 
                 const menu = new Menu("historyItemMenu");
                 if (!menu) {
@@ -1471,6 +1471,24 @@ export default class PluginQuickNote extends Plugin {
                         textarea.focus();
                         // 将光标移到文本末尾
                         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+                        // 添加快捷键事件监听
+                        textarea.addEventListener('keydown', async (e) => {
+                            // 保存快捷键 (Cmd/Ctrl + Enter)
+                            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                dialog.element.querySelector('[data-type="save"]')?.click();
+                            }
+                            // 添加标签快捷键 (Cmd/Ctrl + K)
+                            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                                // console.log("ctrl/cmd + k");
+                                e.preventDefault();
+                                const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
+                                if (addTagBtn) {
+                                    addTagBtn.click();
+                                }
+                            }
+                        });
                     }
                     // 恢复之前保存的标签
                     if (this.tempNoteTags.length > 0) {
