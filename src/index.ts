@@ -1532,7 +1532,7 @@ export default class PluginQuickNote extends Plugin {
     private async saveContent(text: string, tags: string[] = []) {
         const success = await this.historyService.saveContent({ text, tags });
 
-        if (success) {
+        if (success && this.element) {
             this.initDockPanel();
         }
     }

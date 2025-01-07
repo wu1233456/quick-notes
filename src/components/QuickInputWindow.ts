@@ -16,6 +16,7 @@ interface IPlugin extends Plugin {
             existingTags: string;
             addTagPlaceholder: string;
             tagCount: string;
+            title: string;
         };
     };
 }
@@ -116,16 +117,13 @@ export class QuickInputWindow {
             return;
         }
         const { BrowserWindow } = require('@electron/remote');
-        console.log("createWindow");
-        const isMac = process.platform === 'darwin';
         this.win = new BrowserWindow({
             width: 320,
             height: 360,
-            frame: !isMac,
-            titleBarStyle: isMac ? 'hidden' : 'default',
+            frame: true,
             alwaysOnTop: false,
             skipTaskbar: true,
-            title: 'knote-quick-input',
+            title: this.plugin.i18n.note.title,
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
@@ -134,6 +132,7 @@ export class QuickInputWindow {
             },
             backgroundColor: 'var(--b3-theme-background)',
             autoHideMenuBar: true,
+            titleBarStyle: 'hidden',
             fullscreenable: false,
             maximizable: false,
             show: true
