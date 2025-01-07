@@ -33,5 +33,8 @@
     "vite": "^5.2.9",
     "vite-plugin-static-copy": "^1.0.2",
     "vite-plugin-zip-pack": "^1.0.5"
+  },
+  "dependencies": {
+    "@frostime/siyuan-plugin-kits": "github:frostime/siyuan-plugin-kits"
   }
 }

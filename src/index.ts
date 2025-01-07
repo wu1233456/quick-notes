@@ -4,12 +4,10 @@ import {
     confirm,
     Dialog,
     Menu,
-    adaptHotkey,
     getFrontend,
-    IModel
+    adaptHotkey
 } from "siyuan";
 import "@/index.scss";
-
 import { upload } from "./api";
 import { initMardownStyle } from './components/markdown';
 // 导入新的组件
@@ -18,11 +16,13 @@ import { ExportService } from './components/ExportService';
 import { HistoryService, HistoryData } from './components/HistoryService';
 import { ARCHIVE_STORAGE_NAME, DOCK_STORAGE_NAME, CONFIG_DATA_NAME, ITEMS_PER_PAGE, MAX_TEXT_LENGTH, DOCK_TYPE } from './libs/const';
 import { iconsSVG } from './components/icon';
+import { QuickInputWindow } from './components/QuickInputWindow';
 
 export default class PluginQuickNote extends Plugin {
     private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
     private tempNoteContent: string = ''; // 添加临时内容存储
     private tempNoteTags: string[] = []; // 添加临时标签存储
+    private frontend: string;
 
     private isDescending: boolean = true; //是否降序
     private element: HTMLElement;  //侧边栏dock元素
@@ -58,6 +58,7 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private async initData() {
+        this.frontend = getFrontend();
 
         // 初始化配置数据
         this.data[CONFIG_DATA_NAME] = await this.loadData(CONFIG_DATA_NAME) || {
@@ -98,20 +99,17 @@ export default class PluginQuickNote extends Plugin {
                 this.createNewNote();
             }
         });
-
         // 添加快捷键命令
         this.addCommand({
             langKey: "createNewSmallNote",
             hotkey: "⇧⌘Y",
-            // callback: () => {
-            //     this.createNewNote(this.dock);
-            // },
             globalCallback: () => {
-                this.createNewNote();
-                const { getCurrentWindow } = window.require('@electron/remote');
-                const win = getCurrentWindow();
-                win.show();
-                win.focus();
+                if(this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile'){
+                    this.createNewNote();
+                }else{
+                    const quickInputWindow = QuickInputWindow.getInstance(this);
+                    quickInputWindow.createWindow();
+                }
             }
 
         });
@@ -2197,7 +2195,7 @@ export default class PluginQuickNote extends Plugin {
         const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
         if (uploadBtn && uploadInput && textarea) {
-            console.log('setupImageUpload');
+            // console.log('setupImageUpload');
             uploadBtn.addEventListener('click', () => {
                 uploadInput.click();
             });
