@@ -117,10 +117,12 @@ export class QuickInputWindow {
         }
         const { BrowserWindow } = require('@electron/remote');
         console.log("createWindow");
+        const isMac = process.platform === 'darwin';
         this.win = new BrowserWindow({
             width: 320,
             height: 360,
-            frame: true,
+            frame: !isMac,
+            titleBarStyle: isMac ? 'hidden' : 'default',
             alwaysOnTop: false,
             skipTaskbar: true,
             title: 'knote-quick-input',
@@ -132,7 +134,8 @@ export class QuickInputWindow {
             },
             backgroundColor: 'var(--b3-theme-background)',
             autoHideMenuBar: true,
-            titleBarStyle: 'hidden',
+            fullscreenable: false,
+            maximizable: false,
             show: true
         });
         // 打开开发者工具以便调试
@@ -140,10 +143,12 @@ export class QuickInputWindow {
         this.setupIPCListeners();
         await this.win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(this.getWindowContent())}`);
         this.setupWindowEvents();
+        
     }
 
     private setupIPCListeners() {
         const { ipcMain } = require('@electron/remote');
+    
         const saveNoteHandler = async (event, data) => {
             console.log('Save note event received:', data);
             try {
