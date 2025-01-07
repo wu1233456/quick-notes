@@ -117,10 +117,12 @@ export class QuickInputWindow {
             return;
         }
         const { BrowserWindow } = require('@electron/remote');
+        const isMac = process.platform === 'darwin';
         this.win = new BrowserWindow({
             width: 320,
             height: 360,
             frame: true,
+            titleBarStyle: isMac ? 'hidden' : 'default',
             alwaysOnTop: false,
             skipTaskbar: true,
             title: this.plugin.i18n.note.title,
@@ -132,7 +134,6 @@ export class QuickInputWindow {
             },
             backgroundColor: 'var(--b3-theme-background)',
             autoHideMenuBar: true,
-            titleBarStyle: 'hidden',
             fullscreenable: false,
             maximizable: false,
             show: true
