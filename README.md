@@ -94,7 +94,8 @@
 + - `⌘W`: Close Quick Notes window
 
 ## Changelog
-
+### v1.1.0 (2025-01-07)
+- The mini notes now support being called out in a separate window via shortcut keys. What's different from the previous pop-up windows is that you can call out this independent window alone without having to display the main body of SiYuan. 
 
 ### v1.0.8 (2025-01-07)
 - A new task list feature has been added. Entering "[]" allows you to create a task list. Historical notes will be rendered as checkboxes, and you can tick them to mark tasks as completed.
