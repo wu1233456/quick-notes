@@ -61,10 +61,6 @@ export class QuickInputWindow {
             background-color: var(--b3-theme-primary-light);
             color: var(--b3-theme-on-primary);
         }
-        .history-tag:hover .tag-count {
-            background-color: var(--b3-theme-primary);
-            color: var(--b3-theme-on-primary);
-        }
         .tag-count {
             font-size: 10px;
             opacity: 0.7;
@@ -73,6 +69,7 @@ export class QuickInputWindow {
             border-radius: 8px;
             margin-left: 4px;
             transition: all 0.2s ease;
+            color: var(--b3-theme-on-surface);
         }
         .b3-text-field {
             background-color: var(--b3-theme-background);
@@ -225,7 +222,7 @@ export class QuickInputWindow {
 
         return `
             <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%; display: flex; flex-direction: column;">
-                <textarea class="fn__flex-1" 
+                <textarea class="fn__flex-1 editor-textarea" 
                     placeholder="${i18n.note.placeholder}"
                     style="width: 100%; 
                     height: 0; 
@@ -249,8 +246,8 @@ export class QuickInputWindow {
                     <div class="fn__flex" style="justify-content: space-between; align-items: center; margin-top: 2px;">
                         <div class="fn__flex" style="gap: 8px;">
                             <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" 
-                                style="padding: 4px;" 
-                                aria-label="${i18n.note.addTag} ⌘K">
+                                style="padding: 4px;margin-left: 8px;marigin-bottom:8px" 
+                                aria-label="ctrl/⌘+k">
                                 <svg class="b3-button__icon" style="height: 16px; width: 16px;" viewBox="0 0 1024 1024">
                                     <path d="M332.117333 597.333333l17.92-170.666666H170.666667V341.333333h188.373333l22.4-213.333333h85.802667l-22.4 213.333333h170.197333l22.4-213.333333h85.802667l-22.4 213.333333H853.333333v85.333334h-161.450666l-17.92 170.666666H853.333333v85.333334h-188.373333l-22.4 213.333333h-85.802667l22.4-213.333333H408.96l-22.4 213.333333H300.757333l22.4-213.333333H170.666667v-85.333334h161.450666z m85.802667 0h170.24l17.92-170.666666h-170.24l-17.92 170.666666z" fill="currentColor"/>
                                 </svg>
@@ -259,8 +256,8 @@ export class QuickInputWindow {
                         </div>
                         <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center main_save_btn" 
                             data-type="save" 
-                            aria-label="⌘Enter" 
-                            style="padding: 4px 8px; gap: 8px;">
+                            aria-label="ctrl/⌘+Enter" 
+                            style="padding: 4px 8px; gap: 8px;margin-right: 8px;">
                             <span>${i18n.note.save}</span>
                         </button>
                     </div>
@@ -369,7 +366,7 @@ export class QuickInputWindow {
                     const pinButton = document.getElementById('pinButton');
                     
                     let isPinned = false;
-
+                    textarea.focus();
                     pinButton.addEventListener('click', () => {
                         isPinned = !isPinned;
                         pinButton.classList.toggle('pinned', isPinned);
@@ -491,6 +488,20 @@ export class QuickInputWindow {
 
                         let selectedIndex = -1;
                         const historyTags = tagPanel.querySelectorAll('.history-tag');
+
+                        const searchTagInput = tagPanel.querySelector('.tag-input');
+                        searchTagInput.addEventListener('input', () => {
+                            const keyword = searchTagInput.value.trim().toLowerCase();
+                            const historyTags = tagPanel.querySelectorAll('.history-tag');
+                            historyTags.forEach(tag => {
+                                const tagText = tag.getAttribute('data-tag').toLowerCase();
+                                if (tagText.includes(keyword)) {
+                                    tag.style.display = 'block';
+                                } else {
+                                    tag.style.display = 'none';
+                                }
+                            });
+                        });
 
                         const updateSelection = (newIndex) => {
                             // 清除所有选中状态
