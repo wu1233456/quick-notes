@@ -27,6 +27,7 @@ export class QuickInputWindow {
     private isPinned: boolean = false;
     private static instance: QuickInputWindow | null = null;
     private iconsSVG: string;
+    private haveSaved:boolean = false;
     private tagPanelStyle: string = `
         .tag-panel {
             position: fixed;
@@ -148,6 +149,12 @@ export class QuickInputWindow {
             try {
                 await this.plugin.saveContent(data.text, data.tags);
                 if (!this.isClosing && !this.win.isDestroyed()) {
+                    this.haveSaved = true
+                    // 新增：清空草稿数据
+                    QuickInputWindow.draftContent = {
+                        text: '',
+                        tags: []
+                    };
                     this.isClosing = true;
                     this.win.close();
                 }
@@ -164,10 +171,13 @@ export class QuickInputWindow {
         };
 
         const saveDraftHandler = (event, data) => {
-            QuickInputWindow.draftContent = {
-                text: data.text,
-                tags: data.tags
-            };
+            if(!this.haveSaved){
+                QuickInputWindow.draftContent = {
+                    text: data.text,
+                    tags: data.tags
+                };
+            }
+            this.haveSaved = false;
         };
 
         const clearDraftHandler = () => {
