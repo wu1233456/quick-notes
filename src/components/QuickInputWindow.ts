@@ -55,6 +55,7 @@ export class QuickInputWindow {
             color: var(--b3-theme-on-surface);
             margin: 0 4px 4px 0;
             transition: all 0.2s ease;
+            justify-content: space-between;
         }
         .history-tag:hover {
             background-color: var(--b3-theme-primary-light);
@@ -136,7 +137,8 @@ export class QuickInputWindow {
             titleBarStyle: 'hidden',
             show: true
         });
-
+        // 打开开发者工具以便调试
+        // this.win.webContents.openDevTools();
         this.setupIPCListeners();
         await this.win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(this.getWindowContent())}`);
         this.setupWindowEvents();
@@ -244,7 +246,7 @@ export class QuickInputWindow {
                     <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px;">
                         ${draftTagsHtml}
                     </div>
-                    <div class="fn__flex" style="justify-content: space-between; align-items: center; margin-top: 4px;">
+                    <div class="fn__flex" style="justify-content: space-between; align-items: center; margin-top: 2px;">
                         <div class="fn__flex" style="gap: 8px;">
                             <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" 
                                 style="padding: 4px;" 
@@ -258,7 +260,7 @@ export class QuickInputWindow {
                         <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center main_save_btn" 
                             data-type="save" 
                             aria-label="⌘Enter" 
-                            style="padding: 4px 8px; gap: 4px;">
+                            style="padding: 4px 8px; gap: 8px;">
                             <span>${i18n.note.save}</span>
                         </button>
                     </div>
@@ -441,7 +443,7 @@ export class QuickInputWindow {
                             <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
                                 <input type="text" 
                                     class="b3-text-field fn__flex-1 tag-input" 
-                                    placeholder="${i18n.note.addTagPlaceholder}"
+                                    placeholder="${i18n.note.addTag}"
                                     style="width: 100%; background: var(--b3-theme-background);">
                             </div>
                             <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
@@ -449,7 +451,7 @@ export class QuickInputWindow {
                                     ${i18n.note.existingTags}
                                 </div>
                                 <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
-                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px;justify-content: space-between;">
                                         ${tagsHtml}
                                     </div>
                                 </div>
@@ -473,9 +475,8 @@ export class QuickInputWindow {
                                     tagElement.setAttribute('data-tag', tagText);
                                     tagElement.innerHTML = \`
                                         <span class="b3-chip__content">\${tagText}</span>
-                                        <svg class="b3-chip__close">
-                                            <use xlink:href="#iconClose"></use>
-                                        </svg>
+                                        <svg t="1736226890857" class="b3-chip__close" style="height: 18px; width: 18px;"  viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="40214" xmlns:xlink="http://www.w3.org/1999/xlink" ><path d="M512 451.669333l165.973333-165.973333a21.333333 21.333333 0 0 1 30.122667 0l30.165333 30.208a21.333333 21.333333 0 0 1 0 30.165333L572.330667 512l165.973333 165.973333a21.333333 21.333333 0 0 1 0 30.122667l-30.208 30.165333a21.333333 21.333333 0 0 1-30.165333 0L512 572.330667l-165.973333 165.973333a21.333333 21.333333 0 0 1-30.122667 0l-30.165333-30.208a21.333333 21.333333 0 0 1 0-30.165333L451.669333 512l-165.973333-165.973333a21.333333 21.333333 0 0 1 0-30.122667l30.208-30.165333a21.333333 21.333333 0 0 1 30.165333 0L512 451.669333z" fill="#A7B3BF" p-id="40215"></path></svg>
+                                   
                                     \`;
                                     tagsList.appendChild(tagElement);
 
