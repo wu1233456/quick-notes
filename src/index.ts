@@ -45,6 +45,9 @@ export default class PluginQuickNote extends Plugin {
     }
 
     async onLayoutReady() {
+        // let lute = window.Lute.New();
+        // let html = lute.Md2HTML('![Line Simple Example (1).png]("assets/Line Simple Example 1-20250108081401-kduj7tl.png")');
+        // console.log(html);
         console.log("onLayoutReady");
     }
 
@@ -1246,6 +1249,13 @@ export default class PluginQuickNote extends Plugin {
                 .replace(/'/g, '&#039;');
         };
 
+        // 处理图片路径转义
+        const processImagePaths = (content: string) => {
+            return content.replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
+                return `![${alt}](${encodeURI(url)})`;
+            });
+        };
+
         // 处理任务列表
         const processTaskList = (content: string) => {
             // 使用捕获组来保存原始的方括号格式
@@ -1273,7 +1283,9 @@ export default class PluginQuickNote extends Plugin {
         // 使用 Lute 渲染 Markdown
         let renderedContent = '';
         try {
-            renderedContent = window.Lute.New().Md2HTML(displayText);
+            // 先处理图片路径，再进行Markdown渲染
+            const processedText = processImagePaths(displayText);
+            renderedContent = window.Lute.New().Md2HTML(processedText);
             renderedContent = processTaskList(renderedContent);
             
             // 添加图片点击事件处理
@@ -2215,7 +2227,7 @@ export default class PluginQuickNote extends Plugin {
 
                         // 构建 Markdown 图片语法
                         const imageLinks = Object.entries(result.succMap)
-                            .map(([filename, url]) => `![${filename}](${url})`)
+                            .map(([filename, url]) => `![${filename}](${url as string})`)
                             .join('\n');
 
                         // 在光标位置插入图片链接
