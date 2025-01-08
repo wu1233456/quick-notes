@@ -2207,13 +2207,8 @@ export default class PluginQuickNote extends Plugin {
         const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
         if (uploadBtn && uploadInput && textarea) {
-            // console.log('setupImageUpload');
-            uploadBtn.addEventListener('click', () => {
-                uploadInput.click();
-            });
-
-            uploadInput.addEventListener('change', async () => {
-                const files = Array.from(uploadInput.files || []);
+            // 处理图片上传
+            const handleImageUpload = async (files: File[]) => {
                 if (files.length === 0) return;
 
                 try {
@@ -2237,16 +2232,49 @@ export default class PluginQuickNote extends Plugin {
                         const newPosition = start + imageLinks.length;
                         textarea.setSelectionRange(newPosition, newPosition);
                         textarea.focus();
-
-                        // showMessage(this.i18n.note.uploadSuccess);
                     }
                 } catch (error) {
                     console.error('Upload failed:', error);
                     showMessage(this.i18n.note.uploadFailed);
                 }
+            };
 
+            // 点击上传按钮处理
+            uploadBtn.addEventListener('click', () => {
+                uploadInput.click();
+            });
+
+            // 文件选择处理
+            uploadInput.addEventListener('change', async () => {
+                const files = Array.from(uploadInput.files || []);
+                await handleImageUpload(files);
                 // 清空 input，允许重复上传相同文件
                 uploadInput.value = '';
+            });
+
+            // 添加粘贴事件处理
+            textarea.addEventListener('paste', async (e: ClipboardEvent) => {
+                const items = Array.from(e.clipboardData?.items || []);
+                const imageFiles = items
+                    .filter(item => item.type.startsWith('image/'))
+                    .map(item => {
+                        const file = item.getAsFile();
+                        if (file) {
+                            // 使用当前时间戳和原始文件类型作为文件名
+                            const timestamp = new Date().getTime();
+                            const ext = file.name?.split('.').pop() || file.type.split('/')[1] || 'png';
+                            return new File([file], `pasted_image_${timestamp}.${ext}`, {
+                                type: file.type
+                            });
+                        }
+                        return null;
+                    })
+                    .filter((file): file is File => file !== null);
+
+                if (imageFiles.length > 0) {
+                    e.preventDefault(); // 阻止默认粘贴行为
+                    await handleImageUpload(imageFiles);
+                }
             });
         }
     }
