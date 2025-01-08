@@ -102,7 +102,7 @@
         "uploadFailed": "上传失败",
         "editSuccess": "编辑成功",
         "placeholder": "在这里输入你的想法...",
-        "createDoc": "创建为文档",
+        "createDoc": "新建文档",
         "selectNotebook": "选择笔记本",
         "noNotebooks": "没有可用的笔记本",
         "noteNotFound": "小记不存在",
@@ -116,7 +116,10 @@
         "docTitlePlaceholder": "请输入文档标题",
         "docPath": "保存位置",
         "docPathPlaceholder": "请输入文档保存路径",
-        "untitledDoc": "未命名文档"
+        "untitledDoc": "未命名文档",
+        "insertToDaily": "每日笔记",
+        "insertSuccess": "插入成功",
+        "insertFailed": "插入失败"
     },
     "openTagPanel": "打开标签选择面板"
 }

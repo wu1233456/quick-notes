@@ -8,7 +8,7 @@ import {
     adaptHotkey
 } from "siyuan";
 import "@/index.scss";
-import { upload, lsNotebooks, createDocWithMd } from "./api";
+import { upload, lsNotebooks, createDocWithMd, appendBlock, createDailyNote } from "./api";
 import { initMardownStyle } from './components/markdown';
 // 导入新的组件
 import { ExportDialog } from './components/ExportDialog';
@@ -1082,6 +1082,16 @@ export default class PluginQuickNote extends Plugin {
                         await this.historyService.toggleItemPin(timestamp);
                         menu.close();
                         this.renderDockHistory();
+                    }
+                });
+
+                // 添加插入到每日笔记选项
+                menu.addItem({
+                    icon: "iconCalendar",
+                    label: this.i18n.note.insertToDaily,
+                    click: async () => {
+                        menu.close();
+                        this.insertToDaily(timestamp);
                     }
                 });
 
@@ -2433,6 +2443,104 @@ export default class PluginQuickNote extends Plugin {
         } catch (error) {
             console.error('创建文档失败:', error);
             showMessage(this.i18n.note.createDocFailed);
+        }
+    }
+
+    // 添加插入到每日笔记的方法
+    private async insertToDaily(timestamp: number) {
+        try {
+            // 获取小记内容
+            const note = this.historyService.getHistoryItem(timestamp);
+            if (!note) {
+                showMessage(this.i18n.note.noteNotFound);
+                return;
+            }
+
+            // 获取所有笔记本
+            const notebooks = await lsNotebooks();
+            if (!notebooks || !notebooks.notebooks || notebooks.notebooks.length === 0) {
+                showMessage(this.i18n.note.noNotebooks);
+                return;
+            }
+
+            // 创建选择笔记本的对话框
+            const dialog = new Dialog({
+                title: this.i18n.note.selectNotebook,
+                content: `
+                    <div class="b3-dialog__content" style="max-height: 70vh; overflow: auto; padding: 20px;">
+                        <div class="fn__flex-column" style="gap: 16px;">
+                            <div class="fn__flex-column" style="gap: 8px;">
+                                <div class="fn__flex-column notebooks-list" style="gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--b3-theme-background); border-radius: 6px; border: 1px solid var(--b3-border-color);">
+                                    ${notebooks.notebooks.map((notebook, index) => `
+                                        <label class="fn__flex b3-label" style="padding: 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;">
+                                            <input type="radio" name="notebook" value="${notebook.id}" style="margin-right: 8px;" ${index === 0 ? 'checked' : ''}>
+                                            <span>${notebook.name}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fn__flex b3-dialog__action" style="padding: 16px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background);">
+                        <div class="fn__flex-1"></div>
+                        <button class="b3-button b3-button--cancel" style="margin-right: 8px; padding: 8px 16px;">${this.i18n.note.cancel}</button>
+                        <button class="b3-button b3-button--text" data-type="confirm" style="padding: 8px 16px;">${this.i18n.note.confirm}</button>
+                    </div>
+                `,
+                width: "520px"
+            });
+
+            // 添加悬停效果
+            const labels = dialog.element.querySelectorAll('.notebooks-list .b3-label');
+            labels.forEach(label => {
+                label.addEventListener('mouseenter', () => {
+                    (label as HTMLElement).style.backgroundColor = 'var(--b3-theme-surface)';
+                });
+                label.addEventListener('mouseleave', () => {
+                    (label as HTMLElement).style.backgroundColor = '';
+                });
+            });
+
+            const confirmBtn = dialog.element.querySelector('[data-type="confirm"]') as HTMLElement;
+            const cancelBtn = dialog.element.querySelector('.b3-button--cancel') as HTMLElement;
+
+            // 绑定取消按钮事件
+            cancelBtn.addEventListener('click', () => {
+                dialog.destroy();
+            });
+
+            // 绑定确认按钮事件
+            confirmBtn.addEventListener('click', async () => {
+                const selectedNotebook = dialog.element.querySelector('input[name="notebook"]:checked') as HTMLInputElement;
+
+                if (!selectedNotebook) {
+                    showMessage(this.i18n.note.pleaseSelectNotebook);
+                    return;
+                }
+
+                try {
+                    const notebookId = selectedNotebook.value;
+                    
+                    // 创建或获取每日笔记
+                    const result = await createDailyNote(notebookId);
+                    
+                    // 构建要插入的内容
+                    const content = `> [!note] 小记 ${new Date(note.timestamp).toLocaleTimeString()}\n${note.text}`;
+                    
+                    // 插入内容到文档末尾
+                    await appendBlock("markdown", content, result.id);
+
+                    showMessage(this.i18n.note.insertSuccess);
+                    dialog.destroy();
+                } catch (error) {
+                    console.error('插入到每日笔记失败:', error);
+                    showMessage(this.i18n.note.insertFailed);
+                }
+            });
+
+        } catch (error) {
+            console.error('插入到每日笔记失败:', error);
+            showMessage(this.i18n.note.insertFailed);
         }
     }
 

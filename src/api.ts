@@ -476,3 +476,8 @@ export async function version(): Promise<string> {
 export async function currentTime(): Promise<number> {
     return request('/api/system/currentTime', {});
 }
+
+export async function createDailyNote(notebook: NotebookId): Promise<{ id: BlockId }> {
+    let url = '/api/filetree/createDailyNote';
+    return request(url, { notebook: notebook });
+}
