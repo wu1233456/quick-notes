@@ -10,6 +10,7 @@
 export const ARCHIVE_STORAGE_NAME = "archive-content";
 export const DOCK_STORAGE_NAME = "dock-content";
 export const CONFIG_DATA_NAME = "config-content";
+export const SETTINGS_STORAGE_NAME = "settings";
 
 export const STORAGE_NAME = "menu-config";
 export const TAB_TYPE = "custom_tab";

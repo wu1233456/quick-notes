@@ -119,7 +119,15 @@
         "untitledDoc": "未命名文档",
         "insertToDaily": "每日笔记",
         "insertSuccess": "插入成功",
-        "insertFailed": "插入失败"
+        "insertFailed": "插入失败",
+        "defaultNotebook": "默认笔记本",
+        "defaultNotebookDesc": "输入笔记本 ID，留空时将使用第一个笔记本",
+        "autoCopyToDaily": "自动复制到每日笔记",
+        "autoCopyToDailyDesc": "新建小记时自动复制一份到每日笔记中",
+        "maxTextLength": "折叠长度",
+        "maxTextLengthDesc": "历史小记超过多少字时自动折叠",
+        "itemsPerPage": "每页显示数量",
+        "itemsPerPageDesc": "历史页面每次加载多少条记录"
     },
     "openTagPanel": "打开标签选择面板"
 }

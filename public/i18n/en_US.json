@@ -147,7 +147,15 @@
         "docTitlePlaceholder": "Enter document title",
         "docPath": "Save Location",
         "docPathPlaceholder": "Enter document path",
-        "untitledDoc": "Untitled Document"
+        "untitledDoc": "Untitled Document",
+        "defaultNotebook": "Default Notebook",
+        "defaultNotebookDesc": "Enter notebook ID, leave empty to use the first notebook",
+        "autoCopyToDaily": "Auto Copy to Daily Note",
+        "autoCopyToDailyDesc": "Automatically copy new notes to daily note",
+        "maxTextLength": "Collapse Length",
+        "maxTextLengthDesc": "Auto collapse history notes when exceeding this length",
+        "itemsPerPage": "Items Per Page",
+        "itemsPerPageDesc": "Number of records to load each time in history page"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }
