@@ -230,10 +230,10 @@ export default class PluginQuickNote extends Plugin {
         console.log("initDockPanel");
         let element = this.element;
         element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="height: 100%;">
-                                <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column dock_quicknotes_container">
+                                <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column dock_quicknotes_container" style="align-items: center;"> 
                                     <div class="topbar-container" style="width:100%"></div>
-                                    <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'width: 95%;margin:0 8px;display:block' : 'width: 95%;display:None'}" ></div>
-                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width: 95%;margin:0 8px;"></div>
+                                    <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'width: 95%;display:block' : 'width: 95%;display:None'}" ></div>
+                                    <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width: 95%;"></div>
                                     <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px;">
                                     </div>
                                 </div>
