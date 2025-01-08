@@ -2601,7 +2601,7 @@ export default class PluginQuickNote extends Plugin {
                     const result = await createDailyNote(notebookId);
                     
                     // 构建要插入的内容
-                    const content = `> [!note] 小记 ${new Date(note.timestamp).toLocaleTimeString()}\n${note.text}`;
+                    const content = `> [!note] 小记 ${new Date(note.timestamp).toLocaleTimeString()}\n${note.text.split('\n').map(line => `> ${line}`).join('\n')}${note.tags && note.tags.length > 0 ? `\n> \n> 标签：${note.tags.map(tag => `#${tag}`).join(' ')}` : ''}`;
                     
                     // 插入内容到文档末尾
                     await appendBlock("markdown", content, result.id);
