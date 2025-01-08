@@ -2313,6 +2313,9 @@ export default class PluginQuickNote extends Plugin {
     private setupExportFeature(container: HTMLElement) {
         const exportBtn = container.querySelector('[data-type="export"]'); // 修改选择器以匹配顶部栏的导出按钮
         if (exportBtn) {
+            this.exportDialog = new ExportDialog(this.i18n);
+            this.exportService = new ExportService(this.i18n);
+            console.log("setupExportFeature");
             exportBtn.addEventListener('click', () => {
                 // 创建导出对话框
                 this.exportDialog.show(

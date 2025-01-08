@@ -150,7 +150,7 @@ export class QuickInputWindow {
             show: true
         });
         // 打开开发者工具以便调试
-        // this.win.webContents.openDevTools();
+        this.win.webContents.openDevTools();
         this.setupIPCListeners();
         await this.win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(this.getWindowContent())}`);
         this.setupWindowEvents();
@@ -657,6 +657,83 @@ export class QuickInputWindow {
                                     tagElement.remove();
                                     saveDraft();
                                 };
+                            }
+                        });
+
+                        // 添加粘贴事件监听
+                        textarea.addEventListener('paste', async (e) => {
+                            const items = Array.from(e.clipboardData?.items || []);
+                            const imageFiles = items
+                                .filter(item => item.type.startsWith('image/'))
+                                .map(item => {
+                                    const file = item.getAsFile();
+                                    if (file) {
+                                        // 使用当前时间戳和原始文件类型作为文件名
+                                        const timestamp = new Date().getTime();
+                                        const ext = file.name?.split('.').pop() || file.type.split('/')[1] || 'png';
+                                        return new File([file], 'pasted_image_' + timestamp + '.' + ext, {
+                                            type: file.type
+                                        });
+                                    }
+                                    return null;
+                                })
+                                .filter((file) => file !== null);
+
+                            if (imageFiles.length > 0) {
+                                e.preventDefault(); // 阻止默认粘贴行为
+                                
+                                // 创建 FormData
+                                const formData = new FormData();
+                                formData.append('assetsDirPath', '/assets/');
+                                imageFiles.forEach(file => {
+                                    formData.append('file[]', file);
+                                });
+
+                                try {
+                                    // 发送上传请求
+                                    const response = await fetch('http://127.0.0.1:6806/api/asset/upload', {
+                                        method: 'POST',
+                                        body: formData
+                                    });
+                                    
+                                    const result = await response.json();
+                                    if (result.code === 0 && result.data.succMap) {
+                                        // 获取光标位置
+                                        const start = textarea.selectionStart;
+                                        const end = textarea.selectionEnd;
+                                        const text = textarea.value;
+
+                                        // 构建 Markdown 图片语法
+                                        const imageLinks = Object.entries(result.data.succMap)
+                                            .map(([filename, url]) => '![' + filename + '](' + url + ')')
+                                            .join('\\n');
+
+                                        // 在光标位置插入图片链接
+                                        textarea.value = text.substring(0, start) + imageLinks + text.substring(end);
+
+                                        // 更新光标位置
+                                        const newPosition = start + imageLinks.length;
+                                        textarea.setSelectionRange(newPosition, newPosition);
+                                        textarea.focus();
+                                        
+                                        // 保存草稿
+                                        saveDraft();
+                                    } else {
+                                        console.error('Upload failed:', result);
+                                        const errorDiv = document.createElement('div');
+                                        errorDiv.style.cssText = 'position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--b3-theme-error); color: white; padding: 8px 16px; border-radius: 4px; font-size: 14px; z-index: 999;';
+                                        errorDiv.textContent = '图片上传失败';
+                                        document.body.appendChild(errorDiv);
+                                        setTimeout(() => errorDiv.remove(), 3000);
+                                    }
+                                } catch (error) {
+                                    console.error('Upload failed:', error);
+                                    const errorDiv = document.createElement('div');
+                                    errorDiv.style.cssText = 'position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--b3-theme-error); color: white; padding: 8px 16px; border-radius: 4px; font-size: 14px; z-index: 999;';
+                                    errorDiv.textContent = '图片上传失败';
+                                    document.body.appendChild(errorDiv);
+                                    setTimeout(() => errorDiv.remove(), 3000);
+                                }
                             }
                         });
                     });
