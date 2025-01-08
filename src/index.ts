@@ -1007,19 +1007,31 @@ export default class PluginQuickNote extends Plugin {
                 if (text && e.dataTransfer) {
                     e.dataTransfer.effectAllowed = 'copyMove';
                     
-                    // 设置多种数据格式以提高兼容性
+                    // 设置纯文本格式
                     e.dataTransfer.setData('text/plain', text);
                     
-                    // 设置HTML格式 - 使用完整的HTML结构
-                    const markdownContent = window.Lute.New().Md2HTML(text);
-                    const fullHtml = `<div data-type="NodeParagraph" class="protyle-wysiwyg__paragraph" data-node-id="${Date.now()}">${markdownContent}</div>`;
-                    e.dataTransfer.setData('text/html', fullHtml);
+                    // 生成思源块 ID
+                    const blockId = `${Date.now()}0${Math.random().toString().substring(2, 6)}`;
+                    
+                    // 构建思源块数据结构
+                    const siyuanBlock = {
+                        id: blockId,
+                        type: "NodeParagraph",
+                        content: text,
+                        markdown: text
+                    };
                     
                     // 设置思源特定的格式
                     e.dataTransfer.setData('application/x-siyuan', JSON.stringify({
-                        type: 'markdown',
+                        id: blockId,
+                        type: "NodeParagraph",
                         content: text
                     }));
+                    
+                    // 设置HTML格式 - 使用思源的块结构
+                    const markdownContent = window.Lute.New().Md2HTML(text);
+                    const fullHtml = `<div data-node-id="${blockId}" data-type="NodeParagraph" class="protyle-wysiwyg__paragraph" data-subtype="p">${markdownContent}</div>`;
+                    e.dataTransfer.setData('text/html', fullHtml);
                     
                     // 添加拖拽时的视觉反馈
                     target.style.opacity = '0.5';
@@ -1033,21 +1045,16 @@ export default class PluginQuickNote extends Plugin {
                     dragImage.style.maxWidth = '360px';
                     dragImage.style.pointerEvents = 'none';
                     
-                    // 使用与实际内容相同的渲染方式
-                    const previewContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
-                    const renderedContent = window.Lute.New().Md2HTML(previewContent);
-                    
+                    // 使用思源的块样式
                     dragImage.innerHTML = `
-                        <div class="protyle-wysiwyg__paragraph" style="margin-bottom: 8px; padding: 8px; 
+                        <div class="protyle-wysiwyg__paragraph" data-node-id="${blockId}" data-type="NodeParagraph" style="
+                            margin-bottom: 8px; 
+                            padding: 8px; 
                             border: 1px solid var(--b3-border-color); 
                             border-radius: 4px; 
                             background: var(--b3-theme-background);
                             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
-                            <div class="fn__flex-1">
-                                <div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
-                                    ${renderedContent}
-                                </div>
-                            </div>
+                            ${markdownContent}
                         </div>`;
                     
                     document.body.appendChild(dragImage);
