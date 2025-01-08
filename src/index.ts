@@ -66,7 +66,7 @@ export default class PluginQuickNote extends Plugin {
 
         this.settingUtils.addItem({
             key: "maxTextLength",
-            value: 200,
+            value: 250,
             type: "number",
             title: this.i18n.note.maxTextLength,
             description: this.i18n.note.maxTextLengthDesc
@@ -74,7 +74,7 @@ export default class PluginQuickNote extends Plugin {
 
         this.settingUtils.addItem({
             key: "itemsPerPage",
-            value: 20,
+            value: 10,
             type: "number",
             title: this.i18n.note.itemsPerPage,
             description: this.i18n.note.itemsPerPageDesc
@@ -82,7 +82,7 @@ export default class PluginQuickNote extends Plugin {
 
         this.settingUtils.addItem({
             key: "quickWindowWidth",
-            value: 520,
+            value: 250,
             type: "number",
             title: this.i18n.note.quickWindowWidth,
             description: this.i18n.note.quickWindowWidthDesc
@@ -90,23 +90,10 @@ export default class PluginQuickNote extends Plugin {
 
         this.settingUtils.addItem({
             key: "quickWindowHeight",
-            value: 400,
+            value: 300,
             type: "number",
             title: this.i18n.note.quickWindowHeight,
             description: this.i18n.note.quickWindowHeightDesc
-        });
-        this.settingUtils.addItem({
-            key: "dockPosition",
-            value: "RightTop",
-            type: "select",
-            title: this.i18n.note.dockPosition,
-            description: this.i18n.note.dockPositionDesc,
-            options: {
-                "LeftTop": this.i18n.note.dockPositionLeftTop,
-                "LeftBottom": this.i18n.note.dockPositionLeftBottom,
-                "RightTop": this.i18n.note.dockPositionRightTop,
-                "RightBottom": this.i18n.note.dockPositionRightBottom
-            }
         });
 
         await this.settingUtils.load();
@@ -191,11 +178,10 @@ export default class PluginQuickNote extends Plugin {
         initMardownStyle();
     }
     private initDock() {
-        console.log(this.settingUtils.get("dockPosition"));
         // 创建 dock 时读取保存的位置
         this.addDock({
             config: {
-                position: this.settingUtils.get("dockPosition") || "RightTop",
+                position: "RightTop",
                 size: { width: 300, height: 0 },
                 icon: "iconSmallNote",
                 hotkey: '⇧⌘U',

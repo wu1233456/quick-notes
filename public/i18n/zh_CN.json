@@ -131,13 +131,7 @@
         "quickWindowWidth": "快捷窗口宽度",
         "quickWindowWidthDesc": "全局快捷呼出窗口的宽度（像素）",
         "quickWindowHeight": "快捷窗口高度",
-        "quickWindowHeightDesc": "全局快捷呼出窗口的高度（像素）",
-        "dockPosition": "侧边栏位置",
-        "dockPositionDesc": "设置侧边栏的默认位置",
-        "dockPositionLeftTop": "左上",
-        "dockPositionLeftBottom": "左下",
-        "dockPositionRightTop": "右上",
-        "dockPositionRightBottom": "右下"
+        "quickWindowHeightDesc": "全局快捷呼出窗口的高度（像素）"
     },
     "openTagPanel": "打开标签选择面板"
 }

@@ -159,13 +159,7 @@
         "quickWindowWidth": "Quick Window Width",
         "quickWindowWidthDesc": "Width of the global quick window (pixels)",
         "quickWindowHeight": "Quick Window Height",
-        "quickWindowHeightDesc": "Height of the global quick window (pixels)",
-        "dockPosition": "Dock Position",
-        "dockPositionDesc": "Set the default position of the dock",
-        "dockPositionLeftTop": "Left Top",
-        "dockPositionLeftBottom": "Left Bottom",
-        "dockPositionRightTop": "Right Top",
-        "dockPositionRightBottom": "Right Bottom"
+        "quickWindowHeightDesc": "Height of the global quick window (pixels)"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }
