@@ -159,7 +159,11 @@
         "quickWindowWidth": "Quick Window Width",
         "quickWindowWidthDesc": "Width of the global quick window (pixels)",
         "quickWindowHeight": "Quick Window Height",
-        "quickWindowHeightDesc": "Height of the global quick window (pixels)"
+        "quickWindowHeightDesc": "Height of the global quick window (pixels)",
+        "deleteAfterInsert": "Delete After Insert",
+        "deleteAfterInsertDesc": "Automatically delete the original note after inserting to daily note",
+        "insertTemplate": "Insert Template",
+        "insertTemplateDesc": "Template used when inserting to daily note, supports following variables:\n${time}: Insert time\n${content}: Note content\n${tags}: Tags"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

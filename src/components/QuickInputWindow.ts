@@ -22,6 +22,9 @@ interface IPlugin extends Plugin {
             title: string;
         };
     };
+    upload: (path: string, files: File[]) => Promise<{
+        succMap: { [key: string]: string };
+    }>;
 }
 
 export class QuickInputWindow {
@@ -200,16 +203,27 @@ export class QuickInputWindow {
             };
         };
 
+        const handleImageUpload = async (event, files: File[]) => {
+            try {
+                const result = await this.plugin.upload("/assets/", files);
+                event.reply('image-upload-success', result);
+            } catch (error) {
+                event.reply('image-upload-error', error);
+            }
+        };
+
         ipcMain.on('save-note', saveNoteHandler);
         ipcMain.on('toggle-pin', togglePinHandler);
         ipcMain.on('save-draft', saveDraftHandler);
         ipcMain.on('clear-draft', clearDraftHandler);
+        ipcMain.on('upload-images', handleImageUpload);
 
         this.win.on('closed', () => {
             ipcMain.removeListener('save-note', saveNoteHandler);
             ipcMain.removeListener('toggle-pin', togglePinHandler);
             ipcMain.removeListener('save-draft', saveDraftHandler);
             ipcMain.removeListener('clear-draft', clearDraftHandler);
+            ipcMain.removeListener('upload-images', handleImageUpload);
             QuickInputWindow.instance = null;
             console.log('IPC listeners removed');
         });
@@ -328,6 +342,7 @@ export class QuickInputWindow {
                         height: 100vh;
                         box-sizing: border-box;
                         background: var(--b3-theme-background);
+                        border: 1px solid var(--b3-border-color);
                         color: var(--b3-theme-on-background);
                         font-family: var(--b3-font-family);
                         overflow: hidden;

@@ -27,7 +27,9 @@ export default class PluginQuickNote extends Plugin {
 
     private isDescending: boolean = true; //是否降序
     private element: HTMLElement;  //侧边栏dock元素
-    private currentDisplayCount: number = ITEMS_PER_PAGE; //当前历史小记显示数量
+
+    private itemsPerPage: number = 10;
+    private currentDisplayCount: number; //当前历史小记显示数量
     private selectedTags: string[] = [];//过滤标签
     private showArchived: boolean = false;//是否显示归档小记
     private isBatchSelect: boolean = false;//是否处于批量选择状态
@@ -63,6 +65,21 @@ export default class PluginQuickNote extends Plugin {
             title: this.i18n.note.autoCopyToDaily,
             description: this.i18n.note.autoCopyToDailyDesc
         });
+        this.settingUtils.addItem({
+            key: "deleteAfterInsert",
+            value: true,
+            type: "checkbox",
+            title: this.i18n.note.deleteAfterInsert,
+            description: this.i18n.note.deleteAfterInsertDesc
+        });
+
+        this.settingUtils.addItem({
+            key: "insertTemplate",
+            value: "> [!note] 小记 ${time}\n> ${content}\n> \n> 标签：${tags}",
+            type: "textarea",
+            title: this.i18n.note.insertTemplate,
+            description: this.i18n.note.insertTemplateDesc
+        });
 
         this.settingUtils.addItem({
             key: "maxTextLength",
@@ -95,6 +112,7 @@ export default class PluginQuickNote extends Plugin {
             title: this.i18n.note.quickWindowHeight,
             description: this.i18n.note.quickWindowHeightDesc
         });
+
 
         await this.settingUtils.load();
         await this.initData();
@@ -138,8 +156,8 @@ export default class PluginQuickNote extends Plugin {
         };
 
         // 获取设置的每页显示数量，如果没有设置则使用默认值
-        const itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
-        this.currentDisplayCount = itemsPerPage;
+        this.itemsPerPage = this.settingUtils.get("itemsPerPage") || 10;
+        this.currentDisplayCount = this.itemsPerPage;
 
         // 初始化历史服务
         const historyData: HistoryData = {
@@ -147,7 +165,7 @@ export default class PluginQuickNote extends Plugin {
             archivedHistory: archive_history.history || []
         };
         
-        this.historyService = new HistoryService(this, historyData, itemsPerPage, this.i18n);
+        this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
     }
     private initComponents() {
         this.addIcons(iconsSVG);
@@ -277,7 +295,7 @@ export default class PluginQuickNote extends Plugin {
             });
             const refreshBtn = element.querySelector('.refresh_btn');
             refreshBtn.addEventListener('click',async ()=>{
-                this.currentDisplayCount = ITEMS_PER_PAGE;
+                this.currentDisplayCount = this.itemsPerPage;
                 this.initData();
                 this.initDockPanel();
             });
@@ -1003,7 +1021,7 @@ export default class PluginQuickNote extends Plugin {
                 if (historyContent) {
                     // 获取新的要显示的记录
                     const newItems = filteredHistory.unpinnedItems.slice(
-                        this.currentDisplayCount - ITEMS_PER_PAGE, 
+                        this.currentDisplayCount - this.itemsPerPage, 
                         this.currentDisplayCount
                     );
 
@@ -1719,11 +1737,22 @@ export default class PluginQuickNote extends Plugin {
                         // 创建或获取每日笔记
                         const result = await createDailyNote(defaultNotebook);
                         
-                        // 构建要插入的内容
-                        const content = `> [!note] 小记 ${new Date().toLocaleTimeString()}\n${text.split('\n').map(line => `> ${line}`).join('\n')}${tags && tags.length > 0 ? `\n> \n> 标签：${tags.map(tag => `#${tag}`).join(' ')}` : ''}`;
+                        // 获取模板并替换变量
+                        let template = this.settingUtils.get("insertTemplate") || "> [!note] 小记 ${time}\n${content}${tags}";
+                        
+                        // 准备变量值
+                        const time = new Date().toLocaleString();
+                        const content = text;  // 不再添加 > 前缀
+                        const tags = tags && tags.length > 0 ? tags.map(tag => `#${tag}`).join(' ') : '';
+                        
+                        // 替换模板中的变量
+                        const content_final = template
+                            .replace(/\${time}/g, time)
+                            .replace(/\${content}/g, content)
+                            .replace(/\${tags}/g, tags);
                         
                         // 插入内容到文档末尾
-                        await appendBlock("markdown", content, result.id);
+                        await appendBlock("markdown", content_final, result.id);
                     } else {
                         console.warn('没有可用的笔记本');
                     }
@@ -2146,7 +2175,7 @@ export default class PluginQuickNote extends Plugin {
                 const searchText = searchInput.value.toLowerCase();
 
                 if (!searchText) {
-                    this.currentDisplayCount = ITEMS_PER_PAGE;
+                    this.currentDisplayCount = this.itemsPerPage;
                     this.renderDockHistory();
                     return;
                 }
@@ -2352,7 +2381,7 @@ export default class PluginQuickNote extends Plugin {
                     this.selectedTags = Array.from(filterPanel.querySelectorAll('.filter-tag[data-selected="true"]'))
                         .map(tag => tag.getAttribute('data-tag'));
 
-                    this.currentDisplayCount = ITEMS_PER_PAGE;
+                    this.currentDisplayCount = this.itemsPerPage;
 
                     const filterPanelDisplay = filterPanel.style.display;
                     const filterBtnColor = filterBtn.style.color;
@@ -2631,7 +2660,7 @@ export default class PluginQuickNote extends Plugin {
             
             // 如果没有设置默认笔记本，获取第一个笔记本
             if (!defaultNotebook) {
-            const notebooks = await lsNotebooks();
+                const notebooks = await lsNotebooks();
                 if (notebooks && notebooks.notebooks && notebooks.notebooks.length > 0) {
                     defaultNotebook = notebooks.notebooks[0].id;
                 }
@@ -2639,23 +2668,42 @@ export default class PluginQuickNote extends Plugin {
 
             if (!defaultNotebook) {
                 showMessage(this.i18n.note.noNotebooks);
-                    return;
-                }
+                return;
+            }
 
-                try {
-                    // 创建或获取每日笔记
+            try {
+                // 创建或获取每日笔记
                 const result = await createDailyNote(defaultNotebook);
-                    
-                    // 构建要插入的内容
-                    const content = `> [!note] 小记 ${new Date(note.timestamp).toLocaleTimeString()}\n${note.text.split('\n').map(line => `> ${line}`).join('\n')}${note.tags && note.tags.length > 0 ? `\n> \n> 标签：${note.tags.map(tag => `#${tag}`).join(' ')}` : ''}`;
-                    
-                    // 插入内容到文档末尾
-                    await appendBlock("markdown", content, result.id);
-                    showMessage(this.i18n.note.insertSuccess);
-                } catch (error) {
-                    console.error('插入到每日笔记失败:', error);
-                    showMessage(this.i18n.note.insertFailed);
+                
+                // 获取模板并替换变量
+                let template = this.settingUtils.get("insertTemplate") || "> [!note] 小记 ${time}\n${content}${tags}";
+                
+                // 准备变量值
+                const time = new Date(note.timestamp).toLocaleString();
+                const content = note.text;  // 不再添加 > 前缀
+                const tags = note.tags && note.tags.length > 0 ? note.tags.map(tag => `#${tag}`).join(' ') : '';
+                
+                // 替换模板中的变量
+                const content_final = template
+                    .replace(/\${time}/g, time)
+                    .replace(/\${content}/g, content)
+                    .replace(/\${tags}/g, tags);
+                
+                // 插入内容到文档末尾
+                await appendBlock("markdown", content_final, result.id);
+                showMessage(this.i18n.note.insertSuccess);
+
+                // 检查是否需要删除原小记
+                const deleteAfterInsert = this.settingUtils.get("deleteAfterInsert");
+                if (deleteAfterInsert) {
+                    this.historyService.deleteItem(timestamp);
+                    this.renderDockerToolbar();
+                    this.renderDockHistory();
                 }
+            } catch (error) {
+                console.error('插入到每日笔记失败:', error);
+                showMessage(this.i18n.note.insertFailed);
+            }
         } catch (error) {
             console.error('插入到每日笔记失败:', error);
             showMessage(this.i18n.note.insertFailed);

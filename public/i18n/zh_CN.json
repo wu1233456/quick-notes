@@ -117,13 +117,13 @@
         "docPath": "保存位置",
         "docPathPlaceholder": "请输入文档保存路径",
         "untitledDoc": "未命名文档",
-        "insertToDaily": "每日笔记",
+        "insertToDaily": "插入到今日笔记",
         "insertSuccess": "插入成功",
         "insertFailed": "插入失败",
-        "defaultNotebook": "默认笔记本",
-        "defaultNotebookDesc": "输入笔记本 ID，留空时将使用第一个笔记本",
-        "autoCopyToDaily": "自动复制到每日笔记",
-        "autoCopyToDailyDesc": "新建小记时自动复制一份到每日笔记中",
+        "defaultNotebook": "今日笔记本",
+        "defaultNotebookDesc": "输入今日笔记本 ID，留空时将使用第一个笔记本",
+        "autoCopyToDaily": "新建小记时自动复制到今日日笔记",
+        "autoCopyToDailyDesc": "新建小记时自动复制一份到今日笔记中，同时也会保留一份在历史小记中",
         "maxTextLength": "折叠长度",
         "maxTextLengthDesc": "历史小记超过多少字时自动折叠",
         "itemsPerPage": "每页显示数量",
@@ -131,7 +131,11 @@
         "quickWindowWidth": "快捷窗口宽度",
         "quickWindowWidthDesc": "全局快捷呼出窗口的宽度（像素）",
         "quickWindowHeight": "快捷窗口高度",
-        "quickWindowHeightDesc": "全局快捷呼出窗口的高度（像素）"
+        "quickWindowHeightDesc": "全局快捷呼出窗口的高度（像素）",
+        "deleteAfterInsert": "插入今日笔记后是否删除小记",
+        "deleteAfterInsertDesc": "选择将历史小记插入到今日笔记时是否自动删除原小记",
+        "insertTemplate": "插入模板",
+        "insertTemplateDesc": "插入到笔记时使用的模板，支持以下变量：\n${time}: 插入时间\n${content}: 小记内容\n${tags}: 标签"
     },
     "openTagPanel": "打开标签选择面板"
 }
