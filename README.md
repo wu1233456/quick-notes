@@ -48,32 +48,8 @@
 - Option to export pinned only
 - Option to include archived content
 
-## Usage Guide
 
-### Basic Operations
-1. Quick Create:
-   - Press hotkey globally (Windows: `Ctrl+Shift+Y`, macOS: `⇧⌘Y`)
-   - Click Quick Notes icon in toolbar
-   - Use hotkey to save (Windows: `Ctrl+Enter`, macOS: `⌘Enter`)
-   - Enter "[]" to create a task list
-
-2. Tag Management:
-   - Press hotkey to add tags while editing (Windows: `Ctrl+K`, macOS: `⌘K`)
-   - Click tag icon to select existing tags
-   - Search or create new tags in tag panel
-
-3. Content Management:
-   - Hover to show action buttons
-   - Click to expand/collapse long text
-   - Click more for pin/archive options
-   - Toggle task list status
-
-4. Batch Operations:
-   - Click filter button to enable batch select
-   - Select multiple notes for batch operations
-   - Support select all/deselect all
-
-### Hotkeys
+### 7. Hotkeys
 - `⇧⌘Y`: Open Quick Notes globally
 - `⇧⌘U`: Open Quick Notes sidebar
 - `⌘Enter`: Save content
@@ -94,6 +70,19 @@
 + - `⌘W`: Close Quick Notes window
 
 ## Changelog
+### v1.1.1 (2025-01-08)
+- Added the ability to insert a small note into today's notes with one click.
+- Added the ability to create a small note as a SiYuan document with one click.
+- Added the ability to directly drag historical small notes into a SiYuan document.
+- Added the ability for pictures to be automatically uploaded when pasted.
+- Added custom settings for small notes, supporting the following configurations:
+  - Configuration of the ID of today's notebook, which is used to insert small notes into today's notes with one click.
+  - Whether to automatically delete the small note after inserting it into today's notes.
+  - Template configuration for inserting small notes into today's notes.
+  - The number of historical small notes loaded each time.
+  - The width and height of the independent small window.
+- Fixed the issue where pictures with spaces in their names would not be displayed. 
+
 ### v1.1.0 (2025-01-07)
 - The mini notes now support being called out in a separate window via shortcut keys. What's different from the previous pop-up windows is that you can call out this independent window alone without having to display the main body of SiYuan. 
 
