@@ -1430,6 +1430,12 @@ export default class PluginQuickNote extends Plugin {
             });
         };
 
+        // 预处理文本，保留空行
+        const preserveEmptyLines = (content: string) => {
+            return content.replace(/\n\n/g, '\n&nbsp;\n');
+        };
+        
+
         // 处理任务列表
         const processTaskList = (content: string) => {
             // 使用捕获组来保存原始的方括号格式
@@ -1459,7 +1465,8 @@ export default class PluginQuickNote extends Plugin {
         try {
             // 先处理图片路径，再进行Markdown渲染
             const processedText = processImagePaths(displayText);
-            renderedContent = window.Lute.New().Md2HTML(processedText);
+            const textWithEmptyLines = preserveEmptyLines(processedText);
+            renderedContent = window.Lute.New().Md2HTML(textWithEmptyLines);
             renderedContent = processTaskList(renderedContent);
             
             // 添加图片点击事件处理
@@ -1743,13 +1750,13 @@ export default class PluginQuickNote extends Plugin {
                         // 准备变量值
                         const time = new Date().toLocaleString();
                         const content = text;  // 不再添加 > 前缀
-                        const tags = tags && tags.length > 0 ? tags.map(tag => `#${tag}`).join(' ') : '';
+                        const tagsVal = tags && tags.length > 0 ? tags.map(tag => `#${tag}`).join(' ') : '';
                         
                         // 替换模板中的变量
                         const content_final = template
                             .replace(/\${time}/g, time)
                             .replace(/\${content}/g, content)
-                            .replace(/\${tags}/g, tags);
+                            .replace(/\${tags}/g, tagsVal);
                         
                         // 插入内容到文档末尾
                         await appendBlock("markdown", content_final, result.id);
