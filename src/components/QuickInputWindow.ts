@@ -150,7 +150,7 @@ export class QuickInputWindow {
             show: true
         });
         // 打开开发者工具以便调试
-        this.win.webContents.openDevTools();
+        // this.win.webContents.openDevTools();
         this.setupIPCListeners();
         await this.win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(this.getWindowContent())}`);
         this.setupWindowEvents();
