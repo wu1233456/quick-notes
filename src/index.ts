@@ -82,7 +82,7 @@ export default class PluginQuickNote extends Plugin {
 
         this.settingUtils.addItem({
             key: "insertTemplate",
-            value: "> [!note] 小记 ${time}\n> ${content}\n> \n> 标签：${tags}",
+            value: "-  ${time} ${tags}  ${content} ",
             type: "textarea",
             title: this.i18n.note.insertTemplate,
             description: this.i18n.note.insertTemplateDesc
@@ -234,7 +234,7 @@ export default class PluginQuickNote extends Plugin {
                                     <div class="topbar-container" style="width:100%"></div>
                                     <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'width: 95%;display:block' : 'width: 95%;display:None'}" ></div>
                                     <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width: 95%;"></div>
-                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px;">
+                                    <div class="fn__flex-1 history-list" style="overflow: auto; margin: 0 8px;width: 95%;">
                                     </div>
                                 </div>
                             </div>`;
