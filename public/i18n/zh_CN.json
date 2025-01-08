@@ -135,7 +135,8 @@
         "deleteAfterInsert": "插入今日笔记后是否删除小记",
         "deleteAfterInsertDesc": "选择将历史小记插入到今日笔记时是否自动删除原小记",
         "insertTemplate": "插入模板",
-        "insertTemplateDesc": "插入到笔记时使用的模板，支持以下变量：\n${time}: 插入时间\n${content}: 小记内容\n${tags}: 标签"
+        "insertTemplateDesc": "插入到笔记时使用的模板，支持以下变量：\n${time}: 插入时间\n${content}: 小记内容\n${tags}: 标签",
+        "referenceLink": "引用自今日笔记"
     },
     "openTagPanel": "打开标签选择面板"
 }

@@ -148,7 +148,7 @@
         "docPath": "Save Location",
         "docPathPlaceholder": "Enter document path",
         "untitledDoc": "Untitled Document",
-        "defaultNotebook": "Default Notebook",
+        "defaultNotebook": "Daily Notebook",
         "defaultNotebookDesc": "Enter notebook ID, leave empty to use the first notebook",
         "autoCopyToDaily": "Auto Copy to Daily Note",
         "autoCopyToDailyDesc": "Automatically copy new notes to daily note",
@@ -163,7 +163,8 @@
         "deleteAfterInsert": "Delete After Insert",
         "deleteAfterInsertDesc": "Automatically delete the original note after inserting to daily note",
         "insertTemplate": "Insert Template",
-        "insertTemplateDesc": "Template used when inserting to daily note, supports following variables:\n${time}: Insert time\n${content}: Note content\n${tags}: Tags"
+        "insertTemplateDesc": "Template used when inserting to daily note, supports following variables:\n${time}: Insert time\n${content}: Note content\n${tags}: Tags",
+        "referenceLink": "Reference from Daily Note"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

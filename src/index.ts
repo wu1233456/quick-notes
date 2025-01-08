@@ -1757,9 +1757,18 @@ export default class PluginQuickNote extends Plugin {
                             .replace(/\${time}/g, time)
                             .replace(/\${content}/g, content)
                             .replace(/\${tags}/g, tagsVal);
-                        
                         // 插入内容到文档末尾
-                        await appendBlock("markdown", content_final, result.id);
+                        const appendResult = await appendBlock("markdown", content_final, result.id);
+                        // appendResult[0] 包含 doOperations 数组，其中第一个操作的 id 就是 blockId
+                        const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
+                        if (blockId) {
+                            // 在原小记末尾添加引用链接
+                            const newText = text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
+                            await this.historyService.saveContent({ text: newText, tags });
+                        } else {
+                            // 如果没有获取到 blockId，仍然保存原始内容
+                            await this.historyService.saveContent({ text, tags });
+                        }
                     } else {
                         console.warn('没有可用的笔记本');
                     }
@@ -1931,163 +1940,58 @@ export default class PluginQuickNote extends Plugin {
                 tagInput.focus();
 
                 // 添加标签的函数
-                const addTag = (tagText: string) => {
+                const addTag = async (tagText: string) => {
                     if (tagText.trim()) {
-                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
-                            .map(tag => tag.getAttribute('data-tag'));
+                        // 更新选中小记的标签
+            
+                        if (selectedTimestamps.length > 0) {
+                            this.historyService.batchUpdateTags(selectedTimestamps, [tagText.trim()]);
+                            showMessage(this.i18n.note.tagSuccess);
 
-                        if (!existingTags.includes(tagText)) {
-                            const tagElement = document.createElement('span');
-                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                            tagElement.setAttribute('data-tag', tagText);
-                            tagElement.setAttribute('aria-label', tagText);
-                            tagElement.style.cursor = 'default';
-                            tagElement.innerHTML = `
-                                <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
-                                <svg class="b3-chip__close" style="cursor: pointer;">
-                                    <use xlink:href="#iconClose"></use>
-                                </svg>
-                            `;
-                            tagsList.appendChild(tagElement);
-
-                            // 添加删除标签的事件
-                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                                tagElement.remove();
-                            });
+                            // 取消选择模式并关闭面板
+                            const cancelSelectBtn = container.querySelector('.cancel-select-btn');
+                            if (cancelSelectBtn) {
+                                (cancelSelectBtn as HTMLElement).click();
+                            }
+                            tagPanel.remove();
+                            document.removeEventListener('click', closePanel);
+                            this.renderDockerToolbar()
+                            this.renderDockHistory();
                         }
-                        tagInput.value = '';
-                        // 添加标签后关闭面板
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
                     }
                 };
 
                 // 回车添加标签
-                tagInput.addEventListener('keydown', (e) => {
-                    const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
-                    const currentSelected = tagPanel.querySelector('.history-tag.selected');
-                    let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
+                tagInput.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const searchText = tagInput.value.trim();
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
+                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
 
-                    switch(e.key) {
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            if (historyTags.length > 0) {
-                                // 移除当前选中项的样式
-                                if (currentSelected) {
-                                    currentSelected.classList.remove('selected');
-                                    currentSelected.style.backgroundColor = '';
-                                }
-                                // 计算下一个索引
-                                currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
-                                // 添加新选中项的样式
-                                const nextTag = historyTags[currentIndex] as HTMLElement;
-                                nextTag.classList.add('selected');
-                                nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                                // 确保选中项可见
-                                nextTag.scrollIntoView({ block: 'nearest' });
+                            if (matchingTag) {
+                                // 如果有完全匹配的标签，直接使用该标签
+                                await addTag(matchingTag.getAttribute('data-tag'));
+                            } else {
+                                // 如果没有完全匹配的标签，创建新标签
+                                await addTag(searchText);
                             }
-                            break;
-
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            if (historyTags.length > 0) {
-                                // 移除当前选中项的样式
-                                if (currentSelected) {
-                                    currentSelected.classList.remove('selected');
-                                    currentSelected.style.backgroundColor = '';
-                                }
-                                // 计算上一个索引
-                                currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
-                                // 添加新选中项的样式
-                                const prevTag = historyTags[currentIndex] as HTMLElement;
-                                prevTag.classList.add('selected');
-                                prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                                // 确保选中项可见
-                                prevTag.scrollIntoView({ block: 'nearest' });
-                            }
-                            break;
-
-                        case 'Enter':
-                            e.preventDefault();
-                            const searchText = tagInput.value.trim();
-                            if (currentSelected) {
-                                // 如果有选中的标签，使用该标签
-                                addTag(currentSelected.getAttribute('data-tag'));
-                                const textarea = container.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.focus();
-                                }
-                            } else if (searchText) {
-                                // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
-                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                                if (matchingTag) {
-                                    // 如果有完全匹配的标签，使用该标签
-                                    addTag(matchingTag.getAttribute('data-tag'));
-                                } else {
-                                    // 如果没有匹配的标签，创建新标签
-                                    addTag(searchText);
-                                }
-
-                                const textarea = container.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.focus();
-                                }
-                            }
-                            break;
+                        }
                     }
                 });
 
-                // 修改鼠标悬停事件处理，避免与键盘选择冲突
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('mouseenter', () => {
-                        if (!tag.classList.contains('selected')) {
-                            tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                        }
-                    });
-                    
-                    tag.addEventListener('mouseleave', () => {
-                        if (!tag.classList.contains('selected')) {
-                            tag.style.backgroundColor = '';
-                        }
-                    });
-                });
-
-                // 点击其他地方关闭面板
-                const closePanel = (e: MouseEvent) => {
-                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
-                    }
-                    const textarea = container.querySelector('textarea');
-                    if (textarea) {
-                        // 将焦点设置到编辑框上
-                        textarea.focus();
-                    }
-                };
-
-                // 延迟添加点击事件，避免立即触发
-                setTimeout(() => {
-                    document.addEventListener('click', closePanel);
-                }, 0);
-
-                // 添加标签点击事件
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('click', () => {
-                        const tagText = tag.getAttribute('data-tag');
+                // 点击历史标签直接添加
+                tagPanel.addEventListener('click', async (e) => {
+                    const target = e.target as HTMLElement;
+                    const tagChip = target.closest('.history-tag') as HTMLElement;
+                    if (tagChip) {
+                        const tagText = tagChip.getAttribute('data-tag');
                         if (tagText) {
-                            addTag(tagText);
+                            await addTag(tagText);
                         }
-                    });
-
-                    // 添加悬停效果
-                    tag.addEventListener('mouseenter', () => {
-                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                    });
-                    tag.addEventListener('mouseleave', () => {
-                        tag.style.backgroundColor = '';
-                    });
+                    }
                 });
 
                 // 添加搜索功能
@@ -2123,30 +2027,27 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
-                // 修改回车键处理逻辑
-                tagInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const searchText = tagInput.value.trim();
-                        if (searchText) {
-                            // 检查是否有匹配的已有标签
-                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                            if (matchingTag) {
-                                // 如果有完全匹配的标签，直接使用该标签
-                                addTag(matchingTag.getAttribute('data-tag'));
-                            } else {
-                                // 如果没有完全匹配的标签，创建新标签
-                                addTag(searchText);
-                            }
-
-                            const textarea = container.querySelector('textarea');
-                            if (textarea) {
-                                textarea.focus();
-                            }
-                        }
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签悬停效果
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        (tag as HTMLElement).style.backgroundColor = '';
+                    });
                 });
             };
         }
@@ -2697,7 +2598,14 @@ export default class PluginQuickNote extends Plugin {
                     .replace(/\${tags}/g, tags);
                 
                 // 插入内容到文档末尾
-                await appendBlock("markdown", content_final, result.id);
+                const appendResult = await appendBlock("markdown", content_final, result.id);
+                // appendResult[0] 包含 doOperations 数组，其中第一个操作的 id 就是 blockId
+                const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
+                if (blockId) {
+                    // 在原小记末尾添加引用链接
+                    const newText = note.text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
+                    await this.historyService.updateItemContent(timestamp, newText);
+                }
                 showMessage(this.i18n.note.insertSuccess);
 
                 // 检查是否需要删除原小记
