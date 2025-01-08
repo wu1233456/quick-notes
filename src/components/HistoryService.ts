@@ -39,7 +39,7 @@ export class HistoryService {
     private selectedTags: string[] = [];
     private showArchived: boolean = false;
     private currentDisplayCount: number;
-    private readonly itemsPerPage: number;
+    private itemsPerPage: number;
     private parent: Plugin;
 
     constructor(parent: Plugin, data: HistoryData, itemsPerPage: number = 10, i18n: any) {
@@ -48,6 +48,9 @@ export class HistoryService {
         this.itemsPerPage = itemsPerPage;
         this.currentDisplayCount = itemsPerPage;
         this.i18n = i18n;
+    }
+    public setItemsPerPage(itemsPerPage: number) {
+        this.itemsPerPage = itemsPerPage;
     }
 
     public setIsDescending(isDescending: boolean) {

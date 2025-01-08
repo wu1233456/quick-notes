@@ -46,7 +46,14 @@ export default class PluginQuickNote extends Plugin {
         // 初始化设置
         this.settingUtils = new SettingUtils({
             plugin: this,
-            name: SETTINGS_STORAGE_NAME
+            name: SETTINGS_STORAGE_NAME,
+            callback: async () => {
+                console.log("callback");
+                if(this.element){
+                    this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
+                    this.renderDockHistory();
+                }
+            }
         });
 
         // 添加设置项
@@ -58,13 +65,13 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.defaultNotebookDesc
         });
 
-        this.settingUtils.addItem({
-            key: "autoCopyToDaily",
-            value: false,
-            type: "checkbox",
-            title: this.i18n.note.autoCopyToDaily,
-            description: this.i18n.note.autoCopyToDailyDesc
-        });
+        // this.settingUtils.addItem({
+        //     key: "autoCopyToDaily",
+        //     value: false,
+        //     type: "checkbox",
+        //     title: this.i18n.note.autoCopyToDaily,
+        //     description: this.i18n.note.autoCopyToDailyDesc
+        // });
         this.settingUtils.addItem({
             key: "deleteAfterInsert",
             value: true,
@@ -156,7 +163,7 @@ export default class PluginQuickNote extends Plugin {
         };
 
         // 获取设置的每页显示数量，如果没有设置则使用默认值
-        this.itemsPerPage = this.settingUtils.get("itemsPerPage") || 10;
+        this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
         this.currentDisplayCount = this.itemsPerPage;
 
         // 初始化历史服务
@@ -969,6 +976,7 @@ export default class PluginQuickNote extends Plugin {
     }
     private renderDockHistory(){
         let element = this.element;
+        this.historyService.setItemsPerPage(this.itemsPerPage);
         this.historyService.setIsDescending(this.isDescending);
         this.historyService.setShowArchived(this.showArchived);
         const filteredHistory = this.historyService.getFilteredHistory(true);
@@ -1090,14 +1098,6 @@ export default class PluginQuickNote extends Plugin {
                     // 生成思源块 ID
                     const blockId = `${Date.now()}0${Math.random().toString().substring(2, 6)}`;
                     
-                    // 构建思源块数据结构
-                    const siyuanBlock = {
-                        id: blockId,
-                        type: "NodeParagraph",
-                        content: text,
-                        markdown: text
-                    };
-                    
                     // 设置思源特定的格式
                     e.dataTransfer.setData('application/x-siyuan', JSON.stringify({
                         id: blockId,
@@ -1185,7 +1185,7 @@ export default class PluginQuickNote extends Plugin {
                         textSpan.style.opacity = target.checked ? '0.6' : '1';
                     }
 
-                    // 可选：添加操作成功的提示
+                    // 添加操作成功的提示
                     // showMessage(target.checked ? '已完成任务' : '已取消完成');
                 }
                 return;
@@ -1238,26 +1238,6 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
-                // 添加插入到每日笔记选项
-                menu.addItem({
-                    icon: "iconCalendar",
-                    label: this.i18n.note.insertToDaily,
-                    click: async () => {
-                        menu.close();
-                        this.insertToDaily(timestamp);
-                    }
-                });
-
-                // 添加创建为文档选项
-                menu.addItem({
-                    icon: "iconFile",
-                    label: this.i18n.note.createDoc,
-                    click: async () => {
-                        menu.close();
-                        this.createNoteAsDocument(timestamp);
-                    }
-                });
-
                 // 添加归档/取消归档选项
                 menu.addItem({
                     icon: "iconArchive",
@@ -1275,6 +1255,25 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
+
+                // 添加创建为文档选项
+                menu.addItem({
+                    icon: "iconFile",
+                    label: this.i18n.note.createDoc,
+                    click: async () => {
+                        menu.close();
+                        this.createNoteAsDocument(timestamp);
+                    }
+                });
+                // 添加插入到每日笔记选项
+                menu.addItem({
+                    icon: "iconCalendar",
+                    label: this.i18n.note.insertToDaily,
+                    click: async () => {
+                        menu.close();
+                        this.insertToDaily(timestamp);
+                    }
+                });
                 menu.addItem({
                     icon: "iconTrashcan",
                     label: this.i18n.note.delete,
@@ -1760,15 +1759,17 @@ export default class PluginQuickNote extends Plugin {
                         // 插入内容到文档末尾
                         const appendResult = await appendBlock("markdown", content_final, result.id);
                         // appendResult[0] 包含 doOperations 数组，其中第一个操作的 id 就是 blockId
-                        const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
-                        if (blockId) {
-                            // 在原小记末尾添加引用链接
-                            const newText = text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
-                            await this.historyService.saveContent({ text: newText, tags });
-                        } else {
+                        // const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
+                        // if (blockId) {
+                        //     // 在原小记末尾添加引用链接
+                        //     const newText = text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
+                        //     await this.historyService.saveContent({ text: newText, tags });
+                        // } else {
                             // 如果没有获取到 blockId，仍然保存原始内容
-                            await this.historyService.saveContent({ text, tags });
-                        }
+                            // await this.historyService.saveContent({ text, tags });
+                        // }
+
+                        await this.historyService.saveContent({ text, tags });
                     } else {
                         console.warn('没有可用的笔记本');
                     }
@@ -2600,12 +2601,12 @@ export default class PluginQuickNote extends Plugin {
                 // 插入内容到文档末尾
                 const appendResult = await appendBlock("markdown", content_final, result.id);
                 // appendResult[0] 包含 doOperations 数组，其中第一个操作的 id 就是 blockId
-                const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
-                if (blockId) {
-                    // 在原小记末尾添加引用链接
-                    const newText = note.text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
-                    await this.historyService.updateItemContent(timestamp, newText);
-                }
+                // const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
+                // if (blockId) {
+                //     // 在原小记末尾添加引用链接
+                //     const newText = note.text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
+                //     await this.historyService.updateItemContent(timestamp, newText);
+                // }
                 showMessage(this.i18n.note.insertSuccess);
 
                 // 检查是否需要删除原小记
