@@ -143,10 +143,10 @@ export class QuickInputWindow {
                 enableRemoteModule: true,
                 webSecurity: false
             },
-            backgroundColor: 'var(--b3-theme-background)',
             autoHideMenuBar: true,
             fullscreenable: false,
             maximizable: false,
+            transparent: true, // 使窗口背景透明
             show: true
         });
         // 打开开发者工具以便调试
@@ -258,7 +258,7 @@ export class QuickInputWindow {
         `).join('');
 
         return `
-            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%; display: flex; flex-direction: column;">
+            <div style="border: 1px solid var(--b3-border-color); border-radius: 16px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%; display: flex; flex-direction: column;">
                 <textarea class="fn__flex-1 editor-textarea" 
                     placeholder="${i18n.note.placeholder}"
                     style="width: 100%; 
