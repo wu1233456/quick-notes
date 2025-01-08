@@ -5,6 +5,9 @@ interface IPlugin extends Plugin {
     historyService: {
         getCurrentData: () => Array<{ text: string, tags: string[] }>;
     };
+    settingUtils: {
+        get: (key: string) => any;
+    };
     i18n: {
         note: {
             placeholder: string;
@@ -118,9 +121,14 @@ export class QuickInputWindow {
         }
         const { BrowserWindow } = require('@electron/remote');
         const isMac = process.platform === 'darwin';
+
+        // 获取设置中的窗口尺寸，如果没有设置则使用默认值
+        const windowWidth = this.plugin.settingUtils?.get("quickWindowWidth") || 520;
+        const windowHeight = this.plugin.settingUtils?.get("quickWindowHeight") || 400;
+
         this.win = new BrowserWindow({
-            width: 320,
-            height: 360,
+            width: windowWidth,
+            height: windowHeight,
             frame: true,
             titleBarStyle: isMac ? 'hidden' : 'default',
             alwaysOnTop: false,

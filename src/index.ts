@@ -80,6 +80,35 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.itemsPerPageDesc
         });
 
+        this.settingUtils.addItem({
+            key: "quickWindowWidth",
+            value: 520,
+            type: "number",
+            title: this.i18n.note.quickWindowWidth,
+            description: this.i18n.note.quickWindowWidthDesc
+        });
+
+        this.settingUtils.addItem({
+            key: "quickWindowHeight",
+            value: 400,
+            type: "number",
+            title: this.i18n.note.quickWindowHeight,
+            description: this.i18n.note.quickWindowHeightDesc
+        });
+        this.settingUtils.addItem({
+            key: "dockPosition",
+            value: "RightTop",
+            type: "select",
+            title: this.i18n.note.dockPosition,
+            description: this.i18n.note.dockPositionDesc,
+            options: {
+                "LeftTop": this.i18n.note.dockPositionLeftTop,
+                "LeftBottom": this.i18n.note.dockPositionLeftBottom,
+                "RightTop": this.i18n.note.dockPositionRightTop,
+                "RightBottom": this.i18n.note.dockPositionRightBottom
+            }
+        });
+
         await this.settingUtils.load();
         await this.initData();
         this.initComponents();
@@ -162,10 +191,11 @@ export default class PluginQuickNote extends Plugin {
         initMardownStyle();
     }
     private initDock() {
+        console.log(this.settingUtils.get("dockPosition"));
         // 创建 dock 时读取保存的位置
         this.addDock({
             config: {
-                position: "RightTop",
+                position: this.settingUtils.get("dockPosition") || "RightTop",
                 size: { width: 300, height: 0 },
                 icon: "iconSmallNote",
                 hotkey: '⇧⌘U',
@@ -1718,7 +1748,7 @@ export default class PluginQuickNote extends Plugin {
             }
 
             if (this.element) {
-                this.initDockPanel();
+            this.initDockPanel();
             }
         }
     }
@@ -2615,7 +2645,7 @@ export default class PluginQuickNote extends Plugin {
             
             // 如果没有设置默认笔记本，获取第一个笔记本
             if (!defaultNotebook) {
-                const notebooks = await lsNotebooks();
+            const notebooks = await lsNotebooks();
                 if (notebooks && notebooks.notebooks && notebooks.notebooks.length > 0) {
                     defaultNotebook = notebooks.notebooks[0].id;
                 }
@@ -2623,23 +2653,23 @@ export default class PluginQuickNote extends Plugin {
 
             if (!defaultNotebook) {
                 showMessage(this.i18n.note.noNotebooks);
-                return;
-            }
+                    return;
+                }
 
-            try {
-                // 创建或获取每日笔记
+                try {
+                    // 创建或获取每日笔记
                 const result = await createDailyNote(defaultNotebook);
-                
-                // 构建要插入的内容
-                const content = `> [!note] 小记 ${new Date(note.timestamp).toLocaleTimeString()}\n${note.text.split('\n').map(line => `> ${line}`).join('\n')}${note.tags && note.tags.length > 0 ? `\n> \n> 标签：${note.tags.map(tag => `#${tag}`).join(' ')}` : ''}`;
-                
-                // 插入内容到文档末尾
-                await appendBlock("markdown", content, result.id);
-                showMessage(this.i18n.note.insertSuccess);
-            } catch (error) {
-                console.error('插入到每日笔记失败:', error);
-                showMessage(this.i18n.note.insertFailed);
-            }
+                    
+                    // 构建要插入的内容
+                    const content = `> [!note] 小记 ${new Date(note.timestamp).toLocaleTimeString()}\n${note.text.split('\n').map(line => `> ${line}`).join('\n')}${note.tags && note.tags.length > 0 ? `\n> \n> 标签：${note.tags.map(tag => `#${tag}`).join(' ')}` : ''}`;
+                    
+                    // 插入内容到文档末尾
+                    await appendBlock("markdown", content, result.id);
+                    showMessage(this.i18n.note.insertSuccess);
+                } catch (error) {
+                    console.error('插入到每日笔记失败:', error);
+                    showMessage(this.i18n.note.insertFailed);
+                }
         } catch (error) {
             console.error('插入到每日笔记失败:', error);
             showMessage(this.i18n.note.insertFailed);
