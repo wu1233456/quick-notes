@@ -101,7 +101,22 @@
         "uploadSuccess": "上传成功",
         "uploadFailed": "上传失败",
         "editSuccess": "编辑成功",
-        "placeholder": "在这里输入你的想法..."
+        "placeholder": "在这里输入你的想法...",
+        "createDoc": "创建为文档",
+        "selectNotebook": "选择笔记本",
+        "noNotebooks": "没有可用的笔记本",
+        "noteNotFound": "小记不存在",
+        "pleaseSelectNotebook": "请选择笔记本",
+        "deleteAfterCreate": "创建后删除小记",
+        "createDocSuccess": "创建文档成功",
+        "createDocFailed": "创建文档失败",
+        "confirm": "确定",
+        "cancel": "取消",
+        "docTitle": "文档标题",
+        "docTitlePlaceholder": "请输入文档标题",
+        "docPath": "保存位置",
+        "docPathPlaceholder": "请输入文档保存路径",
+        "untitledDoc": "未命名文档"
     },
     "openTagPanel": "打开标签选择面板"
 }

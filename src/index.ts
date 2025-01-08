@@ -8,7 +8,7 @@ import {
     adaptHotkey
 } from "siyuan";
 import "@/index.scss";
-import { upload } from "./api";
+import { upload, lsNotebooks, createDocWithMd } from "./api";
 import { initMardownStyle } from './components/markdown';
 // 导入新的组件
 import { ExportDialog } from './components/ExportDialog';
@@ -754,8 +754,8 @@ export default class PluginQuickNote extends Plugin {
                                             </div>
                                         `).join('')
                         : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                                        ${this.i18n.note.noTags}
-                                       </div>`
+                                ${this.i18n.note.noTags}
+                               </div>`
                     }
                             </div>
                         </div>
@@ -1082,6 +1082,16 @@ export default class PluginQuickNote extends Plugin {
                         await this.historyService.toggleItemPin(timestamp);
                         menu.close();
                         this.renderDockHistory();
+                    }
+                });
+
+                // 添加创建为文档选项
+                menu.addItem({
+                    icon: "iconFile",
+                    label: this.i18n.note.createDoc,
+                    click: async () => {
+                        menu.close();
+                        this.createNoteAsDocument(timestamp);
                     }
                 });
 
@@ -2290,6 +2300,139 @@ export default class PluginQuickNote extends Plugin {
         const historyList = this.element?.querySelector('.history-list');
         if (historyList && this.historyClickHandler) {
             historyList.removeEventListener('click', this.historyClickHandler);
+        }
+    }
+
+    private async createNoteAsDocument(timestamp: number) {
+        try {
+            // 获取小记内容
+            const note = this.historyService.getHistoryItem(timestamp);
+            if (!note) {
+                showMessage(this.i18n.note.noteNotFound);
+                return;
+            }
+
+            // 获取所有笔记本
+            const notebooks = await lsNotebooks();
+            if (!notebooks || !notebooks.notebooks || notebooks.notebooks.length === 0) {
+                showMessage(this.i18n.note.noNotebooks);
+                return;
+            }
+
+            // 创建选择笔记本的对话框
+            const dialog = new Dialog({
+                title: this.i18n.note.selectNotebook,
+                content: `
+                    <div class="b3-dialog__content" style="max-height: 70vh; overflow: auto; padding: 20px;">
+                        <div class="fn__flex-column" style="gap: 16px;">
+                            <div class="fn__flex-column" style="gap: 8px;">
+                                <div class="fn__flex" style="align-items: center;">
+                                    <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.docTitle}</span>
+                                    <span class="fn__space"></span>
+                                    <input type="text" class="b3-text-field fn__flex-1" id="docTitle" 
+                                        placeholder="${this.i18n.note.docTitlePlaceholder}"
+                                        style="padding: 8px 12px; border-radius: 6px;">
+                                </div>
+                                <div class="fn__flex" style="align-items: center;">
+                                    <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.docPath}</span>
+                                    <span class="fn__space"></span>
+                                    <input type="text" class="b3-text-field fn__flex-1" id="docPath" 
+                                        value="/小记" 
+                                        placeholder="${this.i18n.note.docPathPlaceholder}"
+                                        style="padding: 8px 12px; border-radius: 6px;">
+                                </div>
+                            </div>
+                            <div class="fn__flex-column" style="gap: 8px;">
+                                <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.selectNotebook}</span>
+                                <div class="fn__flex-column notebooks-list" style="gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--b3-theme-background); border-radius: 6px; border: 1px solid var(--b3-border-color);">
+                                    ${notebooks.notebooks.map((notebook, index) => `
+                                        <label class="fn__flex b3-label" style="padding: 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;">
+                                            <input type="radio" name="notebook" value="${notebook.id}" style="margin-right: 8px;" ${index === 0 ? 'checked' : ''}>
+                                            <span>${notebook.name}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div class="fn__flex" style="align-items: center; margin-top: 8px;">
+                                <label class="fn__flex b3-label" style="align-items: center; cursor: pointer;">
+                                    <input type="checkbox" class="b3-checkbox" id="deleteAfterCreate" checked>
+                                    <span style="margin-left: 8px;">${this.i18n.note.deleteAfterCreate}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fn__flex b3-dialog__action" style="padding: 16px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background);">
+                        <div class="fn__flex-1"></div>
+                        <button class="b3-button b3-button--cancel" style="margin-right: 8px; padding: 8px 16px;">${this.i18n.note.cancel}</button>
+                        <button class="b3-button b3-button--text" data-type="confirm" style="padding: 8px 16px;">${this.i18n.note.confirm}</button>
+                    </div>
+                `,
+                width: "520px"
+            });
+
+            // 添加悬停效果
+            const labels = dialog.element.querySelectorAll('.notebooks-list .b3-label');
+            labels.forEach(label => {
+                label.addEventListener('mouseenter', () => {
+                    (label as HTMLElement).style.backgroundColor = 'var(--b3-theme-surface)';
+                });
+                label.addEventListener('mouseleave', () => {
+                    (label as HTMLElement).style.backgroundColor = '';
+                });
+            });
+
+            // 聚焦到标题输入框
+            setTimeout(() => {
+                const titleInput = dialog.element.querySelector('#docTitle') as HTMLInputElement;
+                if (titleInput) {
+                    titleInput.focus();
+                }
+            }, 100);
+
+            const confirmBtn = dialog.element.querySelector('[data-type="confirm"]') as HTMLElement;
+            const cancelBtn = dialog.element.querySelector('.b3-button--cancel') as HTMLElement;
+
+            // 绑定取消按钮事件
+            cancelBtn.addEventListener('click', () => {
+                dialog.destroy();
+            });
+
+            // 绑定确认按钮事件
+            confirmBtn.addEventListener('click', async () => {
+                const selectedNotebook = dialog.element.querySelector('input[name="notebook"]:checked') as HTMLInputElement;
+                const docTitle = (dialog.element.querySelector('#docTitle') as HTMLInputElement).value.trim();
+                const docPath = (dialog.element.querySelector('#docPath') as HTMLInputElement).value.trim();
+                const deleteAfterCreate = (dialog.element.querySelector('#deleteAfterCreate') as HTMLInputElement).checked;
+
+                if (!selectedNotebook) {
+                    showMessage(this.i18n.note.pleaseSelectNotebook);
+                    return;
+                }
+
+                try {
+                    // 创建文档
+                    const notebookId = selectedNotebook.value;
+                    const title = docTitle || this.i18n.note.untitledDoc;
+                    const path = `${docPath}/${title}`;
+                    await createDocWithMd(notebookId, path, note.text);
+
+                    // 如果选择了创建后删除
+                    if (deleteAfterCreate) {
+                        this.historyService.deleteItem(timestamp);
+                        this.renderDockerToolbar();
+                        this.renderDockHistory();
+                    }
+
+                    showMessage(this.i18n.note.createDocSuccess);
+                    dialog.destroy();
+                } catch (error) {
+                    console.error('创建文档失败:', error);
+                    showMessage(this.i18n.note.createDocFailed);
+                }
+            });
+        } catch (error) {
+            console.error('创建文档失败:', error);
+            showMessage(this.i18n.note.createDocFailed);
         }
     }
 
