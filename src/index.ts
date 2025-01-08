@@ -1567,6 +1567,13 @@ export default class PluginQuickNote extends Plugin {
                     onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { 
                         event.preventDefault(); 
                         this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); 
+                    } else if((event.metaKey || event.ctrlKey) && event.key === 'z') {
+                        event.preventDefault();
+                        if(event.shiftKey) {
+                            document.execCommand('redo');
+                        } else {
+                            document.execCommand('undo');
+                        }
                     }"
                 >${text}</textarea>
                 <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px; flex-shrink: 0;">
@@ -1677,7 +1684,7 @@ export default class PluginQuickNote extends Plugin {
                                                     ${tag}
                                                 </span>
                                                 <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                    ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
+                                                    ${this.historyService.getCurrentData()?.filter(item => item.tags?.includes(tag)).length}
                                                 </span>
                                             </div>
                                         `).join('')

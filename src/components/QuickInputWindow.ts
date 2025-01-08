@@ -252,6 +252,13 @@ export class QuickInputWindow {
                     onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { 
                         event.preventDefault(); 
                         this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); 
+                    } else if((event.metaKey || event.ctrlKey) && event.key === 'z') {
+                        event.preventDefault();
+                        if(event.shiftKey) {
+                            document.execCommand('redo');
+                        } else {
+                            document.execCommand('undo');
+                        }
                     }"
                 >${draftText}</textarea>
                 <div style="border-top: 1px solid var(--b3-border-color); padding: 4px 8px; flex-shrink: 0;">
