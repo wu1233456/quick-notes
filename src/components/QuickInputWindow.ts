@@ -123,14 +123,14 @@ export class QuickInputWindow {
         const isMac = process.platform === 'darwin';
 
         // 获取设置中的窗口尺寸，如果没有设置则使用默认值
-        const windowWidth = this.plugin.settingUtils?.get("quickWindowWidth") || 520;
-        const windowHeight = this.plugin.settingUtils?.get("quickWindowHeight") || 400;
+        const windowWidth = this.plugin.settingUtils?.get("quickWindowWidth") || 250;
+        const windowHeight = this.plugin.settingUtils?.get("quickWindowHeight") || 300;
 
         this.win = new BrowserWindow({
             width: windowWidth,
             height: windowHeight,
-            frame: true,
-            titleBarStyle: isMac ? 'hidden' : 'default',
+            frame: false,
+            titleBarStyle: 'default',
             alwaysOnTop: false,
             skipTaskbar: true,
             title: this.plugin.i18n.note.title,
@@ -235,10 +235,10 @@ export class QuickInputWindow {
         const i18n = this.plugin.i18n;
 
         const draftTagsHtml = draftTags.map(tag => `
-            <span class="tag-item b3-chip b3-chip--middle" data-tag="${tag}">
-                <span class="b3-chip__content">${tag}</span>
-                <svg class="b3-chip__close">
-                    <use xlink:href="#iconClose"></use>
+            <span class="tag-item b3-chip b3-chip--middle" data-tag="${tag}" style="display: inline-flex; align-items: center; gap: 4px; background-color: var(--b3-theme-surface); padding: 0 8px; height: 28px; border-radius: var(--b3-border-radius); margin: 0 4px 4px 0;">
+                <span class="b3-chip__content" style="font-size: 14px;">${tag}</span>
+                <svg class="b3-chip__close" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;" viewBox="0 0 1024 1024">
+                    <path d="M512 451.669333l165.973333-165.973333a21.333333 21.333333 0 0 1 30.122667 0l30.165333 30.208a21.333333 21.333333 0 0 1 0 30.165333L572.330667 512l165.973333 165.973333a21.333333 21.333333 0 0 1 0 30.122667l-30.208 30.165333a21.333333 21.333333 0 0 1-30.165333 0L512 572.330667l-165.973333 165.973333a21.333333 21.333333 0 0 1-30.122667 0l-30.165333-30.208a21.333333 21.333333 0 0 1 0-30.165333L451.669333 512l-165.973333-165.973333a21.333333 21.333333 0 0 1 0-30.122667l30.208-30.165333a21.333333 21.333333 0 0 1 30.165333 0L512 451.669333z" fill="currentColor"/>
                 </svg>
             </span>
         `).join('');
@@ -331,6 +331,8 @@ export class QuickInputWindow {
                         color: var(--b3-theme-on-background);
                         font-family: var(--b3-font-family);
                         overflow: hidden;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                        border-radius: var(--b3-border-radius);
                     }
                     :root {
                         ${this.getThemeStyle()}
@@ -348,8 +350,9 @@ export class QuickInputWindow {
                         justify-content: flex-end;
                         padding-right: 8px;
                         z-index: 100;
+                        gap: 4px;
                     }
-                    .pin-button {
+                    .pin-button, .close-button {
                         -webkit-app-region: no-drag;
                         background: none;
                         border: none;
@@ -359,8 +362,11 @@ export class QuickInputWindow {
                         opacity: 0.6;
                         transition: opacity 0.2s;
                     }
-                    .pin-button:hover {
+                    .pin-button:hover, .close-button:hover {
                         opacity: 1;
+                    }
+                    .close-button:hover {
+                        color: var(--b3-theme-error);
                     }
                     .pin-button.pinned {
                         color: var(--b3-theme-primary);
@@ -382,6 +388,11 @@ export class QuickInputWindow {
                             <path d="M1008.618567 392.01748l-383.019709-383.019709C606.447872-10.153214 574.529563 2.61411 568.145902 34.532419l-6.383662 57.452956-6.383662 70.22028c0 12.767324-6.383662 19.150985-12.767324 25.534647L236.195487 404.784804c-6.383662 6.383662-12.767324 6.383662-25.534647 6.383662h-12.767324l-57.452956-6.383662c-31.918309 0-51.069295 38.301971-25.534647 57.452956l44.685632 44.685633 127.673237 127.673236L0 1024l383.019709-287.264782 172.358869 172.358869c25.534647 25.534647 63.836618 6.383662 57.452956-25.534647l-6.383662-57.452956v-12.767324c0-6.383662 0-19.150985 6.383662-25.534647L829.876036 481.388746c6.383662-6.383662 12.767324-12.767324 25.534647-12.767324l70.22028-6.383662 57.452957-6.383662c38.301971-6.383662 51.069295-38.301971 25.534647-63.836618z m-255.346473 31.918309l-217.044501 306.415767s0 6.383662-6.383662 6.383662L287.264782 494.156069s6.383662 0 6.383662-6.383662l306.415767-217.044501c31.918309-19.150985 51.069295-51.069295 57.452956-89.371266l178.742531 178.742531c-31.918309 12.767324-63.836618 31.918309-82.987604 63.836618z" fill="currentColor"/>
                         </svg>
                     </button>
+                    <button class="close-button" id="closeButton" title="关闭">
+                        <svg style="width: 18px; height: 18px;" viewBox="0 0 1024 1024">
+                            <path d="M512 451.669333l165.973333-165.973333a21.333333 21.333333 0 0 1 30.122667 0l30.165333 30.208a21.333333 21.333333 0 0 1 0 30.165333L572.330667 512l165.973333 165.973333a21.333333 21.333333 0 0 1 0 30.122667l-30.208 30.165333a21.333333 21.333333 0 0 1-30.165333 0L512 572.330667l-165.973333 165.973333a21.333333 21.333333 0 0 1-30.122667 0l-30.165333-30.208a21.333333 21.333333 0 0 1 0-30.165333L451.669333 512l-165.973333-165.973333a21.333333 21.333333 0 0 1 0-30.122667l30.208-30.165333a21.333333 21.333333 0 0 1 30.165333 0L512 451.669333z" fill="currentColor"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="content">
                     ${this.getEditorTemplate()}
@@ -394,6 +405,7 @@ export class QuickInputWindow {
                     const addTagBtn = document.querySelector('.add-tag-btn');
                     const uploadBtn = document.querySelector('.upload-image-btn');
                     const pinButton = document.getElementById('pinButton');
+                    const closeButton = document.getElementById('closeButton');
                     
                     let isPinned = false;
                     textarea.focus();
@@ -500,19 +512,26 @@ export class QuickInputWindow {
                                     const tagElement = document.createElement('span');
                                     tagElement.className = 'tag-item b3-chip b3-chip--middle';
                                     tagElement.setAttribute('data-tag', tagText);
+                                    tagElement.style.cssText = 'display: inline-flex; align-items: center; gap: 4px; background-color: var(--b3-theme-surface); padding: 0 8px; height: 28px; border-radius: var(--b3-border-radius); margin: 0 4px 4px 0;';
                                     tagElement.innerHTML = \`
-                                        <span class="b3-chip__content">\${tagText}</span>
-                                        <svg t="1736226890857" class="b3-chip__close" style="height: 18px; width: 18px;"  viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="40214" xmlns:xlink="http://www.w3.org/1999/xlink" ><path d="M512 451.669333l165.973333-165.973333a21.333333 21.333333 0 0 1 30.122667 0l30.165333 30.208a21.333333 21.333333 0 0 1 0 30.165333L572.330667 512l165.973333 165.973333a21.333333 21.333333 0 0 1 0 30.122667l-30.208 30.165333a21.333333 21.333333 0 0 1-30.165333 0L512 572.330667l-165.973333 165.973333a21.333333 21.333333 0 0 1-30.122667 0l-30.165333-30.208a21.333333 21.333333 0 0 1 0-30.165333L451.669333 512l-165.973333-165.973333a21.333333 21.333333 0 0 1 0-30.122667l30.208-30.165333a21.333333 21.333333 0 0 1 30.165333 0L512 451.669333z" fill="#A7B3BF" p-id="40215"></path></svg>
-                                   
+                                        <span class="b3-chip__content" style="font-size: 14px;">\${tagText}</span>
+                                        <svg class="b3-chip__close" style="width: 14px; height: 14px; cursor: pointer; flex-shrink: 0;" viewBox="0 0 1024 1024">
+                                            <path d="M512 451.669333l165.973333-165.973333a21.333333 21.333333 0 0 1 30.122667 0l30.165333 30.208a21.333333 21.333333 0 0 1 0 30.165333L572.330667 512l165.973333 165.973333a21.333333 21.333333 0 0 1 0 30.122667l-30.208 30.165333a21.333333 21.333333 0 0 1-30.165333 0L512 572.330667l-165.973333 165.973333a21.333333 21.333333 0 0 1-30.122667 0l-30.165333-30.208a21.333333 21.333333 0 0 1 0-30.165333L451.669333 512l-165.973333-165.973333a21.333333 21.333333 0 0 1 0-30.122667l30.208-30.165333a21.333333 21.333333 0 0 1 30.165333 0L512 451.669333z" fill="currentColor"/>
+                                        </svg>
                                     \`;
                                     tagsList.appendChild(tagElement);
 
-                                    tagElement.querySelector('.b3-chip__close').onclick = () => {
-                                        tagElement.remove();
-                                    };
+                                    const closeBtn = tagElement.querySelector('.b3-chip__close');
+                                    if (closeBtn) {
+                                        closeBtn.onclick = () => {
+                                            tagElement.remove();
+                                            saveDraft();
+                                        };
+                                    }
                                 }
                                 tagPanel.remove();
                                 textarea.focus();
+                                saveDraft();
                             }
                         };
 
@@ -608,7 +627,24 @@ export class QuickInputWindow {
                         });
                     };
 
+                    closeButton.addEventListener('click', () => {
+                        window.close();
+                    });
+
                     window.allHistoryTags = ${JSON.stringify(allTags)};
+
+                    window.addEventListener('load', () => {
+                        // 为所有已存在的标签添加删除事件监听
+                        document.querySelectorAll('.tag-item').forEach(tagElement => {
+                            const closeBtn = tagElement.querySelector('.b3-chip__close');
+                            if (closeBtn) {
+                                closeBtn.onclick = () => {
+                                    tagElement.remove();
+                                    saveDraft();
+                                };
+                            }
+                        });
+                    });
                 </script>
             </body>
             </html>
