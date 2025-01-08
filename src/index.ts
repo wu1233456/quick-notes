@@ -998,6 +998,75 @@ export default class PluginQuickNote extends Plugin {
         // 移除旧的事件监听器
         historyList.removeEventListener('click', this.historyClickHandler);
         
+        // 添加拖拽相关的事件处理
+        historyList.addEventListener('dragstart', (e: DragEvent) => {
+            const target = e.target as HTMLElement;
+            const textContent = target.closest('.text-content');
+            if (textContent) {
+                const text = textContent.getAttribute('data-text');
+                if (text && e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'copyMove';
+                    
+                    // 设置多种数据格式以提高兼容性
+                    e.dataTransfer.setData('text/plain', text);
+                    
+                    // 设置HTML格式 - 使用完整的HTML结构
+                    const markdownContent = window.Lute.New().Md2HTML(text);
+                    const fullHtml = `<div data-type="NodeParagraph" class="protyle-wysiwyg__paragraph" data-node-id="${Date.now()}">${markdownContent}</div>`;
+                    e.dataTransfer.setData('text/html', fullHtml);
+                    
+                    // 设置思源特定的格式
+                    e.dataTransfer.setData('application/x-siyuan', JSON.stringify({
+                        type: 'markdown',
+                        content: text
+                    }));
+                    
+                    // 添加拖拽时的视觉反馈
+                    target.style.opacity = '0.5';
+                    
+                    // 创建拖拽图像
+                    const dragImage = document.createElement('div');
+                    dragImage.style.position = 'fixed';
+                    dragImage.style.top = '-9999px';
+                    dragImage.style.left = '-9999px';
+                    dragImage.style.zIndex = '-1';
+                    dragImage.style.maxWidth = '360px';
+                    dragImage.style.pointerEvents = 'none';
+                    
+                    // 使用与实际内容相同的渲染方式
+                    const previewContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+                    const renderedContent = window.Lute.New().Md2HTML(previewContent);
+                    
+                    dragImage.innerHTML = `
+                        <div class="protyle-wysiwyg__paragraph" style="margin-bottom: 8px; padding: 8px; 
+                            border: 1px solid var(--b3-border-color); 
+                            border-radius: 4px; 
+                            background: var(--b3-theme-background);
+                            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                            <div class="fn__flex-1">
+                                <div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                                    ${renderedContent}
+                                </div>
+                            </div>
+                        </div>`;
+                    
+                    document.body.appendChild(dragImage);
+                    e.dataTransfer.setDragImage(dragImage, 0, 0);
+                    
+                    // 拖拽结束后移除临时元素
+                    setTimeout(() => {
+                        document.body.removeChild(dragImage);
+                    }, 0);
+                }
+            }
+        });
+
+        historyList.addEventListener('dragend', (e: DragEvent) => {
+            const target = e.target as HTMLElement;
+            // 恢复透明度
+            target.style.opacity = '1';
+        });
+
         // 创建新的事件处理函数
         this.historyClickHandler = async (e) => {
             const target = e.target as HTMLElement;
@@ -1333,7 +1402,7 @@ export default class PluginQuickNote extends Plugin {
                     <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
                 </div>
                 <div class="fn__flex-1">
-                    <div class="text-content" data-text="${encodeText(displayText)}">
+                    <div class="text-content" data-text="${encodeText(displayText)}" draggable="true">
                         ${item.text.length > MAX_TEXT_LENGTH ?
                 `<div style="word-break: break-word;">
                                 <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
@@ -1692,8 +1761,8 @@ export default class PluginQuickNote extends Plugin {
                                 ${allTags.length > 0 ?
                         allTags
                             .sort((a, b) => {
-                                const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
-                                const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
+                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
                                 return countB - countA;
                             })
                             .map(tag => `
