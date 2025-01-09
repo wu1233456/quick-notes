@@ -825,17 +825,17 @@ export default class PluginQuickNote extends Plugin {
                                 return countB - countA;
                             })
                             .map(tag => `
-                                           <div class="history-tag b3-chip b3-chip--middle" 
-                                               style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
-                                               data-tag="${tag}">
-                                               <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                   ${tag}
-                                               </span>
-                                               <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                   ${this.historyService.getCurrentData()?.filter(item => item.tags?.includes(tag)).length}
-                                               </span>
-                                           </div>
-                                       `).join('')
+                                        <div class="history-tag b3-chip b3-chip--middle" 
+                                            style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
+                                            data-tag="${tag}">
+                                            <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                ${tag}
+                                            </span>
+                                            <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                                ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
+                                            </span>
+                                        </div>
+                                    `).join('')
                         : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
                                        ${this.i18n.note.noTags}
                                       </div>`
@@ -1235,6 +1235,16 @@ export default class PluginQuickNote extends Plugin {
                         await this.historyService.toggleItemPin(timestamp);
                         menu.close();
                         this.renderDockHistory();
+                    }
+                });
+
+                // 添加分享选项
+                menu.addItem({
+                    icon: "iconShare",
+                    label: this.i18n.note.share,
+                    click: async () => {
+                        menu.close();
+                        this.generateShareImage(timestamp);
                     }
                 });
 
@@ -1909,8 +1919,8 @@ export default class PluginQuickNote extends Plugin {
                             ${allTags.length > 0 ?
                         allTags
                             .sort((a, b) => {
-                                const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
-                                const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
+                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
                                 return countB - countA;
                             })
                             .map(tag => `
@@ -1926,13 +1936,13 @@ export default class PluginQuickNote extends Plugin {
                                         </div>
                                     `).join('')
                         : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                            ${this.i18n.note.noTags}
-                           </div>`
+                                       ${this.i18n.note.noTags}
+                                      </div>`
                     }
-                        </div>
-                    </div>
-                </div>
-            `;
+                           </div>
+                       </div>
+                   </div>
+               `;
 
                 // 将面板添加到文档根节点
                 document.body.appendChild(tagPanel);
@@ -1942,163 +1952,58 @@ export default class PluginQuickNote extends Plugin {
                 tagInput.focus();
 
                 // 添加标签的函数
-                const addTag = (tagText: string) => {
+                const addTag = async (tagText: string) => {
                     if (tagText.trim()) {
-                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
-                            .map(tag => tag.getAttribute('data-tag'));
+                        // 更新选中小记的标签
 
-                        if (!existingTags.includes(tagText)) {
-                            const tagElement = document.createElement('span');
-                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                            tagElement.setAttribute('data-tag', tagText);
-                            tagElement.setAttribute('aria-label', tagText);
-                            tagElement.style.cursor = 'default';
-                            tagElement.innerHTML = `
-                            <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
-                            <svg class="b3-chip__close" style="cursor: pointer;">
-                                <use xlink:href="#iconClose"></use>
-                            </svg>
-                        `;
-                            tagsList.appendChild(tagElement);
+                        if (selectedTimestamps.length > 0) {
+                            this.historyService.batchUpdateTags(selectedTimestamps, [tagText.trim()]);
+                            showMessage(this.i18n.note.tagSuccess);
 
-                            // 添加删除标签的事件
-                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                                tagElement.remove();
-                            });
+                            // 取消选择模式并关闭面板
+                            const cancelSelectBtn = container.querySelector('.cancel-select-btn');
+                            if (cancelSelectBtn) {
+                                (cancelSelectBtn as HTMLElement).click();
+                            }
+                            tagPanel.remove();
+                            document.removeEventListener('click', closePanel);
+                            this.renderDockerToolbar()
+                            this.renderDockHistory();
                         }
-                        tagInput.value = '';
-                        // 添加标签后关闭面板
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
                     }
                 };
 
                 // 回车添加标签
-                tagInput.addEventListener('keydown', (e) => {
-                    const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
-                    const currentSelected = tagPanel.querySelector('.history-tag.selected');
-                    let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
+                tagInput.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const searchText = tagInput.value.trim();
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
+                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
 
-                    switch (e.key) {
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            if (historyTags.length > 0) {
-                                // 移除当前选中项的样式
-                                if (currentSelected) {
-                                    currentSelected.classList.remove('selected');
-                                    currentSelected.style.backgroundColor = '';
-                                }
-                                // 计算下一个索引
-                                currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
-                                // 添加新选中项的样式
-                                const nextTag = historyTags[currentIndex] as HTMLElement;
-                                nextTag.classList.add('selected');
-                                nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                                // 确保选中项可见
-                                nextTag.scrollIntoView({ block: 'nearest' });
+                            if (matchingTag) {
+                                // 如果有完全匹配的标签，直接使用该标签
+                                await addTag(matchingTag.getAttribute('data-tag'));
+                            } else {
+                                // 如果没有完全匹配的标签，创建新标签
+                                await addTag(searchText);
                             }
-                            break;
-
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            if (historyTags.length > 0) {
-                                // 移除当前选中项的样式
-                                if (currentSelected) {
-                                    currentSelected.classList.remove('selected');
-                                    currentSelected.style.backgroundColor = '';
-                                }
-                                // 计算上一个索引
-                                currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
-                                // 添加新选中项的样式
-                                const prevTag = historyTags[currentIndex] as HTMLElement;
-                                prevTag.classList.add('selected');
-                                prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                                // 确保选中项可见
-                                prevTag.scrollIntoView({ block: 'nearest' });
-                            }
-                            break;
-
-                        case 'Enter':
-                            e.preventDefault();
-                            const searchText = tagInput.value.trim();
-                            if (currentSelected) {
-                                // 如果有选中的标签，使用该标签
-                                addTag(currentSelected.getAttribute('data-tag'));
-                                const textarea = container.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.focus();
-                                }
-                            } else if (searchText) {
-                                // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
-                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                                if (matchingTag) {
-                                    // 如果有完全匹配的标签，使用该标签
-                                    addTag(matchingTag.getAttribute('data-tag'));
-                                } else {
-                                    // 如果没有匹配的标签，创建新标签
-                                    addTag(searchText);
-                                }
-
-                                const textarea = container.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.focus();
-                                }
-                            }
-                            break;
+                        }
                     }
                 });
 
-                // 修改鼠标悬停事件处理，避免与键盘选择冲突
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('mouseenter', () => {
-                        if (!tag.classList.contains('selected')) {
-                            tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                        }
-                    });
-
-                    tag.addEventListener('mouseleave', () => {
-                        if (!tag.classList.contains('selected')) {
-                            tag.style.backgroundColor = '';
-                        }
-                    });
-                });
-
-                // 点击其他地方关闭面板
-                const closePanel = (e: MouseEvent) => {
-                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
-                    }
-                    const textarea = container.querySelector('textarea');
-                    if (textarea) {
-                        // 将焦点设置到编辑框上
-                        textarea.focus();
-                    }
-                };
-
-                // 延迟添加点击事件，避免立即触发
-                setTimeout(() => {
-                    document.addEventListener('click', closePanel);
-                }, 0);
-
-                // 添加标签点击事件
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('click', () => {
-                        const tagText = tag.getAttribute('data-tag');
+                // 点击历史标签直接添加
+                tagPanel.addEventListener('click', async (e) => {
+                    const target = e.target as HTMLElement;
+                    const tagChip = target.closest('.history-tag') as HTMLElement;
+                    if (tagChip) {
+                        const tagText = tagChip.getAttribute('data-tag');
                         if (tagText) {
-                            addTag(tagText);
+                            await addTag(tagText);
                         }
-                    });
-
-                    // 添加悬停效果
-                    tag.addEventListener('mouseenter', () => {
-                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                    });
-                    tag.addEventListener('mouseleave', () => {
-                        tag.style.backgroundColor = '';
-                    });
+                    }
                 });
 
                 // 添加搜索功能
@@ -2134,30 +2039,27 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
-                // 修改回车键处理逻辑
-                tagInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const searchText = tagInput.value.trim();
-                        if (searchText) {
-                            // 检查是否有匹配的已有标签
-                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                            if (matchingTag) {
-                                // 如果有完全匹配的标签，直接使用该标签
-                                addTag(matchingTag.getAttribute('data-tag'));
-                            } else {
-                                // 如果没有完全匹配的标签，创建新标签
-                                addTag(searchText);
-                            }
-
-                            const textarea = container.querySelector('textarea');
-                            if (textarea) {
-                                textarea.focus();
-                            }
-                        }
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签悬停效果
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        (tag as HTMLElement).style.backgroundColor = '';
+                    });
                 });
             };
         }
@@ -2735,6 +2637,300 @@ export default class PluginQuickNote extends Plugin {
         } catch (error) {
             console.error('插入到每日笔记失败:', error);
             showMessage(this.i18n.note.insertFailed);
+        }
+    }
+
+    private async generateShareImage(timestamp: number) {
+        try {
+            const note = this.historyService.getHistoryItem(timestamp);
+            if (!note) {
+                showMessage(this.i18n.note.noteNotFound);
+                return;
+            }
+
+            // 创建一个临时的 div 来渲染 Markdown
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = window.Lute.New().Md2HTML(note.text);
+
+            // 等待所有图片加载完成
+            const loadImages = async () => {
+                const images = Array.from(tempDiv.querySelectorAll('img'));
+                if (images.length === 0) return;
+
+                await Promise.all(images.map(img => {
+                    return new Promise((resolve, reject) => {
+                        if (img.complete) {
+                            resolve(img);
+                        } else {
+                            img.onload = () => resolve(img);
+                            img.onerror = reject;
+                        }
+                    });
+                }));
+            };
+
+            await loadImages();
+
+            // 处理任务列表
+            const processTaskList = (content: string) => {
+                return content.replace(
+                    /(\[[ ]?\]|\[[ ]?x[ ]?\]) ([^\n]*)/g,
+                    (match, checkbox, text) => {
+                        const isChecked = checkbox.includes('x');
+                        return text.trim();
+                    }
+                );
+            };
+
+            // 获取处理后的文本内容
+            const renderedText = processTaskList(tempDiv.innerText);
+
+            // 创建一个离屏 canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                showMessage(this.i18n.note.generateImageFailed);
+                return;
+            }
+
+            // 设置画布宽度和基础参数
+            canvas.width = 800;
+            const margin = 40;
+            const contentPadding = 40; // 内容区域的内边距
+            const contentWidth = canvas.width - margin * 2;
+
+            // 设置字体样式用于计算文本高度
+            ctx.font = '24px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+            
+            // 计算文本换行后的实际高度
+            const maxTextWidth = contentWidth - contentPadding * 2;
+            const lines = [];
+            let currentLine = '';
+            const words = renderedText.split('');
+            
+            for (const char of words) {
+                const testLine = currentLine + char;
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > maxTextWidth) {
+                    lines.push(currentLine);
+                    currentLine = char;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+
+            // 计算图片高度
+            const images = Array.from(tempDiv.querySelectorAll('img'));
+            const imageHeight = images.reduce((total, img) => {
+                const aspectRatio = img.naturalWidth / img.naturalHeight;
+                const width = Math.min(maxTextWidth, img.naturalWidth);
+                const height = width / aspectRatio;
+                return total + height + 20; // 20px 为图片间距
+            }, 0);
+
+            // 计算内容总高度
+            const lineHeight = 36; // 行高
+            const textHeight = lines.length * lineHeight;
+            const tagsHeight = note.tags?.length ? 80 : 0;
+            const headerHeight = 60; // 日期区域高度
+            const footerHeight = 60; // 底部信息区域高度
+            const totalContentHeight = headerHeight + textHeight + imageHeight + tagsHeight + footerHeight;
+
+            // 设置画布总高度（加上上下边距和内边距）
+            canvas.height = totalContentHeight + contentPadding * 2 + margin * 2;
+
+            // 设置背景色
+            ctx.fillStyle = '#dc4446';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制白色主体区域
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(margin, margin, contentWidth, canvas.height - margin * 2);
+
+            // 设置半圆参数
+            const arcRadius = 15;
+            const arcSpacing = 45;
+            const arcCount = Math.floor(contentWidth / arcSpacing);
+            
+            // 绘制上边的红色下半圆
+            ctx.fillStyle = '#dc4446';
+            for (let i = 0; i < arcCount; i++) {
+                const x = margin + i * arcSpacing + arcSpacing/2;
+                const y = margin;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, arcRadius, 0, Math.PI, false);
+                ctx.fill();
+            }
+
+            // 绘制下边的红色上半圆
+            for (let i = 0; i < arcCount; i++) {
+                const x = margin + i * arcSpacing + arcSpacing/2;
+                const y = canvas.height - margin;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, arcRadius, Math.PI, 2 * Math.PI, false);
+                ctx.fill();
+            }
+
+            // 绘制日期（右上角，红色）
+            ctx.fillStyle = '#dc4446';
+            ctx.font = '20px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            const date = new Date(note.timestamp).toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).replace(/\//g, '-');
+            ctx.fillText(date, canvas.width - margin - contentPadding, margin + contentPadding);
+
+            // 绘制内容（黑色）
+            ctx.fillStyle = '#333333';
+            ctx.font = '24px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            // 逐行绘制文本和图片
+            let currentY = margin + contentPadding + headerHeight;
+            
+            // 绘制文本
+            lines.forEach((line) => {
+                ctx.fillText(line, margin + contentPadding, currentY);
+                currentY += lineHeight;
+            });
+
+            // 绘制图片
+            if (images.length > 0) {
+                currentY += 20; // 文本和图片之间的间距
+                for (const img of images) {
+                    const aspectRatio = img.naturalWidth / img.naturalHeight;
+                    const width = Math.min(maxTextWidth, img.naturalWidth);
+                    const height = width / aspectRatio;
+                    
+                    try {
+                        ctx.drawImage(
+                            img,
+                            margin + contentPadding,
+                            currentY,
+                            width,
+                            height
+                        );
+                        currentY += height + 20; // 图片间距
+                    } catch (error) {
+                        console.error('绘制图片失败:', error);
+                    }
+                }
+            }
+
+            // 绘制标签（红色椭圆背景）
+            if (note.tags && note.tags.length > 0) {
+                let tagX = margin + contentPadding;
+                const tagY = margin + contentPadding + headerHeight + textHeight + imageHeight + 20;
+                ctx.font = '16px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+                
+                note.tags.forEach(tag => {
+                    const tagText = '#' + tag;
+                    const tagWidth = ctx.measureText(tagText).width + 20;
+                    const tagHeight = 26;
+                    
+                    if (tagX + tagWidth > canvas.width - margin - contentPadding) return;
+                    
+                    // 绘制红色椭圆背景
+                    ctx.fillStyle = '#dc4446';
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        tagX + tagWidth/2, 
+                        tagY + tagHeight/2, 
+                        tagWidth/2, 
+                        tagHeight/2, 
+                        0, 0, 2 * Math.PI
+                    );
+                    ctx.fill();
+                    
+                    // 绘制白色标签文本
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(tagText, tagX + tagWidth/2, tagY + tagHeight/2);
+                    
+                    tagX += tagWidth + 10;
+                });
+            }
+
+            // 绘制底部信息
+            ctx.fillStyle = '#999999';
+            ctx.font = '16px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('19 MEMOS · 398 DAYS', margin + contentPadding, canvas.height - margin - contentPadding);
+
+            // 绘制 flomo 标志
+            ctx.fillStyle = '#dc4446';
+            ctx.textAlign = 'right';
+            ctx.fillText('flomo', canvas.width - margin - contentPadding, canvas.height - margin - contentPadding);
+
+            // 创建预览对话框
+            const dialog = new Dialog({
+                title: this.i18n.note.sharePreview,
+                content: `
+                    <div class="fn__flex-column" style="padding: 16px; gap: 16px;">
+                        <div class="image-preview" style="text-align: center;">
+                            <img src="${canvas.toDataURL('image/png')}" style="max-width: 100%; height: auto; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                        </div>
+                        <div class="fn__flex" style="justify-content: center; gap: 16px;">
+                            <button class="b3-button b3-button--outline copy-btn">
+                                <svg class="b3-button__icon"><use xlink:href="#iconCopy"></use></svg>
+                                ${this.i18n.note.copyImage}
+                            </button>
+                            <button class="b3-button download-btn">
+                                <svg class="b3-button__icon"><use xlink:href="#iconDownload"></use></svg>
+                                ${this.i18n.note.downloadImage}
+                            </button>
+                        </div>
+                    </div>
+                `,
+                width: '600px'
+            });
+
+            // 绑定复制按钮事件
+            const copyBtn = dialog.element.querySelector('.copy-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                    try {
+                        const blob = await new Promise<Blob>(resolve => canvas.toBlob(resolve, 'image/png'));
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'image/png': blob
+                            })
+                        ]);
+                        showMessage(this.i18n.note.copySuccess);
+                        dialog.destroy();
+                    } catch (err) {
+                        console.error('复制图片失败:', err);
+                        showMessage(this.i18n.note.copyFailed);
+                    }
+                });
+            }
+
+            // 绑定下载按钮事件
+            const downloadBtn = dialog.element.querySelector('.download-btn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', () => {
+                    const link = document.createElement('a');
+                    link.download = `share_${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    dialog.destroy();
+                    showMessage(this.i18n.note.downloadSuccess);
+                });
+            }
+        } catch (error) {
+            console.error('生成分享图失败:', error);
+            showMessage(this.i18n.note.shareFailed);
         }
     }
 

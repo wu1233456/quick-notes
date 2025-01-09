@@ -136,7 +136,15 @@
         "deleteAfterInsertDesc": "选择将历史小记插入到今日笔记时是否自动删除原小记",
         "insertTemplate": "插入模板",
         "insertTemplateDesc": "插入到笔记时使用的模板，支持以下变量：\n${time}: 插入时间\n${content}: 小记内容\n${tags}: 标签",
-        "referenceLink": "引用自今日笔记"
+        "referenceLink": "引用自今日笔记",
+        "share": "分享",
+        "sharePreview": "分享预览",
+        "shareSuccess": "分享图片已保存",
+        "shareFailed": "分享图片生成失败",
+        "generateImageFailed": "生成图片失败",
+        "copyImage": "复制图片",
+        "downloadImage": "下载图片",
+        "downloadSuccess": "下载成功"
     },
     "openTagPanel": "打开标签选择面板"
 }
