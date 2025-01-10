@@ -1040,6 +1040,7 @@ export default class PluginQuickNote extends Plugin {
         this.setupFilterFeature(element);
     }
     private renderDockHistory() {
+        console.log("renderDockHistory");
         let element = this.element;
         this.historyService.setItemsPerPage(this.itemsPerPage);
         this.historyService.setIsDescending(this.isDescending);

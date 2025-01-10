@@ -255,10 +255,11 @@ export class DocumentService implements IDocumentService {
             await this.appendBlock(targetDocId, content);
             showMessage(this.i18n.note.insertSuccess);
             
-            // 根据设置决定是否删除原小记
-            if (this.settingUtils.get("deleteAfterInsert")) {
-                await this.historyService.deleteHistoryItem(timestamp);
-            }
+           // 检查是否需要删除原小记
+           const deleteAfterInsert = this.settingUtils.get("deleteAfterInsert");
+           if (deleteAfterInsert) {
+               this.onSuccess();
+           }
         } catch (error) {
             console.error('Failed to insert to document:', error);
             showMessage(this.i18n.note.insertFailed);
