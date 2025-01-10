@@ -153,7 +153,8 @@
         "reminderUpdated": "提醒时间已更新",
         "updateReminder": "修改提醒时间",
         "invalidReminderTime": "提醒时间不能早于当前时间",
-        "content": "内容"
+        "content": "内容",
+        "quickNoteTitle": "小记一下"
     },
     "openTagPanel": "打开标签选择面板"
 }
