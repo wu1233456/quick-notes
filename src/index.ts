@@ -157,7 +157,7 @@ export default class PluginQuickNote extends Plugin {
         await this.settingUtils.load();
         await this.initData();
         this.initComponents();
-        this.reminderService = new ReminderService(this.i18n);
+        this.reminderService = new ReminderService(this.i18n, this);
         console.log("onload");
     }
 
@@ -2527,6 +2527,7 @@ export default class PluginQuickNote extends Plugin {
                         newFilterBtn.style.color = filterBtnColor;
                     }
                     this.historyService.updateSelectedTags(this.selectedTags);
+                    this.renderDockerToolbar();
                     this.renderDockHistory();
                 });
             });

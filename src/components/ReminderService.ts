@@ -1,11 +1,11 @@
-import { Dialog, showMessage } from "siyuan";
+import { Dialog, showMessage, getFrontend } from "siyuan";
 
 interface ReminderData {
     timestamp: number;
     reminderTime: number;
     text: string;
     isCompleted: boolean;
-    snoozeCount?: number; // 添加延迟提醒次数计数
+    snoozeCount?: number;
 }
 
 export class ReminderService {
@@ -13,9 +13,13 @@ export class ReminderService {
     private reminders: ReminderData[] = [];
     private checkInterval: number | null = null;
     private i18n: any;
+    private plugin: any;
+    private frontend: string;
 
-    constructor(i18n: any) {
+    constructor(i18n: any, plugin: any) {
         this.i18n = i18n;
+        this.plugin = plugin;
+        this.frontend = getFrontend();
         this.loadReminders();
         this.startCheckingReminders();
     }
@@ -23,8 +27,8 @@ export class ReminderService {
     // 加载保存的提醒
     private async loadReminders() {
         try {
-            const stored = localStorage.getItem(ReminderService.STORAGE_KEY);
-            this.reminders = stored ? JSON.parse(stored) : [];
+            const stored = await this.plugin.loadData(ReminderService.STORAGE_KEY);
+            this.reminders = stored || [];
             // 清理过期的已完成提醒
             this.cleanupCompletedReminders();
         } catch (error) {
@@ -33,10 +37,10 @@ export class ReminderService {
         }
     }
 
-    // 保存提醒到本地存储
-    private saveReminders() {
+    // 保存提醒到插件数据
+    private async saveReminders() {
         try {
-            localStorage.setItem(ReminderService.STORAGE_KEY, JSON.stringify(this.reminders));
+            await this.plugin.saveData(ReminderService.STORAGE_KEY, this.reminders);
         } catch (error) {
             console.error('Error saving reminders:', error);
         }
@@ -71,6 +75,36 @@ export class ReminderService {
 
     // 显示提醒通知
     private showReminderNotification(reminder: ReminderData) {
+        if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
+            // 网页端直接显示对话框
+            this.showReminderDialog(reminder);
+        } else {
+            const { Notification } = require('@electron/remote');
+            // 桌面端使用系统通知
+            const notification = new Notification({
+                title: this.i18n.note.reminder,
+                body: reminder.text,
+                silent: false,
+                timeoutType: 'default'
+            });
+
+            // 点击通知时显示详细对话框
+            notification.on('click', () => {
+                this.showReminderDialog(reminder);
+            });
+
+            // 关闭通知时标记为完成
+            notification.on('close', () => {
+                this.handleReminderComplete(reminder);
+            });
+
+            // 显示通知
+            notification.show();
+        }
+    }
+
+    // 显示提醒详细对话框
+    private showReminderDialog(reminder: ReminderData) {
         // 创建提醒对话框
         const dialog = new Dialog({
             title: this.i18n.note.reminder,
