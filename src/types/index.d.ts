@@ -114,3 +114,20 @@ interface IDockData {
         tags?: string[];
     }>;
 }
+
+declare interface HTMLElement {
+    style: CSSStyleDeclaration;
+    onclick: ((this: GlobalEventHandlers, ev: MouseEvent) => any) | null;
+    checked?: boolean;
+    click(): void;
+}
+
+declare interface Element {
+    style: CSSStyleDeclaration;
+    onclick: ((this: GlobalEventHandlers, ev: MouseEvent) => any) | null;
+    click(): void;
+}
+
+declare interface PluginQuickNote {
+    inputText: string;
+}

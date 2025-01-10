@@ -18,12 +18,17 @@ import { ARCHIVE_STORAGE_NAME, DOCK_STORAGE_NAME, CONFIG_DATA_NAME, ITEMS_PER_PA
 import { iconsSVG } from './components/icon';
 import { QuickInputWindow } from './components/QuickInputWindow';
 import { SettingUtils } from "./libs/setting-utils";
+import { ShareService } from "./components/ShareService";
+import { DocumentService } from "./components/DocumentService";
+import { EditorService } from "./components/EditorService";
+import { ImageService } from "./components/ImageService";
 
 export default class PluginQuickNote extends Plugin {
     private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
     private tempNoteContent: string = ''; // 添加临时内容存储
     private tempNoteTags: string[] = []; // 添加临时标签存储
     private frontend: string;
+    private inputText: string = '';
 
     private isDescending: boolean = true; //是否降序
     private element: HTMLElement;  //侧边栏dock元素
@@ -38,6 +43,10 @@ export default class PluginQuickNote extends Plugin {
     private exportService: ExportService;
     private historyService: HistoryService;
     private settingUtils: SettingUtils;
+    private shareService: ShareService;
+    private documentService: DocumentService;
+    private editorService: EditorService;
+    private imageService: ImageService;
 
     // 在类定义开始处添加属性
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
@@ -173,6 +182,26 @@ export default class PluginQuickNote extends Plugin {
         };
 
         this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
+        
+        // 初始化编辑器服务
+        this.editorService = new EditorService(this.i18n);
+        
+        // 初始化图片服务
+        this.imageService = new ImageService(this.i18n);
+        
+        // 初始化文档服务
+        this.documentService = new DocumentService(
+            this.i18n, 
+            this.settingUtils, 
+            () => {
+                const currentTimestamp = this.historyService.getCurrentTimestamp();
+                if (currentTimestamp) {
+                    this.historyService.deleteItem(currentTimestamp);
+                    this.renderDockerToolbar();
+                    this.renderDockHistory();
+                }
+            }
+        );
     }
     private initComponents() {
         this.addIcons(iconsSVG);
@@ -193,14 +222,13 @@ export default class PluginQuickNote extends Plugin {
                 if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
                     this.createNewNote();
                 } else {
-                    const quickInputWindow = QuickInputWindow.getInstance(this);
-                    quickInputWindow.createWindow();
+                    this.createQuickInputWindow();
                 }
             }
-
         });
         this.initDock();
         initMardownStyle();
+        this.shareService = new ShareService(this, this.historyService);
     }
     private initDock() {
         // 创建 dock 时读取保存的位置
@@ -310,7 +338,10 @@ export default class PluginQuickNote extends Plugin {
     private renderDockerEditor() {
         let element = this.element;
 
-        element.querySelector('.editor-container').innerHTML = this.getEditorTemplate();
+        element.querySelector('.editor-container').innerHTML = this.editorService.getEditorTemplate({
+            text: this.tempNoteContent,
+            i18n: this.i18n
+        });
         // 绑定事件监听器
         const textarea = element.querySelector('textarea');
         if (textarea) {
@@ -837,8 +868,8 @@ export default class PluginQuickNote extends Plugin {
                                         </div>
                                     `).join('')
                         : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                                       ${this.i18n.note.noTags}
-                                      </div>`
+                               ${this.i18n.note.noTags}
+                              </div>`
                     }
                            </div>
                        </div>
@@ -1364,7 +1395,10 @@ export default class PluginQuickNote extends Plugin {
 
         // 设置导出功能
         this.setupExportFeature(element);
-        this.setupImageUpload(element);
+        this.imageService.setupImageUpload({
+            container: element,
+            i18n: this.i18n
+        });
     };
 
 
@@ -1440,9 +1474,10 @@ export default class PluginQuickNote extends Plugin {
             });
         };
 
-        // 预处理文本，保留空行
+        // 预处理文本，保留空行但限制连续空行的数量
         const preserveEmptyLines = (content: string) => {
-            return content.replace(/\n\n/g, '\n&nbsp;\n');
+            // 将连续的多个换行替换为最多两个换行
+            return content.replace(/\n{3,}/g, '\n\n');
         };
 
 
@@ -1598,10 +1633,10 @@ export default class PluginQuickNote extends Plugin {
                     title: this.i18n.note.new,
                     content: `
                         <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
-                            ${this.getEditorTemplate(this.tempNoteContent)}
+                            ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
                         </div>`,
                     width: "520px",
-                    height: "400px",  // 添加初始高度
+                    height: "400px",
                     transparent: false,
                     disableClose: false,
                     disableAnimation: false,
@@ -1637,7 +1672,6 @@ export default class PluginQuickNote extends Plugin {
                             }
                             // 添加标签快捷键 (Cmd/Ctrl + K)
                             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-                                // console.log("ctrl/cmd + k");
                                 e.preventDefault();
                                 const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
                                 if (addTagBtn) {
@@ -1684,7 +1718,6 @@ export default class PluginQuickNote extends Plugin {
 
                         if (text.trim()) {
                             await this.saveContent(text, tags);
-                            // showMessage(this.i18n.note.saveSuccess);
                             dialog.destroy();
                             // 清空临时内容和标签
                             this.tempNoteContent = '';
@@ -1701,7 +1734,10 @@ export default class PluginQuickNote extends Plugin {
 
                 // 在对话框创建后设置图片上传功能
                 setTimeout(() => {
-                    this.setupImageUpload(dialog.element);
+                    this.imageService.setupImageUpload({
+                        container: dialog.element,
+                        i18n: this.i18n
+                    });
                 }, 100);
             });
         } catch (error) {
@@ -1715,9 +1751,12 @@ export default class PluginQuickNote extends Plugin {
         try {
             const success = await this.historyService.openEditDialog(timestamp,
                 {
-                    getEditorTemplate: (text) => this.getEditorTemplate(text),
+                    getEditorTemplate: (text) => this.editorService.getEditorTemplate({ text, i18n: this.i18n }),
                     setupTagsFeature: (element) => this.setupTagsFeature(element),
-                    setupImageUpload: (element) => this.setupImageUpload(element)
+                    setupImageUpload: (element) => this.imageService.setupImageUpload({
+                        container: element,
+                        i18n: this.i18n
+                    })
                 },
             );
             if (success) {
@@ -1796,57 +1835,8 @@ export default class PluginQuickNote extends Plugin {
         }
     }
 
-    // 创建编辑器模板
-    private getEditorTemplate(text: string = '', placeholder: string = this.i18n.note.placeholder) {
-        return `
-            <div style="border: 1px solid var(--b3-border-color); border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); overflow: hidden; height: 100%; display: flex; flex-direction: column;">
-                <textarea class="fn__flex-1" 
-                    placeholder="${placeholder}"
-                    style="width: 100%; 
-                    min-height: 160px; 
-                    flex: 1;
-                    resize: none; 
-                    padding: 12px; 
-                    background-color: var(--b3-theme-background);
-                    color: var(--b3-theme-on-background);
-                    border: none;
-                    box-sizing: border-box;"
-                    onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') { 
-                        event.preventDefault(); 
-                        this.closest('.b3-dialog__content')?.querySelector('[data-type=\\'save\\']')?.click(); 
-                    } else if((event.metaKey || event.ctrlKey) && event.key === 'z') {
-                        event.preventDefault();
-                        if(event.shiftKey) {
-                            document.execCommand('redo');
-                        } else {
-                            document.execCommand('undo');
-                        }
-                    }"
-                >${text}</textarea>
-                <div style="border-top: 1px solid var(--b3-border-color); padding: 8px 12px; flex-shrink: 0;">
-                    <div class="tags-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 0;"></div>
-                    <div class="fn__flex" style="justify-content: space-between; align-items: center;">
-                        <div class="fn__flex" style="gap: 8px;">
-                            <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" 
-                                style="padding: 4px;" 
-                                aria-label="${this.i18n.note.addTag} ${adaptHotkey('⌘K')}">
-                                <svg class="b3-button__icon" style="height: 16px; width: 16px;">
-                                    <use xlink:href="#iconTags"></use>
-                                </svg>
-                            </button>
-                            <button class="b3-button b3-button--text upload-image-btn b3-tooltips b3-tooltips__n" style="padding: 4px;" aria-label="${this.i18n.note.uploadImage}">
-                                <svg class="b3-button__icon" style="height: 16px; width: 16px;"><use xlink:href="#iconImage"></use></svg>
-                            </button>
-                            <input type="file" class="fn__none image-upload-input" accept="image/*" multiple>
-                        </div>
-                        <button class="b3-button b3-button--text b3-tooltips b3-tooltips__n fn__flex fn__flex-center main_save_btn" data-type="save" aria-label="${adaptHotkey('⌘Enter')}" style="padding: 4px 8px; gap: 4px;">
-                            <span>${this.i18n.note.save}</span>
-                        </button>
-                    </div>
-                </div>
-            </div>`;
-    }
-
+    // 设置标签功能
+  
     // 设置标签功能
     private setupTagsFeature(container: HTMLElement) {
         const tagsList = container.querySelector('.tags-list');
@@ -1856,30 +1846,35 @@ export default class PluginQuickNote extends Plugin {
             addTagBtn.onclick = (e) => {
                 e.stopPropagation();
 
-
+                // 添加调试日志
+                console.log('DOCK_STORAGE_NAME data:', this.data[DOCK_STORAGE_NAME]);
+                console.log('History:', this.data[DOCK_STORAGE_NAME]?.history);
+                
                 // 获取所有标签并去重
-                const allTags = Array.from(new Set(this.historyService.getCurrentData()
+                const allTags = Array.from(new Set(this.data[DOCK_STORAGE_NAME]?.history
                     ?.filter(item => item && Array.isArray(item.tags))
                     .flatMap(item => item.tags || [])
                 ));
+                
+                console.log('Available tags:', allTags);
 
                 // 创建标签选择面板
                 const tagPanel = document.createElement('div');
                 tagPanel.className = 'tag-panel';
                 tagPanel.style.cssText = `
-                position: fixed;
-                z-index: 205;
-                width: 133px;
-                height: 150px; // 固定高度
-                background: var(--b3-menu-background);
-                border: 1px solid var(--b3-border-color);
-                border-radius: var(--b3-border-radius);
-                box-shadow: var(--b3-dialog-shadow);
-                display: flex;
-                flex-direction: column;
-                padding: 0;
-                overflow: hidden; // 防止内容溢出
-            `;
+                    position: fixed;
+                    z-index: 205;
+                    width: 133px;
+                    height: 150px; // 固定高度
+                    background: var(--b3-menu-background);
+                    border: 1px solid var(--b3-border-color);
+                    border-radius: var(--b3-border-radius);
+                    box-shadow: var(--b3-dialog-shadow);
+                    display: flex;
+                    flex-direction: column;
+                    padding: 0;
+                    overflow: hidden; // 防止内容溢出
+                `;
 
                 // 修改位置计算逻辑
                 const btnRect = addTagBtn.getBoundingClientRect();
@@ -1890,8 +1885,8 @@ export default class PluginQuickNote extends Plugin {
                 // 判断是否有足够空间在上方显示
                 const showAbove = btnRect.top > panelHeight + margin;
                 // 如果上方空间不够，就显示在下方
-                const top = showAbove ?
-                    btnRect.top - panelHeight - margin :
+                const top = showAbove ? 
+                    btnRect.top - panelHeight - margin : 
                     btnRect.bottom + margin;
 
                 tagPanel.style.top = `${top}px`;
@@ -1904,45 +1899,45 @@ export default class PluginQuickNote extends Plugin {
 
                 // 修改面板内容结构
                 tagPanel.innerHTML = `
-                <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
-                    <input type="text" 
-                        class="b3-text-field fn__flex-1 tag-input" 
-                        placeholder="${this.i18n.note.addTag}..."
-                        style="width: 100%; background: var(--b3-theme-background);">
-                </div>
-                <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
-                    <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
-                        ${this.i18n.note.existingTags}
+                    <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
+                        <input type="text" 
+                            class="b3-text-field fn__flex-1 tag-input" 
+                            placeholder="${this.i18n.note.addTag}..."
+                            style="width: 100%; background: var(--b3-theme-background);">
                     </div>
-                    <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            ${allTags.length > 0 ?
-                        allTags
-                            .sort((a, b) => {
-                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
-                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
-                                return countB - countA;
-                            })
-                            .map(tag => `
-                                        <div class="history-tag b3-chip b3-chip--middle" 
-                                            style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
-                                            data-tag="${tag}">
-                                            <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                ${tag}
-                                            </span>
-                                            <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
-                                            </span>
-                                        </div>
-                                    `).join('')
-                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                                       ${this.i18n.note.noTags}
-                                      </div>`
-                    }
-                           </div>
-                       </div>
-                   </div>
-               `;
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
+                        <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
+                            ${this.i18n.note.existingTags}
+                        </div>
+                        <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                ${allTags.length > 0 ? 
+                                    allTags
+                                        .sort((a, b) => {
+                                            const countA = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(a)).length;
+                                            const countB = this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(b)).length;
+                                            return countB - countA;
+                                        })
+                                        .map(tag => `
+                                            <div class="history-tag b3-chip b3-chip--middle" 
+                                                style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
+                                                data-tag="${tag}">
+                                                <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    ${tag}
+                                                </span>
+                                                <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                                    ${this.data[DOCK_STORAGE_NAME].history.filter(item => item.tags?.includes(tag)).length}
+                                                </span>
+                                            </div>
+                                        `).join('')
+                                    : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                                        ${this.i18n.note.noTags}
+                                       </div>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
 
                 // 将面板添加到文档根节点
                 document.body.appendChild(tagPanel);
@@ -1952,65 +1947,107 @@ export default class PluginQuickNote extends Plugin {
                 tagInput.focus();
 
                 // 添加标签的函数
-                const addTag = async (tagText: string) => {
+                const addTag = (tagText: string) => {
                     if (tagText.trim()) {
-                        // 更新选中小记的标签
+                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
 
-                        if (selectedTimestamps.length > 0) {
-                            this.historyService.batchUpdateTags(selectedTimestamps, [tagText.trim()]);
-                            showMessage(this.i18n.note.tagSuccess);
+                        if (!existingTags.includes(tagText)) {
+                            const tagElement = document.createElement('span');
+                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                            tagElement.setAttribute('data-tag', tagText);
+                            tagElement.setAttribute('aria-label', tagText);
+                            tagElement.style.cursor = 'default';
+                            tagElement.innerHTML = `
+                                <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
+                                <svg class="b3-chip__close" style="cursor: pointer;">
+                                    <use xlink:href="#iconClose"></use>
+                                </svg>
+                            `;
+                            tagsList.appendChild(tagElement);
 
-                            // 取消选择模式并关闭面板
-                            const cancelSelectBtn = container.querySelector('.cancel-select-btn');
-                            if (cancelSelectBtn) {
-                                (cancelSelectBtn as HTMLElement).click();
-                            }
-                            tagPanel.remove();
-                            document.removeEventListener('click', closePanel);
-                            this.renderDockerToolbar()
-                            this.renderDockHistory();
+                            // 添加删除标签的事件
+                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                tagElement.remove();
+                            });
                         }
+                        tagInput.value = '';
+                        // 添加标签后关闭面板
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
                 };
 
                 // 回车添加标签
-                tagInput.addEventListener('keydown', async (e) => {
+                tagInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        const searchText = tagInput.value.trim();
-                        if (searchText) {
-                            // 检查是否有匹配的已有标签
-                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                            if (matchingTag) {
-                                // 如果有完全匹配的标签，直接使用该标签
-                                await addTag(matchingTag.getAttribute('data-tag'));
-                            } else {
-                                // 如果没有完全匹配的标签，创建新标签
-                                await addTag(searchText);
-                            }
+                        addTag(tagInput.value);
+                        const textarea = container.querySelector('textarea');
+                        if (textarea) {
+                            // 将焦点设置到编辑框上
+                            textarea.focus();
                         }
                     }
                 });
 
                 // 点击历史标签直接添加
-                tagPanel.addEventListener('click', async (e) => {
+                tagPanel.addEventListener('click', (e) => {
                     const target = e.target as HTMLElement;
                     const tagChip = target.closest('.history-tag') as HTMLElement;
                     if (tagChip) {
                         const tagText = tagChip.getAttribute('data-tag');
-                        if (tagText) {
-                            await addTag(tagText);
+                        addTag(tagText);
+                        const textarea = container.querySelector('textarea');
+                        if (textarea) {
+                            // 将焦点设置到编辑框上
+                            textarea.focus();
                         }
                     }
+                });
+                
+
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
+                    }
+                    const textarea = container.querySelector('textarea');
+                    if (textarea) {
+                        // 将焦点设置到编辑框上
+                        textarea.focus();
+                    }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签点击事件
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        const tagText = tag.getAttribute('data-tag');
+                        if (tagText) {
+                            addTag(tagText);
+                        }
+                    });
+
+                    // 添加悬停效果
+                    tag.addEventListener('mouseenter', () => {
+                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        tag.style.backgroundColor = '';
+                    });
                 });
 
                 // 添加搜索功能
                 tagInput.addEventListener('input', (e) => {
                     const searchText = (e.target as HTMLInputElement).value.toLowerCase();
                     const historyTags = tagPanel.querySelectorAll('.history-tag');
-
+                    
                     historyTags.forEach(tag => {
                         const tagText = tag.getAttribute('data-tag').toLowerCase();
                         if (tagText.includes(searchText)) {
@@ -2021,10 +2058,10 @@ export default class PluginQuickNote extends Plugin {
                     });
 
                     // 如果没有匹配的标签，显示"无匹配标签"提示
-                    const visibleTags = Array.from(historyTags).filter(tag =>
+                    const visibleTags = Array.from(historyTags).filter(tag => 
                         (tag as HTMLElement).style.display !== 'none'
                     );
-
+                    
                     const noMatchMessage = tagPanel.querySelector('.no-match-message');
                     if (visibleTags.length === 0 && searchText) {
                         if (!noMatchMessage) {
@@ -2039,32 +2076,34 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
-                // 点击其他地方关闭面板
-                const closePanel = (e: MouseEvent) => {
-                    if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
+                // 修改回车键处理逻辑
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const searchText = tagInput.value.trim();
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
+                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+                            
+                            if (matchingTag) {
+                                // 如果有完全匹配的标签，直接使用该标签
+                                addTag(matchingTag.getAttribute('data-tag'));
+                            } else {
+                                // 如果没有完全匹配的标签，创建新标签
+                                addTag(searchText);
+                            }
+                            
+                            const textarea = container.querySelector('textarea');
+                            if (textarea) {
+                                textarea.focus();
+                            }
+                        }
                     }
-                };
-
-                // 延迟添加点击事件，避免立即触发
-                setTimeout(() => {
-                    document.addEventListener('click', closePanel);
-                }, 0);
-
-                // 添加标签悬停效果
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('mouseenter', () => {
-                        (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
-                    });
-                    tag.addEventListener('mouseleave', () => {
-                        (tag as HTMLElement).style.backgroundColor = '';
-                    });
                 });
             };
         }
     }
-
 
     // 设置搜索功能
     private setupSearchFeature(container: HTMLElement) {
@@ -2349,85 +2388,6 @@ export default class PluginQuickNote extends Plugin {
         }
     }
 
-    // 在 createNewNote 和 editHistoryItem 方法中添加图片上传事件处理
-    private setupImageUpload(container: HTMLElement) {
-        const uploadBtn = container.querySelector('.upload-image-btn');
-        const uploadInput = container.querySelector('.image-upload-input') as HTMLInputElement;
-        const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
-
-        if (uploadBtn && uploadInput && textarea) {
-            // 处理图片上传
-            const handleImageUpload = async (files: File[]) => {
-                if (files.length === 0) return;
-
-                try {
-                    // 上传图片
-                    const result = await upload("/assets/", files);
-                    if (result.succMap) {
-                        // 获取光标位置
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const text = textarea.value;
-
-                        // 构建 Markdown 图片语法
-                        const imageLinks = Object.entries(result.succMap)
-                            .map(([filename, url]) => `![${filename}](${url as string})`)
-                            .join('\n');
-
-                        // 在光标位置插入图片链接
-                        textarea.value = text.substring(0, start) + imageLinks + text.substring(end);
-
-                        // 更新光标位置
-                        const newPosition = start + imageLinks.length;
-                        textarea.setSelectionRange(newPosition, newPosition);
-                        textarea.focus();
-                    }
-                } catch (error) {
-                    console.error('Upload failed:', error);
-                    showMessage(this.i18n.note.uploadFailed);
-                }
-            };
-
-            // 点击上传按钮处理
-            uploadBtn.addEventListener('click', () => {
-                uploadInput.click();
-            });
-
-            // 文件选择处理
-            uploadInput.addEventListener('change', async () => {
-                const files = Array.from(uploadInput.files || []);
-                await handleImageUpload(files);
-                // 清空 input，允许重复上传相同文件
-                uploadInput.value = '';
-            });
-
-            // 添加粘贴事件处理
-            textarea.addEventListener('paste', async (e: ClipboardEvent) => {
-                const items = Array.from(e.clipboardData?.items || []);
-                const imageFiles = items
-                    .filter(item => item.type.startsWith('image/'))
-                    .map(item => {
-                        const file = item.getAsFile();
-                        if (file) {
-                            // 使用当前时间戳和原始文件类型作为文件名
-                            const timestamp = new Date().getTime();
-                            const ext = file.name?.split('.').pop() || file.type.split('/')[1] || 'png';
-                            return new File([file], `pasted_image_${timestamp}.${ext}`, {
-                                type: file.type
-                            });
-                        }
-                        return null;
-                    })
-                    .filter((file): file is File => file !== null);
-
-                if (imageFiles.length > 0) {
-                    e.preventDefault(); // 阻止默认粘贴行为
-                    await handleImageUpload(imageFiles);
-                }
-            });
-        }
-    }
-
     private cleanupEventListeners() {
         const historyList = this.element?.querySelector('.history-list');
         if (historyList && this.historyClickHandler) {
@@ -2436,502 +2396,21 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private async createNoteAsDocument(timestamp: number) {
-        try {
-            // 获取小记内容
-            const note = this.historyService.getHistoryItem(timestamp);
-            if (!note) {
-                showMessage(this.i18n.note.noteNotFound);
-                return;
-            }
-
-            // 获取所有笔记本
-            const notebooks = await lsNotebooks();
-            if (!notebooks || !notebooks.notebooks || notebooks.notebooks.length === 0) {
-                showMessage(this.i18n.note.noNotebooks);
-                return;
-            }
-
-            // 创建选择笔记本的对话框
-            const dialog = new Dialog({
-                title: this.i18n.note.selectNotebook,
-                content: `
-                    <div class="b3-dialog__content" style="max-height: 70vh; overflow: auto; padding: 20px;">
-                        <div class="fn__flex-column" style="gap: 16px;">
-                            <div class="fn__flex-column" style="gap: 8px;">
-                                <div class="fn__flex" style="align-items: center;">
-                                    <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.docTitle}</span>
-                                    <span class="fn__space"></span>
-                                    <input type="text" class="b3-text-field fn__flex-1" id="docTitle" 
-                                        placeholder="${this.i18n.note.docTitlePlaceholder}"
-                                        style="padding: 8px 12px; border-radius: 6px;">
-                                </div>
-                                <div class="fn__flex" style="align-items: center;">
-                                    <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.docPath}</span>
-                                    <span class="fn__space"></span>
-                                    <input type="text" class="b3-text-field fn__flex-1" id="docPath" 
-                                        value="/小记" 
-                                        placeholder="${this.i18n.note.docPathPlaceholder}"
-                                        style="padding: 8px 12px; border-radius: 6px;">
-                                </div>
-                            </div>
-                            <div class="fn__flex-column" style="gap: 8px;">
-                                <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.selectNotebook}</span>
-                                <div class="fn__flex-column notebooks-list" style="gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--b3-theme-background); border-radius: 6px; border: 1px solid var(--b3-border-color);">
-                                    ${notebooks.notebooks.map((notebook, index) => `
-                                        <label class="fn__flex b3-label" style="padding: 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;">
-                                            <input type="radio" name="notebook" value="${notebook.id}" style="margin-right: 8px;" ${index === 0 ? 'checked' : ''}>
-                                            <span>${notebook.name}</span>
-                                        </label>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            <div class="fn__flex" style="align-items: center; margin-top: 8px;">
-                                <label class="fn__flex b3-label" style="align-items: center; cursor: pointer;">
-                                    <input type="checkbox" class="b3-checkbox" id="deleteAfterCreate" checked>
-                                    <span style="margin-left: 8px;">${this.i18n.note.deleteAfterCreate}</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="fn__flex b3-dialog__action" style="padding: 16px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background);">
-                        <div class="fn__flex-1"></div>
-                        <button class="b3-button b3-button--cancel" style="margin-right: 8px; padding: 8px 16px;">${this.i18n.note.cancel}</button>
-                        <button class="b3-button b3-button--text" data-type="confirm" style="padding: 8px 16px;">${this.i18n.note.confirm}</button>
-                    </div>
-                `,
-                width: "520px"
-            });
-
-            // 添加悬停效果
-            const labels = dialog.element.querySelectorAll('.notebooks-list .b3-label');
-            labels.forEach(label => {
-                label.addEventListener('mouseenter', () => {
-                    (label as HTMLElement).style.backgroundColor = 'var(--b3-theme-surface)';
-                });
-                label.addEventListener('mouseleave', () => {
-                    (label as HTMLElement).style.backgroundColor = '';
-                });
-            });
-
-            // 聚焦到标题输入框
-            setTimeout(() => {
-                const titleInput = dialog.element.querySelector('#docTitle') as HTMLInputElement;
-                if (titleInput) {
-                    titleInput.focus();
-                }
-            }, 100);
-
-            const confirmBtn = dialog.element.querySelector('[data-type="confirm"]') as HTMLElement;
-            const cancelBtn = dialog.element.querySelector('.b3-button--cancel') as HTMLElement;
-
-            // 绑定取消按钮事件
-            cancelBtn.addEventListener('click', () => {
-                dialog.destroy();
-            });
-
-            // 绑定确认按钮事件
-            confirmBtn.addEventListener('click', async () => {
-                const selectedNotebook = dialog.element.querySelector('input[name="notebook"]:checked') as HTMLInputElement;
-                const docTitle = (dialog.element.querySelector('#docTitle') as HTMLInputElement).value.trim();
-                const docPath = (dialog.element.querySelector('#docPath') as HTMLInputElement).value.trim();
-                const deleteAfterCreate = (dialog.element.querySelector('#deleteAfterCreate') as HTMLInputElement).checked;
-
-                if (!selectedNotebook) {
-                    showMessage(this.i18n.note.pleaseSelectNotebook);
-                    return;
-                }
-
-                try {
-                    // 创建文档
-                    const notebookId = selectedNotebook.value;
-                    const title = docTitle || this.i18n.note.untitledDoc;
-                    const path = `${docPath}/${title}`;
-                    await createDocWithMd(notebookId, path, note.text);
-
-                    // 如果选择了创建后删除
-                    if (deleteAfterCreate) {
-                        this.historyService.deleteItem(timestamp);
-                        this.renderDockerToolbar();
-                        this.renderDockHistory();
-                    }
-
-                    showMessage(this.i18n.note.createDocSuccess);
-                    dialog.destroy();
-                } catch (error) {
-                    console.error('创建文档失败:', error);
-                    showMessage(this.i18n.note.createDocFailed);
-                }
-            });
-        } catch (error) {
-            console.error('创建文档失败:', error);
-            showMessage(this.i18n.note.createDocFailed);
-        }
+        const note = this.historyService.getHistoryItem(timestamp);
+        await this.documentService.createNoteAsDocument(timestamp, note);
     }
 
-    // 添加插入到每日笔记的方法
     private async insertToDaily(timestamp: number) {
-        try {
-            // 获取小记内容
-            const note = this.historyService.getHistoryItem(timestamp);
-            if (!note) {
-                showMessage(this.i18n.note.noteNotFound);
-                return;
-            }
-
-            // 获取默认笔记本
-            let defaultNotebook = this.settingUtils.get("defaultNotebook");
-
-            // 如果没有设置默认笔记本，获取第一个笔记本
-            if (!defaultNotebook) {
-                const notebooks = await lsNotebooks();
-                if (notebooks && notebooks.notebooks && notebooks.notebooks.length > 0) {
-                    defaultNotebook = notebooks.notebooks[0].id;
-                }
-            }
-
-            if (!defaultNotebook) {
-                showMessage(this.i18n.note.noNotebooks);
-                return;
-            }
-
-            try {
-                // 创建或获取每日笔记
-                const result = await createDailyNote(defaultNotebook);
-
-                // 获取模板并替换变量
-                let template = this.settingUtils.get("insertTemplate") || "> [!note] 小记 ${time}\n${content}${tags}";
-
-                // 准备变量值
-                const time = new Date(note.timestamp).toLocaleString();
-                const content = note.text;  // 不再添加 > 前缀
-                const tags = note.tags && note.tags.length > 0 ? note.tags.map(tag => `#${tag}`).join(' ') : '';
-
-                // 替换模板中的变量
-                const content_final = template
-                    .replace(/\${time}/g, time)
-                    .replace(/\${content}/g, content)
-                    .replace(/\${tags}/g, tags);
-
-                // 插入内容到文档末尾
-                const appendResult = await appendBlock("markdown", content_final, result.id);
-                // appendResult[0] 包含 doOperations 数组，其中第一个操作的 id 就是 blockId
-                // const blockId = appendResult?.[0]?.doOperations?.[0]?.id;
-                // if (blockId) {
-                //     // 在原小记末尾添加引用链接
-                //     const newText = note.text + `\n\n[${this.i18n.note.referenceLink}](siyuan://blocks/${blockId})`;
-                //     await this.historyService.updateItemContent(timestamp, newText);
-                // }
-                showMessage(this.i18n.note.insertSuccess);
-
-                // 检查是否需要删除原小记
-                const deleteAfterInsert = this.settingUtils.get("deleteAfterInsert");
-                if (deleteAfterInsert) {
-                    this.historyService.deleteItem(timestamp);
-                    this.renderDockerToolbar();
-                    this.renderDockHistory();
-                }
-            } catch (error) {
-                console.error('插入到每日笔记失败:', error);
-                showMessage(this.i18n.note.insertFailed);
-            }
-        } catch (error) {
-            console.error('插入到每日笔记失败:', error);
-            showMessage(this.i18n.note.insertFailed);
-        }
+        const note = this.historyService.getHistoryItem(timestamp);
+        await this.documentService.insertToDaily(timestamp, note);
     }
 
     private async generateShareImage(timestamp: number) {
-        try {
-            const note = this.historyService.getHistoryItem(timestamp);
-            if (!note) {
-                showMessage(this.i18n.note.noteNotFound);
-                return;
-            }
-
-            // 创建一个临时的 div 来渲染 Markdown
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = window.Lute.New().Md2HTML(note.text);
-
-            // 等待所有图片加载完成
-            const loadImages = async () => {
-                const images = Array.from(tempDiv.querySelectorAll('img'));
-                if (images.length === 0) return;
-
-                await Promise.all(images.map(img => {
-                    return new Promise((resolve, reject) => {
-                        if (img.complete) {
-                            resolve(img);
-                        } else {
-                            img.onload = () => resolve(img);
-                            img.onerror = reject;
-                        }
-                    });
-                }));
-            };
-
-            await loadImages();
-
-            // 处理任务列表
-            const processTaskList = (content: string) => {
-                return content.replace(
-                    /(\[[ ]?\]|\[[ ]?x[ ]?\]) ([^\n]*)/g,
-                    (match, checkbox, text) => {
-                        const isChecked = checkbox.includes('x');
-                        return text.trim();
-                    }
-                );
-            };
-
-            // 获取处理后的文本内容
-            const renderedText = processTaskList(tempDiv.innerText);
-
-            // 创建一个离屏 canvas
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                showMessage(this.i18n.note.generateImageFailed);
-                return;
-            }
-
-            // 设置画布宽度和基础参数
-            canvas.width = 800;
-            const margin = 40;
-            const contentPadding = 40; // 内容区域的内边距
-            const contentWidth = canvas.width - margin * 2;
-
-            // 设置字体样式用于计算文本高度
-            ctx.font = '24px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
-            
-            // 计算文本换行后的实际高度
-            const maxTextWidth = contentWidth - contentPadding * 2;
-            const lines = [];
-            let currentLine = '';
-            const words = renderedText.split('');
-            
-            for (const char of words) {
-                const testLine = currentLine + char;
-                const metrics = ctx.measureText(testLine);
-                if (metrics.width > maxTextWidth) {
-                    lines.push(currentLine);
-                    currentLine = char;
-                } else {
-                    currentLine = testLine;
-                }
-            }
-            if (currentLine) {
-                lines.push(currentLine);
-            }
-
-            // 计算图片高度
-            const images = Array.from(tempDiv.querySelectorAll('img'));
-            const imageHeight = images.reduce((total, img) => {
-                const aspectRatio = img.naturalWidth / img.naturalHeight;
-                const width = Math.min(maxTextWidth, img.naturalWidth);
-                const height = width / aspectRatio;
-                return total + height + 20; // 20px 为图片间距
-            }, 0);
-
-            // 计算内容总高度
-            const lineHeight = 36; // 行高
-            const textHeight = lines.length * lineHeight;
-            const tagsHeight = note.tags?.length ? 80 : 0;
-            const headerHeight = 60; // 日期区域高度
-            const footerHeight = 60; // 底部信息区域高度
-            const totalContentHeight = headerHeight + textHeight + imageHeight + tagsHeight + footerHeight;
-
-            // 设置画布总高度（加上上下边距和内边距）
-            canvas.height = totalContentHeight + contentPadding * 2 + margin * 2;
-
-            // 设置背景色
-            ctx.fillStyle = '#dc4446';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 绘制白色主体区域
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(margin, margin, contentWidth, canvas.height - margin * 2);
-
-            // 设置半圆参数
-            const arcRadius = 15;
-            const arcSpacing = 45;
-            const arcCount = Math.floor(contentWidth / arcSpacing);
-            
-            // 绘制上边的红色下半圆
-            ctx.fillStyle = '#dc4446';
-            for (let i = 0; i < arcCount; i++) {
-                const x = margin + i * arcSpacing + arcSpacing/2;
-                const y = margin;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, arcRadius, 0, Math.PI, false);
-                ctx.fill();
-            }
-
-            // 绘制下边的红色上半圆
-            for (let i = 0; i < arcCount; i++) {
-                const x = margin + i * arcSpacing + arcSpacing/2;
-                const y = canvas.height - margin;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, arcRadius, Math.PI, 2 * Math.PI, false);
-                ctx.fill();
-            }
-
-            // 绘制日期（右上角，红色）
-            ctx.fillStyle = '#dc4446';
-            ctx.font = '20px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'top';
-            const date = new Date(note.timestamp).toLocaleDateString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            }).replace(/\//g, '-');
-            ctx.fillText(date, canvas.width - margin - contentPadding, margin + contentPadding);
-
-            // 绘制内容（黑色）
-            ctx.fillStyle = '#333333';
-            ctx.font = '24px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            
-            // 逐行绘制文本和图片
-            let currentY = margin + contentPadding + headerHeight;
-            
-            // 绘制文本
-            lines.forEach((line) => {
-                ctx.fillText(line, margin + contentPadding, currentY);
-                currentY += lineHeight;
-            });
-
-            // 绘制图片
-            if (images.length > 0) {
-                currentY += 20; // 文本和图片之间的间距
-                for (const img of images) {
-                    const aspectRatio = img.naturalWidth / img.naturalHeight;
-                    const width = Math.min(maxTextWidth, img.naturalWidth);
-                    const height = width / aspectRatio;
-                    
-                    try {
-                        ctx.drawImage(
-                            img,
-                            margin + contentPadding,
-                            currentY,
-                            width,
-                            height
-                        );
-                        currentY += height + 20; // 图片间距
-                    } catch (error) {
-                        console.error('绘制图片失败:', error);
-                    }
-                }
-            }
-
-            // 绘制标签（红色椭圆背景）
-            if (note.tags && note.tags.length > 0) {
-                let tagX = margin + contentPadding;
-                const tagY = margin + contentPadding + headerHeight + textHeight + imageHeight + 20;
-                ctx.font = '16px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
-                
-                note.tags.forEach(tag => {
-                    const tagText = '#' + tag;
-                    const tagWidth = ctx.measureText(tagText).width + 20;
-                    const tagHeight = 26;
-                    
-                    if (tagX + tagWidth > canvas.width - margin - contentPadding) return;
-                    
-                    // 绘制红色椭圆背景
-                    ctx.fillStyle = '#dc4446';
-                    ctx.beginPath();
-                    ctx.ellipse(
-                        tagX + tagWidth/2, 
-                        tagY + tagHeight/2, 
-                        tagWidth/2, 
-                        tagHeight/2, 
-                        0, 0, 2 * Math.PI
-                    );
-                    ctx.fill();
-                    
-                    // 绘制白色标签文本
-                    ctx.fillStyle = '#ffffff';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(tagText, tagX + tagWidth/2, tagY + tagHeight/2);
-                    
-                    tagX += tagWidth + 10;
-                });
-            }
-
-            // 绘制底部信息
-            ctx.fillStyle = '#999999';
-            ctx.font = '16px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText('19 MEMOS · 398 DAYS', margin + contentPadding, canvas.height - margin - contentPadding);
-
-            // 绘制 flomo 标志
-            ctx.fillStyle = '#dc4446';
-            ctx.textAlign = 'right';
-            ctx.fillText('flomo', canvas.width - margin - contentPadding, canvas.height - margin - contentPadding);
-
-            // 创建预览对话框
-            const dialog = new Dialog({
-                title: this.i18n.note.sharePreview,
-                content: `
-                    <div class="fn__flex-column" style="padding: 16px; gap: 16px;">
-                        <div class="image-preview" style="text-align: center;">
-                            <img src="${canvas.toDataURL('image/png')}" style="max-width: 100%; height: auto; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-                        </div>
-                        <div class="fn__flex" style="justify-content: center; gap: 16px;">
-                            <button class="b3-button b3-button--outline copy-btn">
-                                <svg class="b3-button__icon"><use xlink:href="#iconCopy"></use></svg>
-                                ${this.i18n.note.copyImage}
-                            </button>
-                            <button class="b3-button download-btn">
-                                <svg class="b3-button__icon"><use xlink:href="#iconDownload"></use></svg>
-                                ${this.i18n.note.downloadImage}
-                            </button>
-                        </div>
-                    </div>
-                `,
-                width: '600px'
-            });
-
-            // 绑定复制按钮事件
-            const copyBtn = dialog.element.querySelector('.copy-btn');
-            if (copyBtn) {
-                copyBtn.addEventListener('click', async () => {
-                    try {
-                        const blob = await new Promise<Blob>(resolve => canvas.toBlob(resolve, 'image/png'));
-                        await navigator.clipboard.write([
-                            new ClipboardItem({
-                                'image/png': blob
-                            })
-                        ]);
-                        showMessage(this.i18n.note.copySuccess);
-                        dialog.destroy();
-                    } catch (err) {
-                        console.error('复制图片失败:', err);
-                        showMessage(this.i18n.note.copyFailed);
-                    }
-                });
-            }
-
-            // 绑定下载按钮事件
-            const downloadBtn = dialog.element.querySelector('.download-btn');
-            if (downloadBtn) {
-                downloadBtn.addEventListener('click', () => {
-                    const link = document.createElement('a');
-                    link.download = `share_${Date.now()}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    dialog.destroy();
-                    showMessage(this.i18n.note.downloadSuccess);
-                });
-            }
-        } catch (error) {
-            console.error('生成分享图失败:', error);
-            showMessage(this.i18n.note.shareFailed);
-        }
+        await this.shareService.generateShareImage(timestamp);
     }
 
+    private createQuickInputWindow() {
+        const quickInputWindow = QuickInputWindow.getInstance(this);
+        quickInputWindow.createWindow();
+    }
 }

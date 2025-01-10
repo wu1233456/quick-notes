@@ -41,6 +41,7 @@ export class HistoryService {
     private currentDisplayCount: number;
     private itemsPerPage: number;
     private parent: Plugin;
+    private currentTimestamp: number | null = null;
 
     constructor(parent: Plugin, data: HistoryData, itemsPerPage: number = 10, i18n: any) {
         this.parent = parent;
@@ -365,7 +366,12 @@ export class HistoryService {
     }
 
     public getHistoryItem(timestamp: number): HistoryItem | undefined {
-        return this.getCurrentData().find(item => item.timestamp === timestamp);
+        this.currentTimestamp = timestamp;
+        return this.getCurrentData()?.find(item => item.timestamp === timestamp);
+    }
+
+    public getCurrentTimestamp(): number | null {
+        return this.currentTimestamp;
     }
 
     public async mergeItems(
