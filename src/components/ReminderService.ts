@@ -75,10 +75,6 @@ export class ReminderService {
         const dialog = new Dialog({
             title: this.i18n.note.reminder,
             content: `<div class="b3-dialog__content">
-                <div style="margin-bottom: 8px; font-weight: bold;">${this.i18n.note.reminderTime}:</div>
-                <div style="margin-bottom: 16px; color: var(--b3-theme-on-surface);">
-                    ${new Date(reminder.reminderTime).toLocaleString()}
-                </div>
                 <div style="margin-bottom: 8px; font-weight: bold;">${this.i18n.note.content}:</div>
                 <div style="margin-bottom: 16px; color: var(--b3-theme-on-surface);">${reminder.text}</div>
                 <div class="fn__flex" style="align-items: center;">

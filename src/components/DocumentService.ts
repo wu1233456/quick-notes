@@ -226,6 +226,7 @@ export class DocumentService implements IDocumentService {
                 // 检查是否需要删除原小记
                 const deleteAfterInsert = this.settingUtils.get("deleteAfterInsert");
                 if (deleteAfterInsert) {
+                    this.historyService.deleteHistoryItem(note.timestamp)
                     this.onSuccess();
                 }
             } catch (error) {
@@ -258,6 +259,7 @@ export class DocumentService implements IDocumentService {
            // 检查是否需要删除原小记
            const deleteAfterInsert = this.settingUtils.get("deleteAfterInsert");
            if (deleteAfterInsert) {
+               this.historyService.deleteHistoryItem(note.timestamp)
                this.onSuccess();
            }
         } catch (error) {
