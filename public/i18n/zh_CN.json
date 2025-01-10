@@ -117,7 +117,7 @@
         "docPath": "保存位置",
         "docPathPlaceholder": "请输入文档保存路径",
         "untitledDoc": "未命名文档",
-        "insertToDaily": "插入到今日笔记",
+        "insertToDaily": "插入今日笔记",
         "insertSuccess": "插入成功",
         "insertFailed": "插入失败",
         "defaultNotebook": "今日笔记本",
@@ -144,7 +144,16 @@
         "generateImageFailed": "生成图片失败",
         "copyImage": "复制图片",
         "downloadImage": "下载图片",
-        "downloadSuccess": "下载成功"
+        "downloadSuccess": "下载成功",
+        "reminder": "提醒",
+        "setReminder": "设置提醒",
+        "deleteReminder": "删除提醒",
+        "reminderTime": "提醒时间",
+        "reminderSet": "提醒已设置",
+        "reminderUpdated": "提醒时间已更新",
+        "updateReminder": "修改提醒时间",
+        "invalidReminderTime": "提醒时间不能早于当前时间",
+        "content": "内容"
     },
     "openTagPanel": "打开标签选择面板"
 }

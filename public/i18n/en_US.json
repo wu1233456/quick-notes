@@ -136,7 +136,26 @@
         "deleteAfterInsertDesc": "Automatically delete the original note after inserting to daily note",
         "insertTemplate": "Insert Template",
         "insertTemplateDesc": "Template used when inserting to daily note, supports following variables:\n${time}: Insert time\n${content}: Note content\n${tags}: Tags",
-        "referenceLink": "Reference from Daily Note"
+        "referenceLink": "Reference from Daily Note",
+        "sharePreview": "Share Preview",
+        "copyImage": "Copy Image",
+        "downloadImage": "Download Image",
+        "downloadSuccess": "Download successful",
+        "shareFailed": "Share failed",
+        "generateImageFailed": "Failed to generate image",
+        "quickNoteTitle": "Quick Note",
+        "share": "Share",
+        "shareSuccess": "Share image saved",
+        "reminder": "Reminder",
+        "setReminder": "Set Reminder",
+        "deleteReminder": "Delete Reminder",
+        "reminderTime": "Reminder Time",
+        "reminderSet": "Reminder set",
+        "reminderUpdated": "Reminder time updated",
+        "updateReminder": "Update Reminder Time",
+        "invalidReminderTime": "Reminder time cannot be earlier than current time",
+        "content": "Content",
+        "insertToDaily": "Insert to Daily Note"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

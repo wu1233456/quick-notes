@@ -114,7 +114,7 @@ export class ShareService {
 
             // 计算内容总高度
             const lineHeight = 36; // 行高
-            const headerHeight = 60; // 日期区域高度
+            const headerHeight = 100; // 日期区域高度
             const footerHeight = 10; // 底部信息区域高度
 
             // 计算实际文本高度（根据换行后的实际行数）
@@ -206,8 +206,8 @@ export class ShareService {
 
             // 绘制标题（左上角，红色粗体）
             ctx.textAlign = 'left';
-            ctx.font = 'bold 20px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
-            ctx.fillText('小记一下', sideMargin + contentPadding, topMargin + titlePadding);
+            ctx.font = 'bold 32px "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+            ctx.fillText(this.plugin.i18n.note.quickNoteTitle, sideMargin + contentPadding, topMargin + titlePadding);
 
             // 绘制内容（黑色）
             ctx.fillStyle = '#333333';

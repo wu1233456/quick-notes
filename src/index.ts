@@ -22,6 +22,7 @@ import { ShareService } from "./components/ShareService";
 import { DocumentService } from "./components/DocumentService";
 import { EditorService } from "./components/EditorService";
 import { ImageService } from "./components/ImageService";
+import { ReminderService } from './components/ReminderService';
 
 export default class PluginQuickNote extends Plugin {
     private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
@@ -47,6 +48,7 @@ export default class PluginQuickNote extends Plugin {
     private documentService: DocumentService;
     private editorService: EditorService;
     private imageService: ImageService;
+    private reminderService: ReminderService;
 
     // 在类定义开始处添加属性
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
@@ -64,7 +66,8 @@ export default class PluginQuickNote extends Plugin {
                 }
             }
         });
-
+        console.log("this.i18n.note.defaultNotebook");
+        console.log(this.i18n.note.defaultNotebook);
         // 添加设置项
         this.settingUtils.addItem({
             key: "defaultNotebook",
@@ -133,6 +136,7 @@ export default class PluginQuickNote extends Plugin {
         await this.settingUtils.load();
         await this.initData();
         this.initComponents();
+        this.reminderService = new ReminderService(this.i18n);
         console.log("onload");
     }
 
@@ -145,6 +149,9 @@ export default class PluginQuickNote extends Plugin {
 
     async onunload() {
         this.cleanupEventListeners();
+        if (this.reminderService) {
+            this.reminderService.destroy();
+        }
         console.log(this.i18n.byePlugin);
     }
 
@@ -200,7 +207,8 @@ export default class PluginQuickNote extends Plugin {
                     this.renderDockerToolbar();
                     this.renderDockHistory();
                 }
-            }
+            },
+            this
         );
     }
     private initComponents() {
@@ -1222,6 +1230,18 @@ export default class PluginQuickNote extends Plugin {
                 return;
             }
 
+            // 添加提醒按钮点击处理
+            const reminderBtn = target.closest('.reminder-btn');
+            if (reminderBtn) {
+                e.stopPropagation();
+                const timestamp = Number(reminderBtn.getAttribute('data-timestamp'));
+                const success = await this.reminderService.updateReminderTime(timestamp);
+                if (success) {
+                    this.renderDockHistory();
+                }
+                return;
+            }
+
             // 其他现有的事件处理代码...
             const moreBtn = target.closest('.more-btn') as HTMLElement;
             const copyBtn = target.closest('.copy-btn') as HTMLElement;
@@ -1259,19 +1279,29 @@ export default class PluginQuickNote extends Plugin {
                     return;
                 }
 
+
+                // 添加提醒选项
+                const existingReminder = this.reminderService.getReminder(timestamp);
                 menu.addItem({
-                    icon: "iconPin",
-                    label: currentItem?.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
+                    icon: "iconClock",
+                    label: existingReminder ? this.i18n.note.deleteReminder : this.i18n.note.setReminder,
                     click: async () => {
-                        await this.historyService.toggleItemPin(timestamp);
                         menu.close();
-                        this.renderDockHistory();
+                        if (existingReminder) {
+                            this.reminderService.deleteReminder(timestamp);
+                            this.renderDockHistory();
+                        } else {
+                            const success = await this.reminderService.setReminder(timestamp, currentItem.text);
+                            if (success) {
+                                this.renderDockHistory();
+                            }
+                        }
                     }
                 });
 
                 // 添加分享选项
                 menu.addItem({
-                    icon: "iconShare",
+                    icon: "iconCustomShare",
                     label: this.i18n.note.share,
                     click: async () => {
                         menu.close();
@@ -1279,42 +1309,7 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
-                // 添加归档/取消归档选项
-                menu.addItem({
-                    icon: "iconArchive",
-                    label: this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
-                    click: async () => {
-                        if (this.showArchived) {
-                            await this.historyService.unarchiveItem(timestamp);
-                        } else {
-                            await this.historyService.archiveItem(timestamp);
-                        }
-
-                        menu.close();
-                        this.renderDockerToolbar();
-                        this.renderDockHistory();
-                    }
-                });
-
-
-                // 添加创建为文档选项
-                menu.addItem({
-                    icon: "iconFile",
-                    label: this.i18n.note.createDoc,
-                    click: async () => {
-                        menu.close();
-                        this.createNoteAsDocument(timestamp);
-                    }
-                });
-                // 添加插入到每日笔记选项
-                menu.addItem({
-                    icon: "iconCalendar",
-                    label: this.i18n.note.insertToDaily,
-                    click: async () => {
-                        menu.close();
-                        this.insertToDaily(timestamp);
-                    }
-                });
+                // 添加删除选项
                 menu.addItem({
                     icon: "iconTrashcan",
                     label: this.i18n.note.delete,
@@ -1327,6 +1322,8 @@ export default class PluginQuickNote extends Plugin {
                         })
                     }
                 });
+
+
                 menu.open({
                     x: rect.right,
                     y: rect.bottom,
@@ -1382,6 +1379,49 @@ export default class PluginQuickNote extends Plugin {
 
                 dialog.element.querySelector('.b3-dialog__header').appendChild(closeBtn);
 
+                return;
+            }
+
+            // 添加置顶按钮点击处理
+            const pinBtn = target.closest('.pin-btn');
+            if (pinBtn) {
+                e.stopPropagation();
+                const timestamp = Number(pinBtn.getAttribute('data-timestamp'));
+                await this.historyService.toggleItemPin(timestamp);
+                this.renderDockHistory();
+                return;
+            }
+
+            // 添加归档按钮点击处理
+            const archiveBtn = target.closest('.archive-btn');
+            if (archiveBtn) {
+                e.stopPropagation();
+                const timestamp = Number(archiveBtn.getAttribute('data-timestamp'));
+                if (this.showArchived) {
+                    await this.historyService.unarchiveItem(timestamp);
+                } else {
+                    await this.historyService.archiveItem(timestamp);
+                }
+                this.renderDockerToolbar();
+                this.renderDockHistory();
+                return;
+            }
+
+            // 添加新建文档按钮点击处理
+            const createDocBtn = target.closest('.create-doc-btn');
+            if (createDocBtn) {
+                e.stopPropagation();
+                const timestamp = Number(createDocBtn.getAttribute('data-timestamp'));
+                await this.createNoteAsDocument(timestamp);
+                return;
+            }
+
+            // 添加插入到今日笔记按钮点击处理
+            const insertDailyBtn = target.closest('.insert-daily-btn');
+            if (insertDailyBtn) {
+                e.stopPropagation();
+                const timestamp = Number(insertDailyBtn.getAttribute('data-timestamp'));
+                await this.insertToDaily(timestamp);
                 return;
             }
         };
@@ -1456,7 +1496,7 @@ export default class PluginQuickNote extends Plugin {
     }
 
     // 渲染笔记内容
-    private renderNoteContent(item: { text: string, timestamp: number, tags?: string[] }) {
+    private renderNoteContent(item: { text: string, timestamp: number, tags?: string[], isPinned?: boolean }) {
         const maxTextLength = this.settingUtils.get("maxTextLength") || MAX_TEXT_LENGTH;
         const displayText = item.text;
         const encodeText = (text: string) => {
@@ -1532,6 +1572,18 @@ export default class PluginQuickNote extends Plugin {
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
         }
 
+        // 在 action-buttons div 中添加提醒按钮（如果存在提醒）
+        const existingReminder = this.reminderService.getReminder(item.timestamp);
+        const reminderButton = existingReminder ? `
+            <button class="b3-button b3-button--text reminder-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                style="padding: 4px; height: 20px; width: 20px;" 
+                aria-label="${new Date(existingReminder.reminderTime).toLocaleString()}">
+                <svg class="b3-button__icon" style="height: 14px; width: 14px; color: var(--b3-theme-on-surface-light);">
+                    <use xlink:href="#iconClock"></use>
+                </svg>
+            </button>
+        ` : '';
+
         return `
             <div class="fn__flex" style="gap: 8px;">
                 <!-- 添加复选框，默认隐藏 -->
@@ -1539,9 +1591,18 @@ export default class PluginQuickNote extends Plugin {
                     <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
                 </div>
                 <div class="fn__flex-1">
+                    <!-- 移动时间和提醒按钮到头部 -->
+                    <div class="fn__flex" style="margin-bottom: 4px; justify-content: space-between; align-items: center;">
+                        <div class="fn__flex" style="align-items: center; gap: 4px;">
+                            <span style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                                ${new Date(item.timestamp).toLocaleString()}
+                            </span>
+                            ${reminderButton}
+                        </div>
+                    </div>
                     <div class="text-content" data-text="${encodeText(displayText)}" draggable="true">
                         ${item.text.length > maxTextLength ?
-                `<div style="word-break: break-word;">
+                            `<div style="word-break: break-word;">
                                 <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
                                     ${window.Lute.New().Md2HTML(displayText.substring(0, maxTextLength))}...
                                 </div>
@@ -1556,7 +1617,7 @@ export default class PluginQuickNote extends Plugin {
                                     </svg>
                                 </button>
                             </div>`
-                : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                            : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
                                 ${renderedContent}
                             </div>`}
                     </div>
@@ -1571,10 +1632,7 @@ export default class PluginQuickNote extends Plugin {
                             `).join('')}
                         </div>
                     ` : ''}
-                    <div class="fn__flex" style="margin-top: 4px; justify-content: space-between; align-items: center;">
-                        <div style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
-                            ${new Date(item.timestamp).toLocaleString()}
-                        </div>
+                    <div class="fn__flex" style="margin-top: 4px; justify-content: flex-end;">
                         <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
                             <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                                 style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
@@ -1586,6 +1644,34 @@ export default class PluginQuickNote extends Plugin {
                                 style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
                                 <svg class="b3-button__icon" style="height: 14px; width: 14px;">
                                     <use xlink:href="#iconEdit"></use>
+                                </svg>
+                            </button>
+                            <button class="b3-button b3-button--text insert-daily-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;" 
+                                aria-label="${this.i18n.note.insertToDaily}">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                    <use xlink:href="#iconCalendar"></use>
+                                </svg>
+                            </button>
+                            <button class="b3-button b3-button--text create-doc-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;" 
+                                aria-label="${this.i18n.note.createDoc}">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                    <use xlink:href="#iconFile"></use>
+                                </svg>
+                            </button>
+                            <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;" 
+                                aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px; ${item.isPinned ? 'color: var(--b3-theme-primary);' : ''}">
+                                    <use xlink:href="#iconPin"></use>
+                                </svg>
+                            </button>
+                            <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                                style="padding: 4px; height: 20px; width: 20px;" 
+                                aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                    <use xlink:href="#iconArchive"></use>
                                 </svg>
                             </button>
                             <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
@@ -1907,8 +1993,8 @@ export default class PluginQuickNote extends Plugin {
                             ${allTags.length > 0 ?
                         allTags
                             .sort((a, b) => {
-                                const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
-                                const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
+                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
                                 return countB - countA;
                             })
                             .map(tag => `
@@ -1924,13 +2010,13 @@ export default class PluginQuickNote extends Plugin {
                                         </div>
                                     `).join('')
                         : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                            ${this.i18n.note.noTags}
-                           </div>`
+                               ${this.i18n.note.noTags}
+                              </div>`
                     }
-                        </div>
-                    </div>
-                </div>
-            `;
+                           </div>
+                       </div>
+                   </div>
+               `;
 
                 // 将面板添加到文档根节点
                 document.body.appendChild(tagPanel);

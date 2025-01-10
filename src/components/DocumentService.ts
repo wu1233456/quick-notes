@@ -11,11 +11,26 @@ export class DocumentService implements IDocumentService {
     private i18n: any;
     private settingUtils: SettingUtils;
     private onSuccess: () => void;
+    private plugin: any;
+    private readonly STORAGE_NAME = "quicknote-doc-settings";
 
-    constructor(i18n: any, settingUtils: SettingUtils, onSuccess: () => void) {
+    constructor(i18n: any, settingUtils: SettingUtils, onSuccess: () => void, plugin: any) {
         this.i18n = i18n;
         this.settingUtils = settingUtils;
         this.onSuccess = onSuccess;
+        this.plugin = plugin;
+    }
+
+    private async getDocSettings() {
+        const settings = await this.plugin.loadData(this.STORAGE_NAME) || {};
+        return {
+            lastSelectedNotebook: settings.lastSelectedNotebook || "",
+            lastDocPath: settings.lastDocPath || "/小记"
+        };
+    }
+
+    private async saveDocSettings(settings: { lastSelectedNotebook: string, lastDocPath: string }) {
+        await this.plugin.saveData(this.STORAGE_NAME, settings);
     }
 
     public async createNoteAsDocument(timestamp: number, note: any): Promise<void> {
@@ -32,9 +47,14 @@ export class DocumentService implements IDocumentService {
                 return;
             }
 
+            // 获取上次选择的笔记本和路径
+            const settings = await this.getDocSettings();
+            const lastSelectedNotebook = settings.lastSelectedNotebook;
+            const lastDocPath = settings.lastDocPath;
+
             // 创建选择笔记本的对话框
             const dialog = new Dialog({
-                title: this.i18n.note.selectNotebook,
+                title: this.i18n.note.createDoc,
                 content: `
                     <div class="b3-dialog__content" style="max-height: 70vh; overflow: auto; padding: 20px;">
                         <div class="fn__flex-column" style="gap: 16px;">
@@ -50,7 +70,7 @@ export class DocumentService implements IDocumentService {
                                     <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.docPath}</span>
                                     <span class="fn__space"></span>
                                     <input type="text" class="b3-text-field fn__flex-1" id="docPath" 
-                                        value="/小记" 
+                                        value="${lastDocPath}" 
                                         placeholder="${this.i18n.note.docPathPlaceholder}"
                                         style="padding: 8px 12px; border-radius: 6px;">
                                 </div>
@@ -58,9 +78,11 @@ export class DocumentService implements IDocumentService {
                             <div class="fn__flex-column" style="gap: 8px;">
                                 <span class="ft__on-surface" style="font-size: 14px; font-weight: 500;">${this.i18n.note.selectNotebook}</span>
                                 <div class="fn__flex-column notebooks-list" style="gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--b3-theme-background); border-radius: 6px; border: 1px solid var(--b3-border-color);">
-                                    ${notebooks.notebooks.map((notebook, index) => `
+                                    ${notebooks.notebooks.map((notebook) => `
                                         <label class="fn__flex b3-label" style="padding: 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;">
-                                            <input type="radio" name="notebook" value="${notebook.id}" style="margin-right: 8px;" ${index === 0 ? 'checked' : ''}>
+                                            <input type="radio" name="notebook" value="${notebook.id}" style="margin-right: 8px;" 
+                                                ${lastSelectedNotebook === notebook.id ? 'checked' : 
+                                                  (!lastSelectedNotebook && notebook.id === notebooks.notebooks[0].id) ? 'checked' : ''}>
                                             <span>${notebook.name}</span>
                                         </label>
                                     `).join('')}
@@ -123,6 +145,12 @@ export class DocumentService implements IDocumentService {
                 }
 
                 try {
+                    // 保存选择的笔记本和路径
+                    await this.saveDocSettings({
+                        lastSelectedNotebook: selectedNotebook.value,
+                        lastDocPath: docPath
+                    });
+
                     // 创建文档
                     const notebookId = selectedNotebook.value;
                     const title = docTitle || this.i18n.note.untitledDoc;
