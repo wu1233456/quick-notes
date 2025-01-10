@@ -68,6 +68,27 @@ export default class PluginQuickNote extends Plugin {
         });
         console.log("this.i18n.note.defaultNotebook");
         console.log(this.i18n.note.defaultNotebook);
+                // 添加插入模式设置
+                this.settingUtils.addItem({
+                    key: "insertMode",
+                    value: "daily",
+                    type: "select",
+                    title: this.i18n.note.insertMode,
+                    description: this.i18n.note.insertModeDesc,
+                    options: {
+                        daily: this.i18n.note.insertModeDaily,
+                        doc: this.i18n.note.insertModeDoc
+                    }
+                });
+        
+                // 添加文档ID设置
+                this.settingUtils.addItem({
+                    key: "targetDocId",
+                    value: "",
+                    type: "textinput",
+                    title: this.i18n.note.targetDocId,
+                    description: this.i18n.note.targetDocIdDesc
+                });
         // 添加设置项
         this.settingUtils.addItem({
             key: "defaultNotebook",
@@ -198,17 +219,13 @@ export default class PluginQuickNote extends Plugin {
         
         // 初始化文档服务
         this.documentService = new DocumentService(
-            this.i18n, 
-            this.settingUtils, 
+            this.i18n,
+            this.settingUtils,
             () => {
-                const currentTimestamp = this.historyService.getCurrentTimestamp();
-                if (currentTimestamp) {
-                    this.historyService.deleteItem(currentTimestamp);
-                    this.renderDockerToolbar();
-                    this.renderDockHistory();
-                }
+                this.renderDockHistory();
             },
-            this
+            this,
+            this.historyService
         );
     }
     private initComponents() {
@@ -1593,6 +1610,11 @@ export default class PluginQuickNote extends Plugin {
             </button>
         ` : '';
 
+        // 修改插入按钮的文本和提示
+        const insertMode = this.settingUtils.get("insertMode");
+        const insertBtnLabel = insertMode === "doc" ? this.i18n.note.insertToDoc : this.i18n.note.insertToDaily;
+        const insertBtnIcon = insertMode === "doc" ? "iconInsertDoc" : "iconCalendar";
+
         return `
             <div class="fn__flex" style="gap: 8px;">
                 <!-- 添加复选框，默认隐藏 -->
@@ -1657,9 +1679,9 @@ export default class PluginQuickNote extends Plugin {
                             </button>
                             <button class="b3-button b3-button--text insert-daily-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                                 style="padding: 4px; height: 20px; width: 20px;" 
-                                aria-label="${this.i18n.note.insertToDaily}">
+                                aria-label="${insertBtnLabel}">
                                 <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                    <use xlink:href="#iconCalendar"></use>
+                                    <use xlink:href="#${insertBtnIcon}"></use>
                                 </svg>
                             </button>
                             <button class="b3-button b3-button--text create-doc-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
@@ -2553,7 +2575,12 @@ export default class PluginQuickNote extends Plugin {
 
     private async insertToDaily(timestamp: number) {
         const note = this.historyService.getHistoryItem(timestamp);
-        await this.documentService.insertToDaily(timestamp, note);
+        const insertMode = this.settingUtils.get("insertMode");
+        if (insertMode === "doc") {
+            await this.documentService.insertToDocument(timestamp, note);
+        } else {
+            await this.documentService.insertToDaily(timestamp, note);
+        }
     }
 
     private async generateShareImage(timestamp: number) {

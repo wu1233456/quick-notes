@@ -133,7 +133,7 @@
         "quickWindowHeight": "Quick Window Height",
         "quickWindowHeightDesc": "Height of the global quick window (pixels)",
         "deleteAfterInsert": "Delete After Insert",
-        "deleteAfterInsertDesc": "Automatically delete the original note after inserting to daily note",
+        "deleteAfterInsertDesc": "Automatically delete the original note after inserting to note",
         "insertTemplate": "Insert Template",
         "insertTemplateDesc": "Template used when inserting to daily note, supports following variables:\n${time}: Insert time\n${content}: Note content\n${tags}: Tags",
         "referenceLink": "Reference from Daily Note",
@@ -162,7 +162,15 @@
         "snooze30Min": "30 Minutes",
         "snooze1Hour": "1 Hour",
         "snoozeSet": "Will remind again in ${minutes} minutes",
-        "close": "Close"
+        "close": "Close",
+        "insertMode": "Insert Mode",
+        "insertModeDesc": "Choose where to insert the note",
+        "insertModeDaily": "Daily Note",
+        "insertModeDoc": "Specific Document",
+        "targetDocId": "Target Document ID",
+        "targetDocIdDesc": "Document ID to insert into when using specific document mode",
+        "noTargetDoc": "Target document ID not set",
+        "insertToDoc": "Insert to Document"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

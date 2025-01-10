@@ -5,6 +5,7 @@ import { SettingUtils } from "../libs/setting-utils";
 export interface IDocumentService {
     createNoteAsDocument(timestamp: number, note: any): Promise<void>;
     insertToDaily(timestamp: number, note: any): Promise<void>;
+    insertToDocument(timestamp: number, note: any): Promise<void>;
 }
 
 export class DocumentService implements IDocumentService {
@@ -13,12 +14,14 @@ export class DocumentService implements IDocumentService {
     private onSuccess: () => void;
     private plugin: any;
     private readonly STORAGE_NAME = "quicknote-doc-settings";
+    private historyService: any;
 
-    constructor(i18n: any, settingUtils: SettingUtils, onSuccess: () => void, plugin: any) {
+    constructor(i18n: any, settingUtils: SettingUtils, onSuccess: () => void, plugin: any, historyService: any) {
         this.i18n = i18n;
         this.settingUtils = settingUtils;
         this.onSuccess = onSuccess;
         this.plugin = plugin;
+        this.historyService = historyService;
     }
 
     private async getDocSettings() {
@@ -233,5 +236,49 @@ export class DocumentService implements IDocumentService {
             console.error('插入到每日笔记失败:', error);
             showMessage(this.i18n.note.insertFailed);
         }
+    }
+
+    public async insertToDocument(timestamp: number, note: any): Promise<void> {
+        if (!note) {
+            showMessage(this.i18n.note.noteNotFound);
+            return;
+        }
+
+        const targetDocId = this.settingUtils.get("targetDocId");
+        if (!targetDocId) {
+            showMessage(this.i18n.note.noTargetDoc);
+            return;
+        }
+
+        const content = this.buildContent(note);
+        try {
+            await this.appendBlock(targetDocId, content);
+            showMessage(this.i18n.note.insertSuccess);
+            
+            // 根据设置决定是否删除原小记
+            if (this.settingUtils.get("deleteAfterInsert")) {
+                await this.historyService.deleteHistoryItem(timestamp);
+            }
+        } catch (error) {
+            console.error('Failed to insert to document:', error);
+            showMessage(this.i18n.note.insertFailed);
+        }
+    }
+
+    private buildContent(note: any): string {
+        let template = this.settingUtils.get("insertTemplate") || "> [!note] 小记 ${time}\n${content}${tags}";
+
+        const time = new Date(note.timestamp).toLocaleString();
+        const content = note.text;
+        const tags = note.tags && note.tags.length > 0 ? note.tags.map(tag => `#${tag}`).join(' ') : '';
+
+        return template
+            .replace(/\${time}/g, time)
+            .replace(/\${content}/g, content)
+            .replace(/\${tags}/g, tags);
+    }
+
+    private async appendBlock(docId: string, content: string): Promise<void> {
+        await appendBlock("markdown", content, docId);
     }
 } 

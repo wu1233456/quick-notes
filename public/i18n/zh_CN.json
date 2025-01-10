@@ -132,8 +132,8 @@
         "quickWindowWidthDesc": "全局快捷呼出窗口的宽度（像素）",
         "quickWindowHeight": "快捷窗口高度",
         "quickWindowHeightDesc": "全局快捷呼出窗口的高度（像素）",
-        "deleteAfterInsert": "插入今日笔记后是否删除小记",
-        "deleteAfterInsertDesc": "选择将历史小记插入到今日笔记时是否自动删除原小记",
+        "deleteAfterInsert": "插入笔记后是否删除小记",
+        "deleteAfterInsertDesc": "选择将历史小记插入到笔记时是否自动删除原小记",
         "insertTemplate": "插入模板",
         "insertTemplateDesc": "插入到笔记时使用的模板，支持以下变量：\n${time}: 插入时间\n${content}: 小记内容\n${tags}: 标签",
         "referenceLink": "引用自今日笔记",
@@ -161,7 +161,15 @@
         "snooze30Min": "30分钟后",
         "snooze1Hour": "1小时后",
         "snoozeSet": "${minutes}分钟后将再次提醒",
-        "close": "关闭"
+        "close": "关闭",
+        "insertMode": "插入模式",
+        "insertModeDesc": "选择小记插入的目标位置",
+        "insertModeDaily": "每日笔记",
+        "insertModeDoc": "指定文档",
+        "targetDocId": "目标文档ID",
+        "targetDocIdDesc": "选择指定文档模式时，需要填写目标文档的ID",
+        "noTargetDoc": "未设置目标文档ID",
+        "insertToDoc": "插入到指定文档"
     },
     "openTagPanel": "打开标签选择面板"
 }
