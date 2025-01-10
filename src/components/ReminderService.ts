@@ -5,6 +5,7 @@ interface ReminderData {
     reminderTime: number;
     text: string;
     isCompleted: boolean;
+    snoozeCount?: number; // 添加延迟提醒次数计数
 }
 
 export class ReminderService {
@@ -79,10 +80,75 @@ export class ReminderService {
                     ${new Date(reminder.reminderTime).toLocaleString()}
                 </div>
                 <div style="margin-bottom: 8px; font-weight: bold;">${this.i18n.note.content}:</div>
-                <div style="color: var(--b3-theme-on-surface);">${reminder.text}</div>
+                <div style="margin-bottom: 16px; color: var(--b3-theme-on-surface);">${reminder.text}</div>
+                <div class="fn__flex" style="align-items: center;">
+                    <label style="margin-right: 8px;">${this.i18n.note.snooze}:</label>
+                    <select class="b3-select fn__flex-1 snooze-select">
+                        <option value="0" selected>${this.i18n.note.noSnooze}</option>
+                        <option value="10">${this.i18n.note.snooze10Min}</option>
+                        <option value="30">${this.i18n.note.snooze30Min}</option>
+                        <option value="60">${this.i18n.note.snooze1Hour}</option>
+                    </select>
+                </div>
             </div>`,
             width: "400px"
         });
+
+        // 添加确认和取消按钮
+        const btns = document.createElement("div");
+        btns.className = "fn__flex b3-dialog__action";
+        btns.innerHTML = `
+            <button class="b3-button b3-button--cancel">${this.i18n.note.close}</button>
+            <div class="fn__space"></div>
+            <button class="b3-button b3-button--text">${this.i18n.note.confirm}</button>
+        `;
+        dialog.element.querySelector('.b3-dialog__content').appendChild(btns);
+
+        // 绑定按钮事件
+        btns.querySelector('.b3-button--cancel').addEventListener('click', () => {
+            dialog.destroy();
+            this.handleReminderComplete(reminder);
+        });
+
+        btns.querySelector('.b3-button--text').addEventListener('click', () => {
+            const snoozeSelect = dialog.element.querySelector('.snooze-select') as HTMLSelectElement;
+            const snoozeMinutes = parseInt(snoozeSelect.value);
+            
+            if (snoozeMinutes > 0) {
+                // 设置延迟提醒
+                const newReminderTime = Date.now() + snoozeMinutes * 60 * 1000;
+                const index = this.reminders.findIndex(r => r.timestamp === reminder.timestamp);
+                if (index !== -1) {
+                    this.reminders[index].reminderTime = newReminderTime;
+                    this.reminders[index].isCompleted = false;
+                    this.reminders[index].snoozeCount = (this.reminders[index].snoozeCount || 0) + 1;
+                    this.saveReminders();
+                    showMessage(this.i18n.note.snoozeSet.replace('${minutes}', snoozeMinutes.toString()));
+                }
+            } else {
+                // 不设置延迟提醒,直接完成
+                this.handleReminderComplete(reminder);
+            }
+            dialog.destroy();
+        });
+    }
+
+    // 处理提醒完成
+    private handleReminderComplete(reminder: ReminderData) {
+        const index = this.reminders.findIndex(r => r.timestamp === reminder.timestamp);
+        if (index !== -1) {
+            this.reminders[index].isCompleted = true;
+            this.saveReminders();
+            
+            // 发布提醒完成事件,用于更新历史记录显示
+            const event = new CustomEvent('reminder-completed', {
+                detail: {
+                    timestamp: reminder.timestamp,
+                    snoozeCount: reminder.snoozeCount || 0
+                }
+            });
+            window.dispatchEvent(event);
+        }
     }
 
     // 设置提醒

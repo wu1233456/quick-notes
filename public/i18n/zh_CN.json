@@ -154,7 +154,14 @@
         "updateReminder": "修改提醒时间",
         "invalidReminderTime": "提醒时间不能早于当前时间",
         "content": "内容",
-        "quickNoteTitle": "小记一下"
+        "quickNoteTitle": "小记一下",
+        "snooze": "延迟提醒",
+        "noSnooze": "不延迟",
+        "snooze10Min": "10分钟后",
+        "snooze30Min": "30分钟后",
+        "snooze1Hour": "1小时后",
+        "snoozeSet": "${minutes}分钟后将再次提醒",
+        "close": "关闭"
     },
     "openTagPanel": "打开标签选择面板"
 }

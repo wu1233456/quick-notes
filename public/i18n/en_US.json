@@ -155,7 +155,14 @@
         "updateReminder": "Update Reminder Time",
         "invalidReminderTime": "Reminder time cannot be earlier than current time",
         "content": "Content",
-        "insertToDaily": "Insert to Daily Note"
+        "insertToDaily": "Insert to Daily Note",
+        "snooze": "Snooze",
+        "noSnooze": "No Snooze",
+        "snooze10Min": "10 Minutes",
+        "snooze30Min": "30 Minutes",
+        "snooze1Hour": "1 Hour",
+        "snoozeSet": "Will remind again in ${minutes} minutes",
+        "close": "Close"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

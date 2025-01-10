@@ -159,7 +159,7 @@ export class ShareService {
             canvas.height = totalContentHeight + contentPadding * 2 + topMargin + bottomMargin;
 
             // 设置背景色
-            ctx.fillStyle = '#dc4446';
+            ctx.fillStyle = '#9c3f39';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // 绘制白色主体区域
@@ -172,7 +172,7 @@ export class ShareService {
             const arcCount = Math.floor(contentWidth / arcSpacing);
             
             // 绘制上边的红色下半圆
-            ctx.fillStyle = '#dc4446';
+            ctx.fillStyle = '#9c3f39';
             for (let i = 0; i < arcCount; i++) {
                 const x = sideMargin + i * arcSpacing + arcSpacing/2;
                 const y = topMargin;

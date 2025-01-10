@@ -237,6 +237,15 @@ export default class PluginQuickNote extends Plugin {
         this.initDock();
         initMardownStyle();
         this.shareService = new ShareService(this, this.historyService);
+
+        // 添加提醒完成事件监听
+        window.addEventListener('reminder-completed', ((event: CustomEvent) => {
+            const { timestamp, snoozeCount } = event.detail;
+            if (snoozeCount === 0) {
+                // 如果没有设置延迟提醒,更新历史记录显示
+                this.renderDockHistory();
+            }
+        }) as EventListener);
     }
     private initDock() {
         // 创建 dock 时读取保存的位置
