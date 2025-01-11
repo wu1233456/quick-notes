@@ -59,7 +59,7 @@ export default class PluginQuickNote extends Plugin {
             plugin: this,
             name: SETTINGS_STORAGE_NAME,
             callback: async () => {
-                console.log("callback");
+                // console.log("callback");
                 if (this.element) {
                     this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
                     this.renderDockHistory();
@@ -184,7 +184,7 @@ export default class PluginQuickNote extends Plugin {
         this.data[CONFIG_DATA_NAME] = await this.loadData(CONFIG_DATA_NAME) || {
             editorVisible: true,
         }
-        console.log("Config data loaded:", this.data[CONFIG_DATA_NAME]);
+        // console.log("Config data loaded:", this.data[CONFIG_DATA_NAME]);
 
         // 初始化未归档小记数据
         let unarchive_history = await this.loadData(DOCK_STORAGE_NAME) || {
@@ -207,13 +207,13 @@ export default class PluginQuickNote extends Plugin {
         };
 
         this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
-        
+
         // 初始化编辑器服务
         this.editorService = new EditorService(this.i18n);
-        
+
         // 初始化图片服务
         this.imageService = new ImageService(this.i18n);
-        
+
         // 初始化文档服务
         this.documentService = new DocumentService(
             this.i18n,
@@ -1478,7 +1478,6 @@ export default class PluginQuickNote extends Plugin {
                     border-radius: 4px; 
                     background: var(--b3-theme-background); 
                     transition: all 0.2s ease; 
-                    cursor: text;
                     user-select: text;
                     position: relative;" 
                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)';
@@ -1507,7 +1506,6 @@ export default class PluginQuickNote extends Plugin {
                     border: 1px solid var(--b3-border-color); 
                     border-radius: 4px; 
                     transition: all 0.2s ease; 
-                    cursor: text;
                     user-select: text;
                     position: relative;" 
                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; 
@@ -1522,7 +1520,7 @@ export default class PluginQuickNote extends Plugin {
         </div>`;
     }
 
-     // 渲染笔记内容
+    // 渲染笔记内容
     private renderNoteContent(item: { text: string, timestamp: number, tags?: string[] }) {
         const maxTextLength = this.settingUtils.get("maxTextLength") || MAX_TEXT_LENGTH;
         const displayText = item.text;
@@ -1632,7 +1630,7 @@ export default class PluginQuickNote extends Plugin {
                     </div>
                     <div class="text-content" data-text="${encodeText(displayText)}" draggable="true">
                         ${item.text.length > maxTextLength ?
-                            `<div style="word-break: break-word;">
+                `<div style="word-break: break-word;">
                                 <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
                                     ${window.Lute.New().Md2HTML(displayText.substring(0, maxTextLength))}...
                                 </div>
@@ -1647,7 +1645,7 @@ export default class PluginQuickNote extends Plugin {
                                     </svg>
                                 </button>
                             </div>`
-                            : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
                                 ${renderedContent}
                             </div>`}
                     </div>
@@ -2521,13 +2519,41 @@ export default class PluginQuickNote extends Plugin {
                         newFilterBtn.style.color = filterBtnColor;
                     }
                     this.historyService.updateSelectedTags(this.selectedTags);
-                    this.renderDockerToolbar();
+                    this.updateFilterTagIndicator();
                     this.renderDockHistory();
                 });
             });
         }
     }
 
+    //更新标签图标的小圆点状态
+    private updateFilterTagIndicator() {
+        let container = this.element;
+        // 更新过滤按钮状态指示器
+        const filterBtn = container.querySelector('.filter-btn');
+        if (filterBtn) {
+            // 添加或移除过滤状态指示点
+            const indicator = filterBtn.querySelector('.filter-indicator');
+            if (this.selectedTags.length > 0) {
+                if (!indicator) {
+                    const dot = document.createElement('div');
+                    dot.className = 'filter-indicator';
+                    dot.style.cssText = `
+                                            position: absolute;
+                                            top: 0;
+                                            right: 0;
+                                            width: 6px;
+                                            height: 6px;
+                                            border-radius: 50%;
+                                            background-color: var(--b3-theme-primary);
+                                        `;
+                    filterBtn.appendChild(dot);
+                }
+            } else {
+                indicator?.remove();
+            }
+        }
+    }
     // 设置导出功能
     private setupExportFeature(container: HTMLElement) {
         const exportBtn = container.querySelector('[data-type="export"]'); // 修改选择器以匹配顶部栏的导出按钮

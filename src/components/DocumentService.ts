@@ -162,6 +162,7 @@ export class DocumentService implements IDocumentService {
 
                     // 如果选择了创建后删除，调用回调函数
                     if (deleteAfterCreate) {
+                        this.historyService.deleteHistoryItem(note.timestamp)
                         this.onSuccess();
                     }
 
