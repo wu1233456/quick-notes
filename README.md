@@ -1,6 +1,7 @@
 # Quick Notes
 
 > A SiYuan plugin for quick note-taking, similar to Yuque's quick notes feature. It supports tag management, archiving, Markdown rendering, and more to help you capture ideas efficiently.
+[中文版](README_zh_CN.md)
 
 ## Key Features
 
@@ -75,6 +76,7 @@
 - Added a switch for the insert mode. You can choose to insert a quick note into today's notes with one click or insert it into a specified document.
 - Optimized the layout of historical quick notes, moving commonly used buttons out of the "more options" section.
 - Added the ability to generate shareable images from historical quick notes. 
+
 ### v1.1.1 (2025-01-08)
 - Added the ability to insert a small note into today's notes with one click.
 - Added the ability to create a small note as a SiYuan document with one click.
