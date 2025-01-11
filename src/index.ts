@@ -1522,8 +1522,8 @@ export default class PluginQuickNote extends Plugin {
         </div>`;
     }
 
-    // 渲染笔记内容
-    private renderNoteContent(item: { text: string, timestamp: number, tags?: string[], isPinned?: boolean }) {
+     // 渲染笔记内容
+    private renderNoteContent(item: { text: string, timestamp: number, tags?: string[] }) {
         const maxTextLength = this.settingUtils.get("maxTextLength") || MAX_TEXT_LENGTH;
         const displayText = item.text;
         const encodeText = (text: string) => {
@@ -1541,10 +1541,9 @@ export default class PluginQuickNote extends Plugin {
             });
         };
 
-        // 预处理文本，保留空行但限制连续空行的数量
+        // 预处理文本，保留空行
         const preserveEmptyLines = (content: string) => {
-            // 将连续的多个换行替换为最多两个换行
-            return content.replace(/\n{3,}/g, '\n\n');
+            return content.replace(/\n\n/g, '\n&nbsp;\n');
         };
 
 
@@ -1598,7 +1597,6 @@ export default class PluginQuickNote extends Plugin {
             console.error('Markdown rendering failed:', error);
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
         }
-
         // 在 action-buttons div 中添加提醒按钮（如果存在提醒）
         const existingReminder = this.reminderService.getReminder(item.timestamp);
         const reminderButton = existingReminder ? `
