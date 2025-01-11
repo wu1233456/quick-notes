@@ -280,6 +280,8 @@ export class ReminderService {
             btns.innerHTML = `
                 <button class="b3-button b3-button--cancel">${this.i18n.note.cancel}</button>
                 <div class="fn__space"></div>
+                <button class="b3-button b3-button--text clear-reminder">${this.i18n.note.clearReminder}</button>
+                <div class="fn__space"></div>
                 <button class="b3-button b3-button--text">${this.i18n.note.confirm}</button>
             `;
             dialog.element.querySelector('.b3-dialog__content').appendChild(btns);
@@ -287,6 +289,13 @@ export class ReminderService {
             // 绑定按钮事件
             btns.querySelector('.b3-button--cancel').addEventListener('click', () => {
                 dialog.destroy();
+                resolve(false);
+            });
+
+            btns.querySelector('.clear-reminder').addEventListener('click', () => {
+                this.deleteReminder(timestamp);
+                dialog.destroy();
+                showMessage(this.i18n.note.reminderCleared);
                 resolve(false);
             });
 
@@ -314,7 +323,7 @@ export class ReminderService {
 
     // 获取特定小记的提醒（返回完整的提醒信息）
     public getReminder(timestamp: number): ReminderData | null {
-        return this.reminders.find(r => r.timestamp === timestamp && !r.isCompleted) || null;
+        return this.reminders.find(r => r.timestamp === timestamp && !r.isCompleted && r.reminderTime > Date.now()) || null;
     }
 
     // 删除提醒

@@ -154,6 +154,8 @@
         "reminderUpdated": "Reminder time updated",
         "updateReminder": "Update Reminder Time",
         "invalidReminderTime": "Reminder time cannot be earlier than current time",
+        "clearReminder": "Clear Reminder",
+        "reminderCleared": "Reminder cleared",
         "content": "Content",
         "insertToDaily": "Insert to Daily Note",
         "snooze": "Snooze",

@@ -153,6 +153,8 @@
         "reminderUpdated": "提醒时间已更新",
         "updateReminder": "修改提醒时间",
         "invalidReminderTime": "提醒时间不能早于当前时间",
+        "clearReminder": "清除提醒",
+        "reminderCleared": "提醒已清除",
         "content": "内容",
         "quickNoteTitle": "小记一下",
         "snooze": "延迟提醒",
