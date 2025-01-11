@@ -169,7 +169,9 @@
         "targetDocId": "目标文档ID",
         "targetDocIdDesc": "选择指定文档模式时，需要填写目标文档的ID",
         "noTargetDoc": "未设置目标文档ID",
-        "insertToDoc": "插入到指定文档"
+        "insertToDoc": "插入到指定文档",
+        "createNewSmallNote": "全局快捷呼出小记",
+        "showQuickNoteSidebar": "显示小记侧边栏"
     },
     "openTagPanel": "打开标签选择面板"
 }

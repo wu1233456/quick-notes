@@ -170,7 +170,9 @@
         "targetDocId": "Target Document ID",
         "targetDocIdDesc": "Document ID to insert into when using specific document mode",
         "noTargetDoc": "Target document ID not set",
-        "insertToDoc": "Insert to Document"
+        "insertToDoc": "Insert to Document",
+        "createNewSmallNote": "Quick Note (Global)",
+        "showQuickNoteSidebar": "Show Quick Note Sidebar"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

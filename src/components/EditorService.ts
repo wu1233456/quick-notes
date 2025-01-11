@@ -47,7 +47,7 @@ export class EditorService {
                         <div class="fn__flex" style="gap: 8px;">
                             <button class="b3-button b3-button--text add-tag-btn b3-tooltips b3-tooltips__n" 
                                 style="padding: 4px;" 
-                                aria-label="${i18n.note.addTag} ${adaptHotkey('⌘K')}">
+                                aria-label="${adaptHotkey('⌘K')}">
                                 <svg class="b3-button__icon" style="height: 16px; width: 16px;">
                                     <use xlink:href="#iconTags"></use>
                                 </svg>

@@ -241,7 +241,7 @@ export default class PluginQuickNote extends Plugin {
         });
         // 添加快捷键命令
         this.addCommand({
-            langKey: "createNewSmallNote",
+            langKey: this.i18n.note.createNewSmallNote,
             hotkey: "⇧⌘Y",
             globalCallback: () => {
                 if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
@@ -272,7 +272,7 @@ export default class PluginQuickNote extends Plugin {
                 size: { width: 300, height: 0 },
                 icon: "iconSmallNote",
                 hotkey: '⇧⌘U',
-                title: this.i18n.note.title,
+                title: this.i18n.note.showQuickNoteSidebar,
             },
             data: {
                 plugin: this
