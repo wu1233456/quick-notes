@@ -16,12 +16,17 @@ export class ReminderService {
     private plugin: any;
     private frontend: string;
 
-    constructor(i18n: any, plugin: any) {
+    private constructor(i18n: any, plugin: any) {
         this.i18n = i18n;
         this.plugin = plugin;
         this.frontend = getFrontend();
-        this.loadReminders();
-        this.startCheckingReminders();
+    }
+
+    public static async create(i18n: any, plugin: any): Promise<ReminderService> {
+        const service = new ReminderService(i18n, plugin);
+        await service.loadReminders();
+        service.startCheckingReminders();
+        return service;
     }
 
     // 加载保存的提醒
@@ -40,19 +45,21 @@ export class ReminderService {
     // 保存提醒到插件数据
     private async saveReminders() {
         try {
+            // console.log('Saving reminders:', this.reminders);
             await this.plugin.saveData(ReminderService.STORAGE_KEY, this.reminders);
+            // console.log('Reminders saved successfully');
         } catch (error) {
             console.error('Error saving reminders:', error);
         }
     }
 
     // 清理已完成的过期提醒
-    private cleanupCompletedReminders() {
+    private async cleanupCompletedReminders() {
         const now = Date.now();
         this.reminders = this.reminders.filter(reminder => 
             !reminder.isCompleted || reminder.reminderTime > now - 24 * 60 * 60 * 1000
         );
-        this.saveReminders();
+        await this.saveReminders();
     }
 
     // 开始检查提醒
@@ -61,15 +68,19 @@ export class ReminderService {
             clearInterval(this.checkInterval);
         }
 
-        this.checkInterval = window.setInterval(() => {
+        this.checkInterval = window.setInterval(async () => {
             const now = Date.now();
+            let needsSave = false;
             this.reminders.forEach(reminder => {
                 if (!reminder.isCompleted && reminder.reminderTime <= now) {
                     this.showReminderNotification(reminder);
                     reminder.isCompleted = true;
+                    needsSave = true;
                 }
             });
-            this.saveReminders();
+            if (needsSave) {
+                await this.saveReminders();
+            }
         }, 30000); // 每30秒检查一次
     }
 
@@ -94,8 +105,8 @@ export class ReminderService {
             });
 
             // 关闭通知时标记为完成
-            notification.on('close', () => {
-                this.handleReminderComplete(reminder);
+            notification.on('close', async () => {
+                await this.handleReminderComplete(reminder);
             });
 
             // 显示通知
@@ -135,12 +146,12 @@ export class ReminderService {
         dialog.element.querySelector('.b3-dialog__content').appendChild(btns);
 
         // 绑定按钮事件
-        btns.querySelector('.b3-button--cancel').addEventListener('click', () => {
+        btns.querySelector('.b3-button--cancel').addEventListener('click', async () => {
             dialog.destroy();
-            this.handleReminderComplete(reminder);
+            await this.handleReminderComplete(reminder);
         });
 
-        btns.querySelector('.b3-button--text').addEventListener('click', () => {
+        btns.querySelector('.b3-button--text').addEventListener('click', async () => {
             const snoozeSelect = dialog.element.querySelector('.snooze-select') as HTMLSelectElement;
             const snoozeMinutes = parseInt(snoozeSelect.value);
             
@@ -157,18 +168,18 @@ export class ReminderService {
                 }
             } else {
                 // 不设置延迟提醒,直接完成
-                this.handleReminderComplete(reminder);
+                await this.handleReminderComplete(reminder);
             }
             dialog.destroy();
         });
     }
 
     // 处理提醒完成
-    private handleReminderComplete(reminder: ReminderData) {
+    private async handleReminderComplete(reminder: ReminderData) {
         const index = this.reminders.findIndex(r => r.timestamp === reminder.timestamp);
         if (index !== -1) {
             this.reminders[index].isCompleted = true;
-            this.saveReminders();
+            await this.saveReminders();
             
             // 发布提醒完成事件,用于更新历史记录显示
             const event = new CustomEvent('reminder-completed', {
@@ -223,7 +234,7 @@ export class ReminderService {
                 resolve(false);
             });
 
-            btns.querySelector('.b3-button--text').addEventListener('click', () => {
+            btns.querySelector('.b3-button--text').addEventListener('click', async () => {
                 const reminderTime = new Date(timeInput.value).getTime();
                 if (reminderTime <= Date.now()) {
                     showMessage(this.i18n.note.invalidReminderTime);
@@ -237,8 +248,8 @@ export class ReminderService {
                     isCompleted: false
                 });
 
-                this.saveReminders();
                 dialog.destroy();
+                await this.saveReminders();
                 showMessage(this.i18n.note.reminderSet);
                 resolve(true);
             });
@@ -282,7 +293,7 @@ export class ReminderService {
                 <div class="fn__space"></div>
                 <button class="b3-button b3-button--text clear-reminder">${this.i18n.note.clearReminder}</button>
                 <div class="fn__space"></div>
-                <button class="b3-button b3-button--text">${this.i18n.note.confirm}</button>
+                <button class="b3-button b3-button--text save-reminder">${this.i18n.note.confirm}</button>
             `;
             dialog.element.querySelector('.b3-dialog__content').appendChild(btns);
 
@@ -292,14 +303,15 @@ export class ReminderService {
                 resolve(false);
             });
 
-            btns.querySelector('.clear-reminder').addEventListener('click', () => {
-                this.deleteReminder(timestamp);
+            btns.querySelector('.clear-reminder').addEventListener('click', async () => {
+                await this.deleteReminder(timestamp);
+                this.plugin.renderDockHistory();
                 dialog.destroy();
                 showMessage(this.i18n.note.reminderCleared);
                 resolve(false);
             });
 
-            btns.querySelector('.b3-button--text').addEventListener('click', () => {
+            btns.querySelector('.save-reminder').addEventListener('click', async () => {
                 const newReminderTime = new Date(timeInput.value).getTime();
                 if (newReminderTime <= Date.now()) {
                     showMessage(this.i18n.note.invalidReminderTime);
@@ -311,7 +323,7 @@ export class ReminderService {
                 if (index !== -1) {
                     this.reminders[index].reminderTime = newReminderTime;
                     this.reminders[index].isCompleted = false; // 重置完成状态
-                    this.saveReminders();
+                    await this.saveReminders();
                     showMessage(this.i18n.note.reminderUpdated);
                 }
 
@@ -323,13 +335,13 @@ export class ReminderService {
 
     // 获取特定小记的提醒（返回完整的提醒信息）
     public getReminder(timestamp: number): ReminderData | null {
-        return this.reminders.find(r => r.timestamp === timestamp && !r.isCompleted && r.reminderTime > Date.now()) || null;
+        return this.reminders.find(r => r.timestamp === timestamp && !r.isCompleted) || null;
     }
 
     // 删除提醒
-    public deleteReminder(timestamp: number) {
+    public async deleteReminder(timestamp: number) {
         this.reminders = this.reminders.filter(r => r.timestamp !== timestamp);
-        this.saveReminders();
+        await this.saveReminders();
     }
 
     // 清理资源

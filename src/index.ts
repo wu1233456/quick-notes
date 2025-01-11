@@ -66,29 +66,27 @@ export default class PluginQuickNote extends Plugin {
                 }
             }
         });
-        console.log("this.i18n.note.defaultNotebook");
-        console.log(this.i18n.note.defaultNotebook);
-                // 添加插入模式设置
-                this.settingUtils.addItem({
-                    key: "insertMode",
-                    value: "daily",
-                    type: "select",
-                    title: this.i18n.note.insertMode,
-                    description: this.i18n.note.insertModeDesc,
-                    options: {
-                        daily: this.i18n.note.insertModeDaily,
-                        doc: this.i18n.note.insertModeDoc
-                    }
-                });
-        
-                // 添加文档ID设置
-                this.settingUtils.addItem({
-                    key: "targetDocId",
-                    value: "",
-                    type: "textinput",
-                    title: this.i18n.note.targetDocId,
-                    description: this.i18n.note.targetDocIdDesc
-                });
+        // 添加插入模式设置
+        this.settingUtils.addItem({
+            key: "insertMode",
+            value: "daily",
+            type: "select",
+            title: this.i18n.note.insertMode,
+            description: this.i18n.note.insertModeDesc,
+            options: {
+                daily: this.i18n.note.insertModeDaily,
+                doc: this.i18n.note.insertModeDoc
+            }
+        });
+
+        // 添加文档ID设置
+        this.settingUtils.addItem({
+            key: "targetDocId",
+            value: "",
+            type: "textinput",
+            title: this.i18n.note.targetDocId,
+            description: this.i18n.note.targetDocIdDesc
+        });
         // 添加设置项
         this.settingUtils.addItem({
             key: "defaultNotebook",
@@ -157,7 +155,6 @@ export default class PluginQuickNote extends Plugin {
         await this.settingUtils.load();
         await this.initData();
         this.initComponents();
-        this.reminderService = new ReminderService(this.i18n, this);
         console.log("onload");
     }
 
@@ -227,6 +224,9 @@ export default class PluginQuickNote extends Plugin {
             this,
             this.historyService
         );
+
+        // 初始化提醒服务
+        this.reminderService = await ReminderService.create(this.i18n, this);
     }
     private initComponents() {
         this.addIcons(iconsSVG);
@@ -2302,7 +2302,6 @@ export default class PluginQuickNote extends Plugin {
             };
 
             searchInput.oninput = () => {
-                console.log("searchInput.oninput");
                 const searchText = searchInput.value.toLowerCase();
 
                 if (!searchText) {
@@ -2312,11 +2311,9 @@ export default class PluginQuickNote extends Plugin {
                 }
                 // 在选定的数据源中搜索
                 const filteredHistory = this.historyService.searchHistory(searchText);
-                console.log("filteredHistory", filteredHistory);
 
                 // 只更新历史记录内容部分
                 const historyContent = container.querySelector('.history-content');
-                console.log("historyContent", historyContent);
                 if (historyContent) {
                     const pinnedHistory = filteredHistory.filter(item => item.isPinned);
                     const unpinnedHistory = filteredHistory.filter(item => !item.isPinned);
@@ -2496,7 +2493,6 @@ export default class PluginQuickNote extends Plugin {
             const filterTags = filterPanel.querySelectorAll('.filter-tag');
             filterTags.forEach(tag => {
                 tag.addEventListener('click', () => {
-                    console.log("tag.addEventListener");
                     const isSelected = tag.getAttribute('data-selected') === 'true';
                     tag.setAttribute('data-selected', (!isSelected).toString());
                     if (!isSelected) {
@@ -2538,7 +2534,6 @@ export default class PluginQuickNote extends Plugin {
         if (exportBtn) {
             this.exportDialog = new ExportDialog(this.i18n);
             this.exportService = new ExportService(this.i18n);
-            console.log("setupExportFeature");
             exportBtn.addEventListener('click', () => {
                 // 创建导出对话框
                 this.exportDialog.show(
