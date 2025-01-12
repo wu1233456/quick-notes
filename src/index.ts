@@ -35,7 +35,7 @@ export default class PluginQuickNote extends Plugin {
     private element: HTMLElement;  //侧边栏dock元素
 
     private itemsPerPage: number = 10;
-    private currentDisplayCount: number; //当前历史小记显示数量
+    private currentDisplayCount: number = 10; //当前历史小记显示数量
     private selectedTags: string[] = [];//过滤标签
     private showArchived: boolean = false;//是否显示归档小记
     private isBatchSelect: boolean = false;//是否处于批量选择状态
@@ -54,7 +54,6 @@ export default class PluginQuickNote extends Plugin {
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
 
     async onload() {
-        console.log("start onload");
         // 初始化设置
         this.settingUtils = new SettingUtils({
             plugin: this,
@@ -151,37 +150,18 @@ export default class PluginQuickNote extends Plugin {
             title: this.i18n.note.quickWindowHeight,
             description: this.i18n.note.quickWindowHeightDesc
         });
-        //dock 需要提前添加，否则有一定概率无法渲染出来
-        this.initDock();
+
         await this.settingUtils.load();
-        await this.initData();
+        this.initDefaultData();
+        this.loadNoteData();
         this.initComponents();
         console.log("onload");
     }
 
     async onLayoutReady() {
-        this.addIcons(iconsSVG);
-          // 添加顶部栏按钮
-        this.addTopBar({
-            icon: "iconSmallNote",
-            title: this.i18n.note.title,
-            position: "right",
-            callback: () => {
-                this.createNewNote();
-            }
-        });
-        // 添加快捷键命令
-        this.addCommand({
-            langKey: this.i18n.note.createNewSmallNote,
-            hotkey: "⇧⌘Y",
-            globalCallback: () => {
-                if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
-                    this.createNewNote();
-                } else {
-                    this.createQuickInputWindow();
-                }
-            }
-        });
+        // let lute = window.Lute.New();
+        // let html = lute.Md2HTML('![Line Simple Example (1).png]("assets/Line Simple Example 1-20250108081401-kduj7tl.png")');
+        // console.log(html);
         console.log("onLayoutReady");
     }
 
@@ -197,15 +177,7 @@ export default class PluginQuickNote extends Plugin {
         console.log("uninstall");
     }
 
-    private async initData() {
-        this.frontend = getFrontend();
-
-        // 初始化配置数据
-        this.data[CONFIG_DATA_NAME] = await this.loadData(CONFIG_DATA_NAME) || {
-            editorVisible: true,
-        }
-        // console.log("Config data loaded:", this.data[CONFIG_DATA_NAME]);
-
+    private async loadNoteData(){
         // 初始化未归档小记数据
         let unarchive_history = await this.loadData(DOCK_STORAGE_NAME) || {
             history: []
@@ -247,10 +219,71 @@ export default class PluginQuickNote extends Plugin {
 
         // 初始化提醒服务
         this.reminderService = await ReminderService.create(this.i18n, this);
+        if(this.element){
+            this.initDockPanel();
+        }
     }
-    private async initComponents() {
-        console.log("initComponents start");
-        this.initDockPanel();
+    //设置默认值
+    private async initDefaultData() {
+        this.frontend = getFrontend();
+
+        // 初始化配置数据
+        this.data[CONFIG_DATA_NAME] =  {
+            editorVisible: true,
+        }
+
+        const historyData: HistoryData = {
+            history: [],
+            archivedHistory:  []
+        };
+
+        this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
+
+        // 初始化编辑器服务
+        this.editorService = new EditorService(this.i18n);
+
+        // 初始化图片服务
+        this.imageService = new ImageService(this.i18n);
+
+        // 初始化文档服务
+        this.documentService = new DocumentService(
+            this.i18n,
+            this.settingUtils,
+            () => {
+                this.renderDockHistory();
+            },
+            this,
+            this.historyService
+        );
+
+        // 初始化提醒服务
+        this.reminderService = await ReminderService.create(this.i18n, this);
+      
+    }
+    private initComponents() {
+        this.addIcons(iconsSVG);
+        // 添加顶部栏按钮
+        this.addTopBar({
+            icon: "iconSmallNote",
+            title: this.i18n.note.title,
+            position: "right",
+            callback: () => {
+                this.createNewNote();
+            }
+        });
+        // 添加快捷键命令
+        this.addCommand({
+            langKey: this.i18n.note.createNewSmallNote,
+            hotkey: "⇧⌘Y",
+            globalCallback: () => {
+                if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
+                    this.createNewNote();
+                } else {
+                    this.createQuickInputWindow();
+                }
+            }
+        });
+        this.initDock();
         initMardownStyle();
         this.shareService = new ShareService(this, this.historyService);
 
@@ -262,40 +295,34 @@ export default class PluginQuickNote extends Plugin {
                 this.renderDockHistory();
             }
         }) as EventListener);
-        console.log("initComponents end");
     }
     private initDock() {
-        console.log("initDock start");
         // 创建 dock 时读取保存的位置
         this.addDock({
-            type: "::dock",
             config: {
                 position: "RightTop",
-                size: { width: 300, height: 100 },
+                size: { width: 300, height: 0 },
                 icon: "iconSmallNote",
                 hotkey: '⇧⌘U',
-                // title: this.i18n.note.showQuickNoteSidebar,
-                title: "小记",
+                title: this.i18n.note.showQuickNoteSidebar,
             },
             data: {
                 plugin: this
             },
+            type: DOCK_TYPE,
             init() {
-                console.log("init start");
                 this.data.plugin.element = this.element;
-                console.log("init  end");
-
+                this.data.plugin.initDockPanel();
             },
             destroy() {
                 console.log("destroy dock:", DOCK_TYPE);
             }
         });
-        console.log("initDock end");
     }
+    
 
-
-    public initDockPanel() {
-        console.log("initDockPanel start");
+    private initDockPanel() {
+        console.log("initDockPanel");
         let element = this.element;
         element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="height: 100%;">
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column dock_quicknotes_container" style="align-items: center;"> 
@@ -310,9 +337,7 @@ export default class PluginQuickNote extends Plugin {
         this.renderDockerEditor();
         this.renderDockHistory();
         this.renderDockerToolbar();
-
         this.bindDockPanelEvents();
-        console.log("initDockPanel end");
     }
 
     private renderDockerTopbar() {
