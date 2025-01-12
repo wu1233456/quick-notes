@@ -219,9 +219,19 @@ export default class PluginQuickNote extends Plugin {
 
         // 初始化提醒服务
         this.reminderService = await ReminderService.create(this.i18n, this);
+        //初始化分享服务
+        this.shareService = new ShareService(this, this.historyService);
         if(this.element){
             this.initDockPanel();
         }
+        // 添加提醒完成事件监听
+        window.addEventListener('reminder-completed', ((event: CustomEvent) => {
+            const { timestamp, snoozeCount } = event.detail;
+            if (snoozeCount === 0) {
+                // 如果没有设置延迟提醒,更新历史记录显示
+                this.renderDockHistory();
+            }
+        }) as EventListener);
     }
     //设置默认值
     private async initDefaultData() {
@@ -256,6 +266,8 @@ export default class PluginQuickNote extends Plugin {
             this.historyService
         );
 
+        this.shareService = new ShareService(this, this.historyService);
+
         // 初始化提醒服务
         this.reminderService = await ReminderService.create(this.i18n, this);
       
@@ -285,16 +297,7 @@ export default class PluginQuickNote extends Plugin {
         });
         this.initDock();
         initMardownStyle();
-        this.shareService = new ShareService(this, this.historyService);
 
-        // 添加提醒完成事件监听
-        window.addEventListener('reminder-completed', ((event: CustomEvent) => {
-            const { timestamp, snoozeCount } = event.detail;
-            if (snoozeCount === 0) {
-                // 如果没有设置延迟提醒,更新历史记录显示
-                this.renderDockHistory();
-            }
-        }) as EventListener);
     }
     private initDock() {
         // 创建 dock 时读取保存的位置

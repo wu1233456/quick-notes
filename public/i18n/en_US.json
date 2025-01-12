@@ -174,7 +174,9 @@
         "noTargetDoc": "Target document ID not set",
         "insertToDoc": "Insert to Document",
         "createNewSmallNote": "Quick Note (Global)",
-        "showQuickNoteSidebar": "Show Quick Note Sidebar"
+        "showQuickNoteSidebar": "Show Quick Note Sidebar",
+        "insertFailed": "Insert failed",
+        "insertSuccess": "Insert successful"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }
