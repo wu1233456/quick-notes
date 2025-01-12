@@ -71,6 +71,9 @@
 + - `⌘W`: Close Quick Notes window
 
 ## Changelog
+### v1.1.3 (2025-01-12)
+- Fix the issue where the sidebar of the notes occasionally fails to load when launched.
+
 ### v1.1.2 (2025-01-11)
 - A new system-level reminder function has been added. Even when Siyuan is minimized, you can still receive reminders. It supports setting reminder times and clearing reminders.
 - Added a switch for the insert mode. You can choose to insert a quick note into today's notes with one click or insert it into a specified document.
