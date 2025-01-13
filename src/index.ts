@@ -529,7 +529,9 @@ export default class PluginQuickNote extends Plugin {
                                     </div>
                                     <span class="fn__flex-1"></span>
                                     <button style="border: none; background: none; padding: 4px; cursor: pointer;"  aria-label="同步flomo">
-                                        <svg data-type="sync" style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_btn" ><use xlink:href="#iconRefresh"></use></svg>
+                                        <svg  style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_note_btn" >
+                                            <use xlink:href="#iconFlomo"></use>
+                                        </svg>
                                     </button>
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
                                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
@@ -656,17 +658,17 @@ export default class PluginQuickNote extends Plugin {
         const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
         const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
         // 添加同步按钮事件
-        const syncBtn = element.querySelector('.sync_btn');
+        const syncBtn = element.querySelector('.sync_note_btn');
         syncBtn.addEventListener('click', async () => {
             const icon = syncBtn.querySelector('use');
-            icon.setAttribute('xlink:href', '#iconLoading');
+            icon.setAttribute('xlink:href', '#iconRefresh');
             syncBtn.classList.add('fn__loading');
 
             try {
                 await this.flomoService.sync();
                 this.renderDockHistory();
             } finally {
-                icon.setAttribute('xlink:href', '#iconRefresh');
+                icon.setAttribute('xlink:href', '#iconFlomo');
                 syncBtn.classList.remove('fn__loading');
             }
         });
