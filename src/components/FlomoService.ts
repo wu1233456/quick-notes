@@ -11,11 +11,61 @@ export class FlomoService {
     private plugin: any;
     private historyService: HistoryService;
     private i18n: any;
+    private autoSyncTimer: NodeJS.Timeout | null = null;
 
     constructor(plugin: any, historyService: HistoryService, i18n: any) {
         this.plugin = plugin;
         this.historyService = historyService;
         this.i18n = i18n;
+        // this.initAutoSync();
+    }
+
+    private initAutoSync() {
+        // 检查是否启用了自动同步
+        const isAutoSyncEnabled = this.plugin.settingUtils.get("flomoAutoSync");
+        if (isAutoSyncEnabled) {
+            this.startAutoSync();
+        }
+    }
+
+    // 处理设置变化
+    public handleSettingChanged() {
+        const isAutoSyncEnabled = this.plugin.settingUtils.get("flomoAutoSync");
+        const syncInterval = this.plugin.settingUtils.get("flomoSyncInterval");
+        
+        if (isAutoSyncEnabled) {
+            // 如果开启了自动同步，重新启动定时器
+            this.startAutoSync();
+        } else {
+            // 如果关闭了自动同步，停止定时器
+            this.stopAutoSync();
+        }
+    }
+
+    private startAutoSync() {
+        // 先停止现有的定时器
+        this.stopAutoSync();
+        
+        // 获取同步间隔时间（秒）
+        const syncInterval = this.plugin.settingUtils.get("flomoSyncInterval") || 60;
+        
+        // 启动新的定时器
+        this.autoSyncTimer = setInterval(async () => {
+            const isFlomoEnabled = this.plugin.settingUtils.get("flomoEnabled");
+            const isAutoSyncEnabled = this.plugin.settingUtils.get("flomoAutoSync");
+            
+            if (isFlomoEnabled && isAutoSyncEnabled) {
+                console.log(this.i18n.note.flomoSync.autoSyncStart);
+                await this.sync();
+            }
+        }, syncInterval * 1000);
+    }
+
+    public stopAutoSync() {
+        if (this.autoSyncTimer) {
+            clearInterval(this.autoSyncTimer);
+            this.autoSyncTimer = null;
+        }
     }
 
     private async pushMsg(msg: string) {
@@ -60,10 +110,10 @@ export class FlomoService {
     private async check_authorization_and_reconnect(resData: any) {
         if (resData.code == -10) {
             await this.connect();
-            await this.pushErrMsg(`正重新登录，请重新再试`);
+            await this.pushErrMsg(this.i18n.note.flomoSync.retryLogin);
             return false;
         } else if (resData.code !== 0) {
-            await this.pushErrMsg(`Server error! msg: ${resData.message}`);
+            await this.pushErrMsg(this.i18n.note.flomoSync.serverError.replace('${message}', resData.message));
         }
         return resData.code == 0;
     }
@@ -87,7 +137,7 @@ export class FlomoService {
     private async connect() {
         let config = this.getConfig();
         if (!config.username || !config.password) {
-            await this.pushErrMsg("用户名或密码为空，重新配置后再试");
+            await this.pushErrMsg(this.i18n.note.flomoSync.emptyAccount);
             return false;
         }
         let timestamp = Math.floor(Date.now() / 1000).toFixed();
@@ -118,11 +168,11 @@ export class FlomoService {
 
             const resData = await response.json();
             if (resData.code == -10) {
-                throw new Error(`同步失败，请重试：${resData.message}`);
+                throw new Error(this.i18n.note.flomoSync.retryLogin);
             } else if (resData.code == -1) {
-                throw new Error(`请检查用户名和密码，或手动更新accessToken后再试`);
+                throw new Error(this.i18n.note.flomoSync.loginFailed);
             } else if (resData.code !== 0) {
-                throw new Error(`Server error! msg: ${resData.message}`);
+                throw new Error(this.i18n.note.flomoSync.serverError.replace('${message}', resData.message));
             } else {
                 let newConfig = this.getConfig();
                 newConfig.accessToken = resData.data["access_token"];
@@ -310,16 +360,26 @@ export class FlomoService {
     }
 
     public async sync() {
+        // 添加检查
+        const isFlomoEnabled = this.plugin.settingUtils.get("flomoEnabled");
+        if (!isFlomoEnabled) {
+            await this.pushErrMsg(this.i18n.note.flomoSync.needEnable);
+            return false;
+        }
+
         try {
             let memos = await this.getLatestMemos();
             if (memos.length == 0) {
                 let nowTimeText = moment().format('YYYY-MM-DD HH:mm:ss');
-                console.warn("暂无新数据-" + nowTimeText)
-                this.pushMsg("暂无新数据-" + nowTimeText)
+                console.log(this.i18n.note.flomoSync.noNewData + "-" + nowTimeText);
+                // 自动同步时不显示提示消息
+                if (!this.autoSyncTimer) {
+                    this.pushMsg(this.i18n.note.flomoSync.noNewData + "-" + nowTimeText);
+                }
                 return;
             }
 
-            console.log("开始同步，共有", memos.length, "条数据");
+            console.log(this.i18n.note.flomoSync.syncStart.replace('${count}', memos.length.toString()));
             // 处理每条记录
             for(let memo of memos) {
                 try {
@@ -349,13 +409,13 @@ export class FlomoService {
                     await this.historyService.saveContent({
                         text: content,
                         tags: memo.tags || [],
-                        timestamp: createdTimestamp // 添加时间戳
+                        timestamp: createdTimestamp
                     });
+                    this.plugin.renderDockHistory();
                     console.log("同步成功：", content.substring(0, 50) + "...");
                 } catch (error) {
-                    console.error("同步单条数据失败：", error);
-                    await this.pushErrMsg(`同步单条数据失败：${error.toString()}`);
-                    // 继续处理下一条
+                    console.error(this.i18n.note.flomoSync.syncSingleFailed, error);
+                    await this.pushErrMsg(`${this.i18n.note.flomoSync.syncSingleFailed}：${error.toString()}`);
                     continue;
                 }
             }
@@ -365,12 +425,11 @@ export class FlomoService {
             let config = this.getConfig();
             config.lastSyncTime = nowTimeText;
             await this.saveConfig(config);
-
-            await this.pushMsg(`同步完成，共同步 ${memos.length} 条数据`);
+            await this.pushMsg(this.i18n.note.flomoSync.syncSuccess.replace('${count}', memos.length.toString()));
             return true;
         } catch (error) {
             console.error(error);
-            await this.pushErrMsg(error.toString());
+            await this.pushErrMsg(this.i18n.note.flomoSync.checkError.replace('${error}', error.toString()));
             return false;
         }
     }

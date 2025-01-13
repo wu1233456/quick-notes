@@ -177,7 +177,20 @@
         "showQuickNoteSidebar": "Show Quick Note Sidebar",
         "insertFailed": "Insert failed",
         "insertSuccess": "Insert successful",
-        "syncNote": "Sync flomo"
+        "syncNote": "Sync flomo",
+        "flomoSync": {
+            "noNewData": "No new data",
+            "syncStart": "Start syncing, ${count} items in total",
+            "syncSuccess": "Sync completed, ${count} items synced",
+            "syncSingleFailed": "Failed to sync single item",
+            "loginFailed": "Please check your username and password, or manually update accessToken and try again",
+            "needEnable": "Please enable Flomo sync in settings first",
+            "emptyAccount": "Username or password is empty, please reconfigure and try again",
+            "retryLogin": "Retrying login, please try again",
+            "serverError": "Server error! Message: ${message}",
+            "checkError": "Please check error: ${error}",
+            "autoSyncStart": "Starting auto sync..."
+        }
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

@@ -174,7 +174,20 @@
         "insertToDoc": "插入到指定文档",
         "createNewSmallNote": "全局快捷呼出小记",
         "showQuickNoteSidebar": "显示小记侧边栏",
-        "syncNote": "同步flomo"
+        "syncNote": "同步flomo",
+        "flomoSync": {
+            "noNewData": "暂无新数据",
+            "syncStart": "开始同步，共有 ${count} 条数据",
+            "syncSuccess": "同步完成，共同步 ${count} 条数据",
+            "syncSingleFailed": "同步单条数据失败",
+            "loginFailed": "请检查用户名和密码，或手动更新accessToken后再试",
+            "needEnable": "请先在设置中启用 Flomo 同步功能",
+            "emptyAccount": "用户名或密码为空，重新配置后再试",
+            "retryLogin": "正重新登录，请重新再试",
+            "serverError": "服务器错误！信息：${message}",
+            "checkError": "请检查错误：${error}",
+            "autoSyncStart": "开始自动同步..."
+        }
     },
     "openTagPanel": "打开标签选择面板"
 }

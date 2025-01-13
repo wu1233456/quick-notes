@@ -81,6 +81,8 @@ export default class PluginQuickNote extends Plugin {
                 // console.log("callback");
                 if (this.element) {
                     this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
+                    // 当设置改变时，重新渲染工具栏和历史记录
+                    this.renderDockerToolbar();
                     this.renderDockHistory();
                 }
             }
@@ -181,6 +183,32 @@ export default class PluginQuickNote extends Plugin {
 
         // 添加flomo同步配置
         this.settingUtils.addItem({
+            key: "flomoEnabled",
+            value: false,
+            type: "checkbox",
+            title: "启用 Flomo 同步",
+            description: "开启后可以同步 Flomo 的数据"
+        });
+
+        // // 添加自动同步设置
+        // this.settingUtils.addItem({
+        //     key: "flomoAutoSync",
+        //     value: false,
+        //     type: "checkbox",
+        //     title: "启用自动同步",
+        //     description: "开启后将按设定的频率自动同步 Flomo 数据"
+        // });
+
+        // this.settingUtils.addItem({
+        //     key: "flomoSyncInterval",
+        //     value: 60,
+        //     type: "number",
+        //     title: "同步频率(秒)",
+        //     description: "自动同步的时间间隔，默认为60秒"
+        // });
+
+        // 添加flomo同步配置
+        this.settingUtils.addItem({
             key: "flomoUsername",
             value: "",
             type: "textinput", 
@@ -220,9 +248,6 @@ export default class PluginQuickNote extends Plugin {
     }
 
     async onLayoutReady() {
-        // let lute = window.Lute.New();
-        // let html = lute.Md2HTML('![Line Simple Example (1).png]("assets/Line Simple Example 1-20250108081401-kduj7tl.png")');
-        // console.log(html);
         console.log("onLayoutReady");
     }
 
@@ -231,7 +256,17 @@ export default class PluginQuickNote extends Plugin {
         if (this.reminderService) {
             this.reminderService.destroy();
         }
+        if (this.flomoService) {
+            this.flomoService.stopAutoSync();
+        }
         console.log(this.i18n.byePlugin);
+    }
+
+    // 添加设置变化的监听
+    async onSettingChanged() {
+        if (this.flomoService) {
+            this.flomoService.handleSettingChanged();
+        }
     }
 
     uninstall() {
@@ -528,11 +563,14 @@ export default class PluginQuickNote extends Plugin {
                 []).length.toString())}
                                     </div>
                                     <span class="fn__flex-1"></span>
-                                    <button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: pointer;" aria-label="${this.i18n.note.syncNote}">
-                                        <svg  style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_note_btn b3-button__icon" >
-                                            <use xlink:href="#iconCloud"></use>
-                                        </svg>
-                                    </button>
+                                    ${(() => {
+                                        const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+                                        return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
+                                            <svg style="height: 16px; width: 16px; color: ${isFlomoEnabled ? 'var(--b3-theme-primary)' : 'var(--b3-theme-on-surface-light)'};" class="sync_note_btn b3-button__icon" >
+                                                <use xlink:href="#icon${isFlomoEnabled ? 'Cloud' : 'CloudOff'}"></use>
+                                            </svg>
+                                        </button>`;
+                                    })()}
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
                                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
                                             <use xlink:href="#iconFilter"></use>
@@ -659,6 +697,12 @@ export default class PluginQuickNote extends Plugin {
         // 添加同步按钮事件
         const syncBtn = element.querySelector('.sync_note_btn');
         syncBtn.addEventListener('click', async () => {
+            const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+            if (!isFlomoEnabled) {
+                showMessage("请先在设置中启用 Flomo 同步功能");
+                return;
+            }
+            
             const icon = syncBtn.querySelector('use');
             // 添加旋转动画样式
             syncBtn.style.animation = 'rotate 1s linear infinite';
@@ -666,11 +710,10 @@ export default class PluginQuickNote extends Plugin {
 
             try {
                 await this.flomoService.sync();
-                this.renderDockHistory();
             } finally {
                 // 停止旋转动画并恢复图标
                 syncBtn.style.animation = '';
-                icon.setAttribute('xlink:href', '#iconCloud');
+                icon.setAttribute('xlink:href', isFlomoEnabled ? '#iconCloud' : '#iconCloudOff');
             }
         });
         
@@ -1161,7 +1204,9 @@ export default class PluginQuickNote extends Plugin {
         this.setupFilterFeature(element);
     }
     private renderDockHistory() {
-        console.log("renderDockHistory");
+        if (!this.element) {
+            return;
+        }
         let element = this.element;
         this.historyService.setItemsPerPage(this.itemsPerPage);
         this.historyService.setIsDescending(this.isDescending);
