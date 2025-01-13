@@ -45,9 +45,6 @@ export default class PluginQuickNote extends Plugin {
     private tempNoteContent: string = ''; // 添加临时内容存储
     private tempNoteTags: string[] = []; // 添加临时标签存储
     private frontend: string;
-    private inputText: string = '';
-    private selectedTimestamps: number[] = []; // 添加选中的时间戳数组
-    private batchTagBtn: HTMLElement; // 添加批量标签按钮元素
 
     private isDescending: boolean = true; //是否降序
     private element: HTMLElement;  //侧边栏dock元素
@@ -2115,223 +2112,332 @@ export default class PluginQuickNote extends Plugin {
         }
     }
 
-    // 设置标签功能
-    private setupTagsFeature(container: HTMLElement) {
-        const tagsList = container.querySelector('.tags-list');
-        const addTagBtn = container.querySelector('.add-tag-btn');
+   // 设置标签功能
+   private setupTagsFeature(container: HTMLElement) {
+    const tagsList = container.querySelector('.tags-list');
+    const addTagBtn = container.querySelector('.add-tag-btn');
 
-        if (tagsList && addTagBtn) {
-            addTagBtn.onclick = (e) => {
-                e.stopPropagation();
+    if (tagsList && addTagBtn) {
+        addTagBtn.onclick = (e) => {
+            e.stopPropagation();
 
 
-                // 获取所有标签并去重
-                const allTags = Array.from(new Set(this.historyService.getCurrentData()
-                    ?.filter(item => item && Array.isArray(item.tags))
-                    .flatMap(item => item.tags || [])
-                ));
+            // 获取所有标签并去重
+            const allTags = Array.from(new Set(this.historyService.getCurrentData()
+                ?.filter(item => item && Array.isArray(item.tags))
+                .flatMap(item => item.tags || [])
+            ));
 
-                // 创建标签选择面板
-                const tagPanel = document.createElement('div');
-                tagPanel.className = 'tag-panel';
-                tagPanel.style.cssText = `
-                position: fixed;
-                z-index: 205;
-                width: 133px;
-                height: 150px; // 固定高度
-                background: var(--b3-menu-background);
-                border: 1px solid var(--b3-border-color);
-                border-radius: var(--b3-border-radius);
-                box-shadow: var(--b3-dialog-shadow);
-                display: flex;
-                flex-direction: column;
-                padding: 0;
-                overflow: hidden; // 防止内容溢出
-            `;
+            // 创建标签选择面板
+            const tagPanel = document.createElement('div');
+            tagPanel.className = 'tag-panel';
+            tagPanel.style.cssText = `
+            position: fixed;
+            z-index: 205;
+            width: 133px;
+            height: 150px; // 固定高度
+            background: var(--b3-menu-background);
+            border: 1px solid var(--b3-border-color);
+            border-radius: var(--b3-border-radius);
+            box-shadow: var(--b3-dialog-shadow);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden; // 防止内容溢出
+        `;
 
-                // 修改位置计算逻辑
-                const btnRect = addTagBtn.getBoundingClientRect();
-                const viewportHeight = window.innerHeight;
-                const panelHeight = 150; // 面板高度
-                const margin = 8; // 边距
+            // 修改位置计算逻辑
+            const btnRect = addTagBtn.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const panelHeight = 150; // 面板高度
+            const margin = 8; // 边距
 
-                // 判断是否有足够空间在上方显示
-                const showAbove = btnRect.top > panelHeight + margin;
-                // 如果上方空间不够，就显示在下方
-                const top = showAbove ?
-                    btnRect.top - panelHeight - margin :
-                    btnRect.bottom + margin;
+            // 判断是否有足够空间在上方显示
+            const showAbove = btnRect.top > panelHeight + margin;
+            // 如果上方空间不够，就显示在下方
+            const top = showAbove ?
+                btnRect.top - panelHeight - margin :
+                btnRect.bottom + margin;
 
-                tagPanel.style.top = `${top}px`;
-                tagPanel.style.left = `${btnRect.left}px`;
+            tagPanel.style.top = `${top}px`;
+            tagPanel.style.left = `${btnRect.left}px`;
 
-                // 如果面板会超出视口右侧，则向左对齐
-                if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
-                    tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
-                }
+            // 如果面板会超出视口右侧，则向左对齐
+            if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
+                tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
+            }
 
-                // 修改面板内容结构
-                tagPanel.innerHTML = `
-                <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
-                    <input type="text" 
-                        class="b3-text-field fn__flex-1 tag-input" 
-                        placeholder="${this.i18n.note.addTag}..."
-                        style="width: 100%; background: var(--b3-theme-background);">
+            // 修改面板内容结构
+            tagPanel.innerHTML = `
+            <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
+                <input type="text" 
+                    class="b3-text-field fn__flex-1 tag-input" 
+                    placeholder="${this.i18n.note.addTag}..."
+                    style="width: 100%; background: var(--b3-theme-background);">
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
+                <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
+                    ${this.i18n.note.existingTags}
                 </div>
-                <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--b3-menu-background);">
-                    <div style="padding: 8px 8px 4px 8px; font-size: 12px; color: var(--b3-theme-on-surface-light); flex-shrink: 0;">
-                        ${this.i18n.note.existingTags}
+                <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        ${allTags.length > 0 ?
+                    allTags
+                        .sort((a, b) => {
+                            const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
+                            const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
+                            return countB - countA;
+                        })
+                        .map(tag => `
+                                    <div class="history-tag b3-chip b3-chip--middle" 
+                                        style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
+                                        data-tag="${tag}">
+                                        <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            ${tag}
+                                        </span>
+                                        <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                            ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
+                                        </span>
+                                    </div>
+                                `).join('')
+                    : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                        ${this.i18n.note.noTags}
+                       </div>`
+                }
                     </div>
-                    <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            ${allTags.length > 0 ?
-                        allTags
-                            .sort((a, b) => {
-                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
-                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
-                                return countB - countA;
-                            })
-                            .map(tag => `
-                                        <div class="history-tag b3-chip b3-chip--middle" 
-                                            style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
-                                            data-tag="${tag}">
-                                            <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                ${tag}
-                                            </span>
-                                            <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
-                                                ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
-                                            </span>
-                                        </div>
-                                    `).join('')
-                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
-                               ${this.i18n.note.noTags}
-                              </div>`
+                </div>
+            </div>
+        `;
+
+            // 将面板添加到文档根节点
+            document.body.appendChild(tagPanel);
+
+            // 获取输入框元素
+            const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
+            tagInput.focus();
+
+            // 添加标签的函数
+            const addTag = (tagText: string) => {
+                if (tagText.trim()) {
+                    const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
+                        .map(tag => tag.getAttribute('data-tag'));
+
+                    if (!existingTags.includes(tagText)) {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                        tagElement.setAttribute('data-tag', tagText);
+                        tagElement.setAttribute('aria-label', tagText);
+                        tagElement.style.cursor = 'default';
+                        tagElement.innerHTML = `
+                        <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
+                        <svg class="b3-chip__close" style="cursor: pointer;">
+                            <use xlink:href="#iconClose"></use>
+                        </svg>
+                    `;
+                        tagsList.appendChild(tagElement);
+
+                        // 添加删除标签的事件
+                        tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                            tagElement.remove();
+                        });
                     }
-                           </div>
-                       </div>
-                   </div>
-               `;
+                    tagInput.value = '';
+                    // 添加标签后关闭面板
+                    tagPanel.remove();
+                    document.removeEventListener('click', closePanel);
+                }
+            };
 
-                // 将面板添加到文档根节点
-                document.body.appendChild(tagPanel);
+            // 回车添加标签
+            tagInput.addEventListener('keydown', (e) => {
+                const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
+                const currentSelected = tagPanel.querySelector('.history-tag.selected');
+                let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
 
-                // 获取输入框元素
-                const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
-                tagInput.focus();
-
-                // 添加标签的函数
-                const addTag = async (tagText: string) => {
-                    if (tagText.trim()) {
-                        // 更新选中小记的标签
-
-                        if (selectedTimestamps.length > 0) {
-                            this.historyService.batchUpdateTags(selectedTimestamps, [tagText.trim()]);
-                            showMessage(this.i18n.note.tagSuccess);
-
-                            // 取消选择模式并关闭面板
-                            const cancelSelectBtn = container.querySelector('.cancel-select-btn');
-                            if (cancelSelectBtn) {
-                                (cancelSelectBtn as HTMLElement).click();
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (historyTags.length > 0) {
+                            // 移除当前选中项的样式
+                            if (currentSelected) {
+                                currentSelected.classList.remove('selected');
+                                currentSelected.style.backgroundColor = '';
                             }
-                            tagPanel.remove();
-                            document.removeEventListener('click', closePanel);
-                            this.renderDockerToolbar()
-                            this.renderDockHistory();
+                            // 计算下一个索引
+                            currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
+                            // 添加新选中项的样式
+                            const nextTag = historyTags[currentIndex] as HTMLElement;
+                            nextTag.classList.add('selected');
+                            nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                            // 确保选中项可见
+                            nextTag.scrollIntoView({ block: 'nearest' });
                         }
-                    }
-                };
+                        break;
 
-                // 回车添加标签
-                tagInput.addEventListener('keydown', async (e) => {
-                    if (e.key === 'Enter') {
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        if (historyTags.length > 0) {
+                            // 移除当前选中项的样式
+                            if (currentSelected) {
+                                currentSelected.classList.remove('selected');
+                                currentSelected.style.backgroundColor = '';
+                            }
+                            // 计算上一个索引
+                            currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
+                            // 添加新选中项的样式
+                            const prevTag = historyTags[currentIndex] as HTMLElement;
+                            prevTag.classList.add('selected');
+                            prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                            // 确保选中项可见
+                            prevTag.scrollIntoView({ block: 'nearest' });
+                        }
+                        break;
+
+                    case 'Enter':
                         e.preventDefault();
                         const searchText = tagInput.value.trim();
-                        if (searchText) {
-                            // 检查是否有匹配的已有标签
+                        if (currentSelected) {
+                            // 如果有选中的标签，使用该标签
+                            addTag(currentSelected.getAttribute('data-tag'));
+                            const textarea = container.querySelector('textarea');
+                            if (textarea) {
+                                textarea.focus();
+                            }
+                        } else if (searchText) {
+                            // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
                             const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
                                 .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
 
                             if (matchingTag) {
-                                // 如果有完全匹配的标签，直接使用该标签
-                                await addTag(matchingTag.getAttribute('data-tag'));
+                                // 如果有完全匹配的标签，使用该标签
+                                addTag(matchingTag.getAttribute('data-tag'));
                             } else {
-                                // 如果没有完全匹配的标签，创建新标签
-                                await addTag(searchText);
+                                // 如果没有匹配的标签，创建新标签
+                                addTag(searchText);
+                            }
+
+                            const textarea = container.querySelector('textarea');
+                            if (textarea) {
+                                textarea.focus();
                             }
                         }
+                        break;
+                }
+            });
+
+            // 修改鼠标悬停事件处理，避免与键盘选择冲突
+            tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                tag.addEventListener('mouseenter', () => {
+                    if (!tag.classList.contains('selected')) {
+                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
                     }
                 });
 
-                // 点击历史标签直接添加
-                tagPanel.addEventListener('click', async (e) => {
-                    const target = e.target as HTMLElement;
-                    const tagChip = target.closest('.history-tag') as HTMLElement;
-                    if (tagChip) {
-                        const tagText = tagChip.getAttribute('data-tag');
-                        if (tagText) {
-                            await addTag(tagText);
-                        }
+                tag.addEventListener('mouseleave', () => {
+                    if (!tag.classList.contains('selected')) {
+                        tag.style.backgroundColor = '';
                     }
                 });
+            });
 
-                // 添加搜索功能
-                tagInput.addEventListener('input', (e) => {
-                    const searchText = (e.target as HTMLInputElement).value.toLowerCase();
-                    const historyTags = tagPanel.querySelectorAll('.history-tag');
-
-                    historyTags.forEach(tag => {
-                        const tagText = tag.getAttribute('data-tag').toLowerCase();
-                        if (tagText.includes(searchText)) {
-                            (tag as HTMLElement).style.display = 'flex';
-                        } else {
-                            (tag as HTMLElement).style.display = 'none';
-                        }
-                    });
-
-                    // 如果没有匹配的标签，显示"无匹配标签"提示
-                    const visibleTags = Array.from(historyTags).filter(tag =>
-                        (tag as HTMLElement).style.display !== 'none'
-                    );
-
-                    const noMatchMessage = tagPanel.querySelector('.no-match-message');
-                    if (visibleTags.length === 0 && searchText) {
-                        if (!noMatchMessage) {
-                            const messageDiv = document.createElement('div');
-                            messageDiv.className = 'no-match-message';
-                            messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
-                            messageDiv.textContent = this.i18n.note.noMatchingTags;
-                            tagPanel.querySelector('.history-tags').appendChild(messageDiv);
-                        }
-                    } else if (noMatchMessage) {
-                        noMatchMessage.remove();
-                    }
-                });
-
-                // 点击其他地方关闭面板
-                const closePanel = (e: MouseEvent) => {
-                    if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
-                    }
-                };
-
-                // 延迟添加点击事件，避免立即触发
-                setTimeout(() => {
-                    document.addEventListener('click', closePanel);
-                }, 0);
-
-                // 添加标签悬停效果
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('mouseenter', () => {
-                        (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
-                    });
-                    tag.addEventListener('mouseleave', () => {
-                        (tag as HTMLElement).style.backgroundColor = '';
-                    });
-                });
+            // 点击其他地方关闭面板
+            const closePanel = (e: MouseEvent) => {
+                if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
+                    tagPanel.remove();
+                    document.removeEventListener('click', closePanel);
+                }
+                const textarea = container.querySelector('textarea');
+                if (textarea) {
+                    // 将焦点设置到编辑框上
+                    textarea.focus();
+                }
             };
-        }
+
+            // 延迟添加点击事件，避免立即触发
+            setTimeout(() => {
+                document.addEventListener('click', closePanel);
+            }, 0);
+
+            // 添加标签点击事件
+            tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    const tagText = tag.getAttribute('data-tag');
+                    if (tagText) {
+                        addTag(tagText);
+                    }
+                });
+
+                // 添加悬停效果
+                tag.addEventListener('mouseenter', () => {
+                    tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                });
+                tag.addEventListener('mouseleave', () => {
+                    tag.style.backgroundColor = '';
+                });
+            });
+
+            // 添加搜索功能
+            tagInput.addEventListener('input', (e) => {
+                const searchText = (e.target as HTMLInputElement).value.toLowerCase();
+                const historyTags = tagPanel.querySelectorAll('.history-tag');
+
+                historyTags.forEach(tag => {
+                    const tagText = tag.getAttribute('data-tag').toLowerCase();
+                    if (tagText.includes(searchText)) {
+                        (tag as HTMLElement).style.display = 'flex';
+                    } else {
+                        (tag as HTMLElement).style.display = 'none';
+                    }
+                });
+
+                // 如果没有匹配的标签，显示"无匹配标签"提示
+                const visibleTags = Array.from(historyTags).filter(tag =>
+                    (tag as HTMLElement).style.display !== 'none'
+                );
+
+                const noMatchMessage = tagPanel.querySelector('.no-match-message');
+                if (visibleTags.length === 0 && searchText) {
+                    if (!noMatchMessage) {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'no-match-message';
+                        messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
+                        messageDiv.textContent = this.i18n.note.noMatchingTags;
+                        tagPanel.querySelector('.history-tags').appendChild(messageDiv);
+                    }
+                } else if (noMatchMessage) {
+                    noMatchMessage.remove();
+                }
+            });
+
+            // 修改回车键处理逻辑
+            tagInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const searchText = tagInput.value.trim();
+                    if (searchText) {
+                        // 检查是否有匹配的已有标签
+                        const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                            .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+
+                        if (matchingTag) {
+                            // 如果有完全匹配的标签，直接使用该标签
+                            addTag(matchingTag.getAttribute('data-tag'));
+                        } else {
+                            // 如果没有完全匹配的标签，创建新标签
+                            addTag(searchText);
+                        }
+
+                        const textarea = container.querySelector('textarea');
+                        if (textarea) {
+                            textarea.focus();
+                        }
+                    }
+                }
+            });
+        };
+      }
     }
+ 
 
     // 设置搜索功能
     private setupSearchFeature(container: HTMLElement) {
