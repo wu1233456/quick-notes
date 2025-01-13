@@ -147,11 +147,16 @@ export class FlomoService {
         let latest_updated_at_timestamp;
         let latest_slug = "";
         
+        // 获取已有记录的创建时间列表
+        const existingRecords = this.historyService.getCurrentData();
+        const existingTimestamps = new Set(existingRecords.map(record => record.timestamp));
+        
         while (true) {
             try {
                 latest_updated_at_timestamp = (Math.floor(latest_updated.getTime()) / 1000).toString();
                 let ts = Math.floor(Date.now() / 1000).toString();
-
+                console.log("上次更新时间")
+                console.log(latest_updated)
                 let param = {
                     api_key: "flomo_web",
                     app_version: "2.0",
@@ -182,6 +187,8 @@ export class FlomoService {
                 
                 if (await this.check_authorization_and_reconnect(data)) {
                     let records = data["data"];
+                    console.log("records")
+                    console.log(records)
                     let noMore = records.length < LIMIT;
                     if (records.length == 0) {
                         break
@@ -189,10 +196,18 @@ export class FlomoService {
                     latest_updated = moment(records[records.length - 1]["updated_at"], 'YYYY-MM-DD HH:mm:ss').toDate()
                     latest_slug = records[records.length - 1]["slug"]
 
-                    //过滤已删除的（回收站的）
-                    allRecords = allRecords.concat(records.filter(record => {
-                        return !record["deleted_at"];
-                    }));
+                    // 过滤已删除的和已存在的记录
+                    const newRecords = records.filter(record => {
+                        if (record["deleted_at"]) return false;
+                        
+                        const recordTimestamp = moment(record.created_at, 'YYYY-MM-DD HH:mm:ss').valueOf();
+                        // 只保留上次同步时间之后的，且不在已有记录中的
+                        return recordTimestamp > moment(lastSyncTime, 'YYYY-MM-DD HH:mm:ss').valueOf() 
+                            && !existingTimestamps.has(recordTimestamp);
+                    });
+                    console.log("newRecords")
+                    console.log(newRecords)
+                    allRecords = allRecords.concat(newRecords);
 
                     if (noMore) { //没有更多了
                         break
@@ -207,12 +222,17 @@ export class FlomoService {
             }
         }
 
+        // 按创建时间排序
+        allRecords.sort((a, b) => {
+            return moment(a.created_at).valueOf() - moment(b.created_at).valueOf();
+        });
+
         return allRecords;
     }
 
     private async downloadImgs(imgs: any[]) {
         try {
-            imgs.every(async img => {
+            await Promise.all(imgs.map(async img => {
                 let imgName = img["name"];
                 if (!(imgName.endsWith(".png") || imgName.endsWith(".png") || imgName.endsWith(".gif"))) {
                     imgName = imgName + '.png'
@@ -222,13 +242,12 @@ export class FlomoService {
                 let imgRespon = await fetch(img["url"]);
                 let fileBlob = await imgRespon.blob();
                 await this.addFile(imgPath, fileBlob);
-                return true
-            })
+            }));
+            return true;
         } catch (error) {
             await this.pushErrMsg(error.toString())
             return false;
         }
-        return true;
     }
 
     private async addFile(f: string, file: Blob) {
@@ -242,6 +261,50 @@ export class FlomoService {
         });
     }
 
+    private convertHtmlToMarkdown(html: string): string {
+        // 转换有序列表
+        html = html.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (match, content) => {
+            return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (m, item, index) => {
+                return `1. ${item.trim()}\n`;
+            });
+        });
+
+        // 转换无序列表
+        html = html.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (match, content) => {
+            return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (m, item) => {
+                return `- ${item.trim()}\n`;
+            });
+        });
+
+        // 转换加粗
+        html = html.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '**$1**');
+        html = html.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '**$1**');
+
+        // 转换斜体
+        html = html.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '*$1*');
+        html = html.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '*$1*');
+
+        // 转换链接
+        html = html.replace(/<a[^>]*href=["'](.*?)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+
+        // 转换换行
+        html = html.replace(/<br\s*\/?>/gi, '\n');
+        html = html.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n');
+
+        // 转换代码块
+        html = html.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '```\n$1\n```');
+        html = html.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+
+        // 删除其他HTML标签
+        html = html.replace(/<[^>]+>/g, '');
+
+        // 修复可能的多余空行
+        html = html.replace(/\n\s*\n\s*\n/g, '\n\n');
+        html = html.trim();
+
+        return html;
+    }
+
     public async sync() {
         try {
             let memos = await this.getLatestMemos();
@@ -251,27 +314,46 @@ export class FlomoService {
                 return;
             }
 
+            console.log("开始同步，共有", memos.length, "条数据");
             // 处理每条记录
             for(let memo of memos) {
-                let content = memo.content;
-                let files = memo.files;
-                
-                // 处理图片
-                await this.downloadImgs(files);
-                files.forEach(img => {
-                    let imgName = img["name"];
-                    if (!(imgName.endsWith(".png") || imgName.endsWith(".png") || imgName.endsWith(".gif"))) {
-                        imgName = imgName + '.png'
+                try {
+                    // 转换 HTML 到 Markdown
+                    let content = this.convertHtmlToMarkdown(memo.content);
+                    let files = memo.files || [];
+                    
+                    // 处理图片
+                    if (files.length > 0) {
+                        const success = await this.downloadImgs(files);
+                        if (success) {
+                            files.forEach(img => {
+                                let imgName = img["name"];
+                                if (!(imgName.endsWith(".png") || imgName.endsWith(".png") || imgName.endsWith(".gif"))) {
+                                    imgName = imgName + '.png'
+                                }
+                                let imgMd = "![" + img["name"] + "](" + FLOMO_ASSETS_DIR + "/" + img["id"] + "_" + imgName + ") ";
+                                content += imgMd
+                            });
+                        }
                     }
-                    let imgMd = "![" + img["name"] + "](" + FLOMO_ASSETS_DIR + "/" + img["id"] + "_" + imgName + ") ";
-                    content += imgMd
-                })
 
-                // 保存到历史记录
-                await this.historyService.saveContent({
-                    text: content,
-                    tags: memo.tags || []
-                });
+                    // 获取创建时间的时间戳
+                    const createdTimestamp = moment(memo.created_at, 'YYYY-MM-DD HH:mm:ss').valueOf();
+
+                    // 保存到历史记录，包含时间戳
+                    await this.historyService.saveContent({
+                        text: content,
+                        tags: memo.tags || [],
+                        timestamp: createdTimestamp // 添加时间戳
+                    });
+                    
+                    console.log("同步成功：", content.substring(0, 50) + "...");
+                } catch (error) {
+                    console.error("同步单条数据失败：", error);
+                    await this.pushErrMsg(`同步单条数据失败：${error.toString()}`);
+                    // 继续处理下一条
+                    continue;
+                }
             }
 
             // 记录同步时间
@@ -280,7 +362,7 @@ export class FlomoService {
             config.lastSyncTime = nowTimeText;
             await this.saveConfig(config);
 
-            await this.pushMsg("同步完成");
+            await this.pushMsg(`同步完成，共同步 ${memos.length} 条数据`);
             return true;
         } catch (error) {
             console.error(error);

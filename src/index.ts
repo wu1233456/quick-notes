@@ -417,11 +417,6 @@ export default class PluginQuickNote extends Plugin {
             ${this.i18n.note.title}
         </div>
         <span class="fn__flex-1 fn__space"></span>
-        <span data-type="sync" class="block__icon b3-tooltips b3-tooltips__sw sync_btn" aria-label="同步flomo">
-            <svg class="block__logoicon">
-                <use xlink:href="#iconRefresh"></use>
-            </svg>
-        </span>
         <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw editor_toggle_btn"
             aria-label="${this.data[CONFIG_DATA_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
             <svg class="block__logoicon">
@@ -465,22 +460,6 @@ export default class PluginQuickNote extends Plugin {
                     icon.setAttribute('xlink:href', !isVisible ? '#iconPreview' : '#iconEdit');
                 }
                 editorToggleBtn.setAttribute('aria-label', !isVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor);
-            }
-        });
-
-        // 添加同步按钮事件
-        const syncBtn = element.querySelector('.sync_btn');
-        syncBtn.addEventListener('click', async () => {
-            const icon = syncBtn.querySelector('use');
-            icon.setAttribute('xlink:href', '#iconLoading');
-            syncBtn.classList.add('fn__loading');
-
-            try {
-                await this.flomoService.sync();
-                this.renderDockHistory();
-            } finally {
-                icon.setAttribute('xlink:href', '#iconRefresh');
-                syncBtn.classList.remove('fn__loading');
             }
         });
 
@@ -549,6 +528,9 @@ export default class PluginQuickNote extends Plugin {
                 []).length.toString())}
                                     </div>
                                     <span class="fn__flex-1"></span>
+                                    <button style="border: none; background: none; padding: 4px; cursor: pointer;"  aria-label="同步flomo">
+                                        <svg data-type="sync" style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_btn" ><use xlink:href="#iconRefresh"></use></svg>
+                                    </button>
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
                                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
                                             <use xlink:href="#iconFilter"></use>
@@ -673,7 +655,22 @@ export default class PluginQuickNote extends Plugin {
         const filterMenuBtn = container.querySelector('.filter-menu-btn');
         const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
         const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
+        // 添加同步按钮事件
+        const syncBtn = element.querySelector('.sync_btn');
+        syncBtn.addEventListener('click', async () => {
+            const icon = syncBtn.querySelector('use');
+            icon.setAttribute('xlink:href', '#iconLoading');
+            syncBtn.classList.add('fn__loading');
 
+            try {
+                await this.flomoService.sync();
+                this.renderDockHistory();
+            } finally {
+                icon.setAttribute('xlink:href', '#iconRefresh');
+                syncBtn.classList.remove('fn__loading');
+            }
+        });
+        
 
         filterMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
