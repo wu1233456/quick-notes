@@ -71,6 +71,9 @@
 + - `⌘W`: Close Quick Notes window
 
 ## Changelog
+### 1.1.4 (2025-01-12)
+- Added the ability to synchronize Flomo notes to XiaoJi. (This part of the work was done by referring to the functions of the existing plugin [浮墨同步](https://github.com/winter60/plugin-flomo-sync) in the marketplace. Thanks to the author for their contribution. I basically just integrated it.)
+
 ### v1.1.3 (2025-01-12)
 - Fix the issue where the sidebar of the notes occasionally fails to load when launched.
 
@@ -151,3 +154,6 @@
 - Data export functionality
 
 
+## Acknowledgments
+- Thanks to the author of the [浮墨同步](https://github.com/winter60/plugin-flomo-sync) plugin. I referred to its code and achieved the ability to synchronize Flomo notes to XiaoJi.
+- Thanks to Mr. F for writing the [插件开发 Quick Start](https://ld246.com/article/1723732790981#%E8%A7%A3%E6%9E%90-markdown-%E6%96%87%E6%9C%AC), which enabled me to quickly get started with SiYuan plugin development. 
