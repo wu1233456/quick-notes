@@ -173,7 +173,8 @@
         "noTargetDoc": "未设置目标文档ID",
         "insertToDoc": "插入到指定文档",
         "createNewSmallNote": "全局快捷呼出小记",
-        "showQuickNoteSidebar": "显示小记侧边栏"
+        "showQuickNoteSidebar": "显示小记侧边栏",
+        "syncNote": "同步flomo"
     },
     "openTagPanel": "打开标签选择面板"
 }

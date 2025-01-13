@@ -138,6 +138,10 @@ export class FlomoService {
     private async getLatestMemos() {
         let allRecords = [];
         let config = this.getConfig();
+        if (config.username == "" || config.password == "") {
+            await this.pushErrMsg("请先配置flomo账号密码");
+            return [];
+        }
         let lastSyncTime = config.lastSyncTime;
 
         const LIMIT = "200";

@@ -176,7 +176,8 @@
         "createNewSmallNote": "Quick Note (Global)",
         "showQuickNoteSidebar": "Show Quick Note Sidebar",
         "insertFailed": "Insert failed",
-        "insertSuccess": "Insert successful"
+        "insertSuccess": "Insert successful",
+        "syncNote": "Sync flomo"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }

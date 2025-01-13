@@ -528,7 +528,7 @@ export default class PluginQuickNote extends Plugin {
                 []).length.toString())}
                                     </div>
                                     <span class="fn__flex-1"></span>
-                                    <button style="border: none; background: none; padding: 4px; cursor: pointer;"  aria-label="同步flomo">
+                                    <button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: pointer;" aria-label="${this.i18n.note.syncNote}">
                                         <svg  style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_note_btn b3-button__icon" >
                                             <use xlink:href="#iconCloud"></use>
                                         </svg>
