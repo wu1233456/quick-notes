@@ -183,8 +183,8 @@ export default class PluginQuickNote extends Plugin {
             key: "flomoEnabled",
             value: false,
             type: "checkbox",
-            title: "启用 Flomo 同步",
-            description: "开启后可以同步 Flomo 的数据"
+            title: this.i18n.note.flomoEnabled,
+            description: this.i18n.note.flomoEnabledDesc
         });
 
         // // 添加自动同步设置
@@ -192,16 +192,16 @@ export default class PluginQuickNote extends Plugin {
         //     key: "flomoAutoSync",
         //     value: false,
         //     type: "checkbox",
-        //     title: "启用自动同步",
-        //     description: "开启后将按设定的频率自动同步 Flomo 数据"
+        //     title: this.i18n.note.flomoAutoSync,
+        //     description: this.i18n.note.flomoAutoSyncDesc
         // });
 
         // this.settingUtils.addItem({
         //     key: "flomoSyncInterval",
         //     value: 60,
         //     type: "number",
-        //     title: "同步频率(秒)",
-        //     description: "自动同步的时间间隔，默认为60秒"
+        //     title: this.i18n.note.flomoSyncInterval,
+        //     description: this.i18n.note.flomoSyncIntervalDesc
         // });
 
         // 添加flomo同步配置
@@ -209,32 +209,32 @@ export default class PluginQuickNote extends Plugin {
             key: "flomoUsername",
             value: "",
             type: "textinput", 
-            title: "Flomo账号",
-            description: "请输入flomo的手机号或邮箱"
+            title: this.i18n.note.flomoUsername,
+            description: this.i18n.note.flomoUsernameDesc
         });
 
         this.settingUtils.addItem({
             key: "flomoPassword",
             value: "",
             type: "textinput",
-            title: "Flomo密码",
-            description: "请输入flomo的密码"
+            title: this.i18n.note.flomoPassword,
+            description: this.i18n.note.flomoPasswordDesc
         });
 
         this.settingUtils.addItem({
             key: "flomoLastSyncTime",
             value: moment().format("YYYY-MM-DD 00:00:00"),
             type: "textinput",
-            title: "上次同步时间",
-            description: "为空则默认为今天0点，并会自动记录本次同步时间"
+            title: this.i18n.note.flomoLastSyncTime,
+            description: this.i18n.note.flomoLastSyncTimeDesc
         });
 
         this.settingUtils.addItem({
             key: "flomoAccessToken",
             value: "",
             type: "textinput",
-            title: "AccessToken",
-            description: "一般不填，也不修改，除非登录不起作用时可手动更改"
+            title: this.i18n.note.flomoAccessToken,
+            description: this.i18n.note.flomoAccessTokenDesc
         });
 
         await this.settingUtils.load();
@@ -696,7 +696,7 @@ export default class PluginQuickNote extends Plugin {
         syncBtn.addEventListener('click', async () => {
             const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
             if (!isFlomoEnabled) {
-                showMessage("请先在设置中启用 Flomo 同步功能");
+                showMessage(this.i18n.note.flomoSync.needEnable);
                 return;
             }
             

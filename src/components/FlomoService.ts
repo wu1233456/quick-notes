@@ -182,7 +182,7 @@ export class FlomoService {
         let allRecords = [];
         let config = this.getConfig();
         if (config.username == "" || config.password == "") {
-            showMessage("请先配置flomo账号密码");
+            showMessage(this.i18n.note.flomoSync.emptyAccount);
             return [];
         }
         let lastSyncTime = config.lastSyncTime;

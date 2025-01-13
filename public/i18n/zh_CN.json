@@ -187,7 +187,21 @@
             "serverError": "服务器错误！信息：${message}",
             "checkError": "请检查错误：${error}",
             "autoSyncStart": "开始自动同步..."
-        }
+        },
+        "flomoEnabled": "启用 Flomo 同步",
+        "flomoEnabledDesc": "开启后可以同步 Flomo 的数据",
+        "flomoAutoSync": "启用自动同步",
+        "flomoAutoSyncDesc": "开启后将按设定的频率自动同步 Flomo 数据",
+        "flomoSyncInterval": "同步频率(秒)",
+        "flomoSyncIntervalDesc": "自动同步的时间间隔，默认为60秒",
+        "flomoUsername": "Flomo账号",
+        "flomoUsernameDesc": "请输入flomo的手机号或邮箱",
+        "flomoPassword": "Flomo密码",
+        "flomoPasswordDesc": "请输入flomo的密码",
+        "flomoLastSyncTime": "上次同步时间",
+        "flomoLastSyncTimeDesc": "为空则默认为今天0点，并会自动记录本次同步时间",
+        "flomoAccessToken": "AccessToken",
+        "flomoAccessTokenDesc": "一般不填，也不修改，除非登录不起作用时可手动更改"
     },
     "openTagPanel": "打开标签选择面板"
 }

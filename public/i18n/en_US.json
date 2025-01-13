@@ -190,7 +190,21 @@
             "serverError": "Server error! Message: ${message}",
             "checkError": "Please check error: ${error}",
             "autoSyncStart": "Starting auto sync..."
-        }
+        },
+        "flomoEnabled": "Enable Flomo Sync",
+        "flomoEnabledDesc": "Enable to sync data from Flomo",
+        "flomoAutoSync": "Enable Auto Sync",
+        "flomoAutoSyncDesc": "Enable to automatically sync Flomo data at set intervals",
+        "flomoSyncInterval": "Sync Interval (seconds)",
+        "flomoSyncIntervalDesc": "Time interval for auto sync, default is 60 seconds",
+        "flomoUsername": "Flomo Account",
+        "flomoUsernameDesc": "Enter your Flomo phone number or email",
+        "flomoPassword": "Flomo Password",
+        "flomoPasswordDesc": "Enter your Flomo password",
+        "flomoLastSyncTime": "Last Sync Time",
+        "flomoLastSyncTimeDesc": "Defaults to today 00:00:00 if empty, will automatically record sync time",
+        "flomoAccessToken": "AccessToken",
+        "flomoAccessTokenDesc": "Generally no need to fill or modify, unless login fails and needs manual update"
     },
     "openTagPanel": "Open Tag Selection Panel"
 }
