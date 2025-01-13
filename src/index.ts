@@ -466,7 +466,7 @@ export default class PluginQuickNote extends Plugin {
         const refreshBtn = element.querySelector('.refresh_btn');
         refreshBtn.addEventListener('click', async () => {
             this.currentDisplayCount = this.itemsPerPage;
-            this.renderDockHistory();
+            this.loadNoteData();
         });
     }
     private renderDockerEditor() {

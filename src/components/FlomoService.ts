@@ -311,6 +311,7 @@ export class FlomoService {
             if (memos.length == 0) {
                 let nowTimeText = moment().format('YYYY-MM-DD HH:mm:ss');
                 console.warn("暂无新数据-" + nowTimeText)
+                this.pushMsg("暂无新数据-" + nowTimeText)
                 return;
             }
 
