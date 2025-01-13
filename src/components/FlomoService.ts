@@ -1,4 +1,4 @@
-import { fetchPost, fetchSyncPost } from "siyuan";
+import { fetchPost, showMessage } from "siyuan";
 import { Md5 } from "ts-md5";
 import moment from "moment";
 import { HistoryService } from "./HistoryService";
@@ -68,14 +68,6 @@ export class FlomoService {
         }
     }
 
-    private async pushMsg(msg: string) {
-        fetchPost("/api/notification/pushMsg", { msg: msg });
-    }
-
-    private async pushErrMsg(msg: string) {
-        fetchPost("/api/notification/pushErrMsg", { msg: msg });
-    }
-
     private createSign2(param: any) {
         //from flomo web
         const SECRET = 'dbbc3dd73364b4084c3a69346e0ce2b2'
@@ -110,19 +102,20 @@ export class FlomoService {
     private async check_authorization_and_reconnect(resData: any) {
         if (resData.code == -10) {
             await this.connect();
-            await this.pushErrMsg(this.i18n.note.flomoSync.retryLogin);
+            showMessage(this.i18n.note.flomoSync.retryLogin);
             return false;
         } else if (resData.code !== 0) {
-            await this.pushErrMsg(this.i18n.note.flomoSync.serverError.replace('${message}', resData.message));
+            showMessage(this.i18n.note.flomoSync.serverError.replace('${message}', resData.message));
         }
         return resData.code == 0;
     }
 
     private getConfig() {
+        const lastSyncTime = this.plugin.settingUtils.get("flomoLastSyncTime") || moment().startOf('day').format('YYYY-MM-DD HH:mm:ss');
         return {
             username: this.plugin.settingUtils.get("flomoUsername"),
             password: this.plugin.settingUtils.get("flomoPassword"),
-            lastSyncTime: this.plugin.settingUtils.get("flomoLastSyncTime"),
+            lastSyncTime: lastSyncTime,
             accessToken: this.plugin.settingUtils.get("flomoAccessToken")
         };
     }
@@ -137,7 +130,7 @@ export class FlomoService {
     private async connect() {
         let config = this.getConfig();
         if (!config.username || !config.password) {
-            await this.pushErrMsg(this.i18n.note.flomoSync.emptyAccount);
+            showMessage(this.i18n.note.flomoSync.emptyAccount);
             return false;
         }
         let timestamp = Math.floor(Date.now() / 1000).toFixed();
@@ -180,7 +173,7 @@ export class FlomoService {
             }
             return true;
         } catch (error) {
-            await this.pushErrMsg(error.toString());
+            showMessage(error.toString());
             return false;
         }
     }
@@ -189,7 +182,7 @@ export class FlomoService {
         let allRecords = [];
         let config = this.getConfig();
         if (config.username == "" || config.password == "") {
-            await this.pushErrMsg("请先配置flomo账号密码");
+            showMessage("请先配置flomo账号密码");
             return [];
         }
         let lastSyncTime = config.lastSyncTime;
@@ -204,7 +197,6 @@ export class FlomoService {
         // 获取已有记录的创建时间列表
         const existingRecords = this.historyService.getCurrentData();
         const existingTimestamps = new Set(existingRecords.map(record => record.timestamp));
-        
         while (true) {
             try {
                 latest_updated_at_timestamp = (Math.floor(latest_updated.getTime()) / 1000).toString();
@@ -250,7 +242,8 @@ export class FlomoService {
                     latest_updated = moment(records[records.length - 1]["updated_at"], 'YYYY-MM-DD HH:mm:ss').toDate()
                     latest_slug = records[records.length - 1]["slug"]
 
-                    // 过滤已删除的和已存在的记录
+                    // 过滤已删除
+                    console.log(lastSyncTime)
                     const newRecords = records.filter(record => {
                         if (record["deleted_at"]) return false;
                         
@@ -271,7 +264,7 @@ export class FlomoService {
                 }
 
             } catch (error) {
-                await this.pushErrMsg("请检查错误：" + error)
+                // await this.pushErrMsg("请检查错误：" + error)
                 throw new Error(`${error}`);
             }
         }
@@ -299,7 +292,7 @@ export class FlomoService {
             }));
             return true;
         } catch (error) {
-            await this.pushErrMsg(error.toString())
+            showMessage(error.toString())
             return false;
         }
     }
@@ -363,7 +356,7 @@ export class FlomoService {
         // 添加检查
         const isFlomoEnabled = this.plugin.settingUtils.get("flomoEnabled");
         if (!isFlomoEnabled) {
-            await this.pushErrMsg(this.i18n.note.flomoSync.needEnable);
+            showMessage(this.i18n.note.flomoSync.needEnable);
             return false;
         }
 
@@ -371,10 +364,10 @@ export class FlomoService {
             let memos = await this.getLatestMemos();
             if (memos.length == 0) {
                 let nowTimeText = moment().format('YYYY-MM-DD HH:mm:ss');
-                console.log(this.i18n.note.flomoSync.noNewData + "-" + nowTimeText);
+                console.log(this.i18n.note.flomoSync.noNewData);
                 // 自动同步时不显示提示消息
                 if (!this.autoSyncTimer) {
-                    this.pushMsg(this.i18n.note.flomoSync.noNewData + "-" + nowTimeText);
+                    showMessage(this.i18n.note.flomoSync.noNewData);
                 }
                 return;
             }
@@ -415,7 +408,7 @@ export class FlomoService {
                     console.log("同步成功：", content.substring(0, 50) + "...");
                 } catch (error) {
                     console.error(this.i18n.note.flomoSync.syncSingleFailed, error);
-                    await this.pushErrMsg(`${this.i18n.note.flomoSync.syncSingleFailed}：${error.toString()}`);
+                    showMessage(`${this.i18n.note.flomoSync.syncSingleFailed}：${error.toString()}`);
                     continue;
                 }
             }
@@ -425,11 +418,11 @@ export class FlomoService {
             let config = this.getConfig();
             config.lastSyncTime = nowTimeText;
             await this.saveConfig(config);
-            await this.pushMsg(this.i18n.note.flomoSync.syncSuccess.replace('${count}', memos.length.toString()));
+            showMessage(this.i18n.note.flomoSync.syncSuccess.replace('${count}', memos.length.toString()));
             return true;
         } catch (error) {
             console.error(error);
-            await this.pushErrMsg(this.i18n.note.flomoSync.checkError.replace('${error}', error.toString()));
+            // await this.pushErrMsg(this.i18n.note.flomoSync.checkError.replace('${error}', error.toString()));
             return false;
         }
     }
