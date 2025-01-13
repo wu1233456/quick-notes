@@ -346,7 +346,6 @@ export class FlomoService {
                         tags: memo.tags || [],
                         timestamp: createdTimestamp // 添加时间戳
                     });
-                    
                     console.log("同步成功：", content.substring(0, 50) + "...");
                 } catch (error) {
                     console.error("同步单条数据失败：", error);

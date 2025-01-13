@@ -276,7 +276,6 @@ export class HistoryService {
                 tags: options.tags || [],
                 isPinned: options.isPinned || false
             };
-
             // 如果提供了时间戳，说明是编辑现有条目
             const sourceData = this.getCurrentData();
             if (options.timestamp) {
@@ -285,7 +284,8 @@ export class HistoryService {
                 if (itemIndex !== -1) {
                     sourceData[itemIndex] = newItem;
                 } else {
-                    return false;
+                    // 如果没有找到就新建条目
+                     sourceData.unshift(newItem);
                 }
             } else {
                 // 新建条目
