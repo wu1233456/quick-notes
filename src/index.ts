@@ -23,6 +23,22 @@ import { DocumentService } from "./components/DocumentService";
 import { EditorService } from "./components/EditorService";
 import { ImageService } from "./components/ImageService";
 import { ReminderService } from './components/ReminderService';
+import moment from 'moment';
+import { FlomoService } from './components/FlomoService';
+
+// 在文件开头添加类型定义
+interface IHistoryItem {
+    text: string;
+    timestamp: number;
+    tags?: string[];
+    isPinned?: boolean; // 添加isPinned可选属性
+}
+
+export interface IPlugin {
+    // ... existing interface members ...
+    saveContent(content: string): Promise<void>;
+    upload(file: File): Promise<string>;
+}
 
 export default class PluginQuickNote extends Plugin {
     private isCreatingNote: boolean = false; // 添加标志位跟踪新建小记窗口状态
@@ -30,6 +46,8 @@ export default class PluginQuickNote extends Plugin {
     private tempNoteTags: string[] = []; // 添加临时标签存储
     private frontend: string;
     private inputText: string = '';
+    private selectedTimestamps: number[] = []; // 添加选中的时间戳数组
+    private batchTagBtn: HTMLElement; // 添加批量标签按钮元素
 
     private isDescending: boolean = true; //是否降序
     private element: HTMLElement;  //侧边栏dock元素
@@ -49,6 +67,7 @@ export default class PluginQuickNote extends Plugin {
     private editorService: EditorService;
     private imageService: ImageService;
     private reminderService: ReminderService;
+    private flomoService: FlomoService;
 
     // 在类定义开始处添加属性
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
@@ -66,6 +85,15 @@ export default class PluginQuickNote extends Plugin {
                 }
             }
         });
+
+        // 初始化 flomo 存储数据
+        this.data["flomo-sync-config"] = await this.loadData("flomo-sync-config") || {
+            username: "",
+            password: "",
+            lastSyncTime: moment().format("YYYY-MM-DD 00:00:00"),
+            accessToken: ""
+        };
+
         // 添加插入模式设置
         this.settingUtils.addItem({
             key: "insertMode",
@@ -151,6 +179,39 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.quickWindowHeightDesc
         });
 
+        // 添加flomo同步配置
+        this.settingUtils.addItem({
+            key: "flomoUsername",
+            value: "",
+            type: "textinput", 
+            title: "Flomo账号",
+            description: "请输入flomo的手机号或邮箱"
+        });
+
+        this.settingUtils.addItem({
+            key: "flomoPassword",
+            value: "",
+            type: "textinput",
+            title: "Flomo密码",
+            description: "请输入flomo的密码"
+        });
+
+        this.settingUtils.addItem({
+            key: "flomoLastSyncTime",
+            value: moment().format("YYYY-MM-DD 00:00:00"),
+            type: "textinput",
+            title: "上次同步时间",
+            description: "为空则默认为今天0点，并会自动记录本次同步时间"
+        });
+
+        this.settingUtils.addItem({
+            key: "flomoAccessToken",
+            value: "",
+            type: "textinput",
+            title: "AccessToken",
+            description: "一般不填，也不修改，除非登录不起作用时可手动更改"
+        });
+
         await this.settingUtils.load();
         this.initDefaultData();
         this.loadNoteData();
@@ -221,6 +282,10 @@ export default class PluginQuickNote extends Plugin {
         this.reminderService = await ReminderService.create(this.i18n, this);
         //初始化分享服务
         this.shareService = new ShareService(this, this.historyService);
+
+        // 初始化flomo服务
+        this.flomoService = new FlomoService(this, this.historyService, this.i18n);
+
         if(this.element){
             this.initDockPanel();
         }
@@ -352,6 +417,11 @@ export default class PluginQuickNote extends Plugin {
             ${this.i18n.note.title}
         </div>
         <span class="fn__flex-1 fn__space"></span>
+        <span data-type="sync" class="block__icon b3-tooltips b3-tooltips__sw sync_btn" aria-label="同步flomo">
+            <svg class="block__logoicon">
+                <use xlink:href="#iconRefresh"></use>
+            </svg>
+        </span>
         <span data-type="toggle-editor" class="block__icon b3-tooltips b3-tooltips__sw editor_toggle_btn"
             aria-label="${this.data[CONFIG_DATA_NAME].editorVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor}">
             <svg class="block__logoicon">
@@ -397,11 +467,27 @@ export default class PluginQuickNote extends Plugin {
                 editorToggleBtn.setAttribute('aria-label', !isVisible ? this.i18n.note.hideEditor : this.i18n.note.showEditor);
             }
         });
+
+        // 添加同步按钮事件
+        const syncBtn = element.querySelector('.sync_btn');
+        syncBtn.addEventListener('click', async () => {
+            const icon = syncBtn.querySelector('use');
+            icon.setAttribute('xlink:href', '#iconLoading');
+            syncBtn.classList.add('fn__loading');
+
+            try {
+                await this.flomoService.sync();
+                this.renderDockHistory();
+            } finally {
+                icon.setAttribute('xlink:href', '#iconRefresh');
+                syncBtn.classList.remove('fn__loading');
+            }
+        });
+
         const refreshBtn = element.querySelector('.refresh_btn');
         refreshBtn.addEventListener('click', async () => {
             this.currentDisplayCount = this.itemsPerPage;
-            this.initData();
-            this.initDockPanel();
+            this.renderDockHistory();
         });
     }
     private renderDockerEditor() {
@@ -1920,7 +2006,7 @@ export default class PluginQuickNote extends Plugin {
     }
 
     // 保存内容并更新历史记录
-    private async saveContent(text: string, tags: string[] = []) {
+    private async saveContent(text: string, tags: string[] = []): Promise<void> {
         const success = await this.historyService.saveContent({ text, tags });
 
         if (success) {
@@ -2089,163 +2175,58 @@ export default class PluginQuickNote extends Plugin {
                 tagInput.focus();
 
                 // 添加标签的函数
-                const addTag = (tagText: string) => {
+                const addTag = async (tagText: string) => {
                     if (tagText.trim()) {
-                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
-                            .map(tag => tag.getAttribute('data-tag'));
+                        // 更新选中小记的标签
 
-                        if (!existingTags.includes(tagText)) {
-                            const tagElement = document.createElement('span');
-                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                            tagElement.setAttribute('data-tag', tagText);
-                            tagElement.setAttribute('aria-label', tagText);
-                            tagElement.style.cursor = 'default';
-                            tagElement.innerHTML = `
-                            <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
-                            <svg class="b3-chip__close" style="cursor: pointer;">
-                                <use xlink:href="#iconClose"></use>
-                            </svg>
-                        `;
-                            tagsList.appendChild(tagElement);
+                        if (selectedTimestamps.length > 0) {
+                            this.historyService.batchUpdateTags(selectedTimestamps, [tagText.trim()]);
+                            showMessage(this.i18n.note.tagSuccess);
 
-                            // 添加删除标签的事件
-                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                                tagElement.remove();
-                            });
+                            // 取消选择模式并关闭面板
+                            const cancelSelectBtn = container.querySelector('.cancel-select-btn');
+                            if (cancelSelectBtn) {
+                                (cancelSelectBtn as HTMLElement).click();
+                            }
+                            tagPanel.remove();
+                            document.removeEventListener('click', closePanel);
+                            this.renderDockerToolbar()
+                            this.renderDockHistory();
                         }
-                        tagInput.value = '';
-                        // 添加标签后关闭面板
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
                     }
                 };
 
                 // 回车添加标签
-                tagInput.addEventListener('keydown', (e) => {
-                    const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
-                    const currentSelected = tagPanel.querySelector('.history-tag.selected');
-                    let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
+                tagInput.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const searchText = tagInput.value.trim();
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
+                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
 
-                    switch (e.key) {
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            if (historyTags.length > 0) {
-                                // 移除当前选中项的样式
-                                if (currentSelected) {
-                                    currentSelected.classList.remove('selected');
-                                    currentSelected.style.backgroundColor = '';
-                                }
-                                // 计算下一个索引
-                                currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
-                                // 添加新选中项的样式
-                                const nextTag = historyTags[currentIndex] as HTMLElement;
-                                nextTag.classList.add('selected');
-                                nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                                // 确保选中项可见
-                                nextTag.scrollIntoView({ block: 'nearest' });
+                            if (matchingTag) {
+                                // 如果有完全匹配的标签，直接使用该标签
+                                await addTag(matchingTag.getAttribute('data-tag'));
+                            } else {
+                                // 如果没有完全匹配的标签，创建新标签
+                                await addTag(searchText);
                             }
-                            break;
-
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            if (historyTags.length > 0) {
-                                // 移除当前选中项的样式
-                                if (currentSelected) {
-                                    currentSelected.classList.remove('selected');
-                                    currentSelected.style.backgroundColor = '';
-                                }
-                                // 计算上一个索引
-                                currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
-                                // 添加新选中项的样式
-                                const prevTag = historyTags[currentIndex] as HTMLElement;
-                                prevTag.classList.add('selected');
-                                prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                                // 确保选中项可见
-                                prevTag.scrollIntoView({ block: 'nearest' });
-                            }
-                            break;
-
-                        case 'Enter':
-                            e.preventDefault();
-                            const searchText = tagInput.value.trim();
-                            if (currentSelected) {
-                                // 如果有选中的标签，使用该标签
-                                addTag(currentSelected.getAttribute('data-tag'));
-                                const textarea = container.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.focus();
-                                }
-                            } else if (searchText) {
-                                // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
-                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                                if (matchingTag) {
-                                    // 如果有完全匹配的标签，使用该标签
-                                    addTag(matchingTag.getAttribute('data-tag'));
-                                } else {
-                                    // 如果没有匹配的标签，创建新标签
-                                    addTag(searchText);
-                                }
-
-                                const textarea = container.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.focus();
-                                }
-                            }
-                            break;
+                        }
                     }
                 });
 
-                // 修改鼠标悬停事件处理，避免与键盘选择冲突
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('mouseenter', () => {
-                        if (!tag.classList.contains('selected')) {
-                            tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                        }
-                    });
-
-                    tag.addEventListener('mouseleave', () => {
-                        if (!tag.classList.contains('selected')) {
-                            tag.style.backgroundColor = '';
-                        }
-                    });
-                });
-
-                // 点击其他地方关闭面板
-                const closePanel = (e: MouseEvent) => {
-                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
-                        tagPanel.remove();
-                        document.removeEventListener('click', closePanel);
-                    }
-                    const textarea = container.querySelector('textarea');
-                    if (textarea) {
-                        // 将焦点设置到编辑框上
-                        textarea.focus();
-                    }
-                };
-
-                // 延迟添加点击事件，避免立即触发
-                setTimeout(() => {
-                    document.addEventListener('click', closePanel);
-                }, 0);
-
-                // 添加标签点击事件
-                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                    tag.addEventListener('click', () => {
-                        const tagText = tag.getAttribute('data-tag');
+                // 点击历史标签直接添加
+                tagPanel.addEventListener('click', async (e) => {
+                    const target = e.target as HTMLElement;
+                    const tagChip = target.closest('.history-tag') as HTMLElement;
+                    if (tagChip) {
+                        const tagText = tagChip.getAttribute('data-tag');
                         if (tagText) {
-                            addTag(tagText);
+                            await addTag(tagText);
                         }
-                    });
-
-                    // 添加悬停效果
-                    tag.addEventListener('mouseenter', () => {
-                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                    });
-                    tag.addEventListener('mouseleave', () => {
-                        tag.style.backgroundColor = '';
-                    });
+                    }
                 });
 
                 // 添加搜索功能
@@ -2281,30 +2262,27 @@ export default class PluginQuickNote extends Plugin {
                     }
                 });
 
-                // 修改回车键处理逻辑
-                tagInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const searchText = tagInput.value.trim();
-                        if (searchText) {
-                            // 检查是否有匹配的已有标签
-                            const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                                .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                            if (matchingTag) {
-                                // 如果有完全匹配的标签，直接使用该标签
-                                addTag(matchingTag.getAttribute('data-tag'));
-                            } else {
-                                // 如果没有完全匹配的标签，创建新标签
-                                addTag(searchText);
-                            }
-
-                            const textarea = container.querySelector('textarea');
-                            if (textarea) {
-                                textarea.focus();
-                            }
-                        }
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !batchTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签悬停效果
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        (tag as HTMLElement).style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        (tag as HTMLElement).style.backgroundColor = '';
+                    });
                 });
             };
         }
@@ -2646,5 +2624,10 @@ export default class PluginQuickNote extends Plugin {
     private createQuickInputWindow() {
         const quickInputWindow = QuickInputWindow.getInstance(this);
         quickInputWindow.createWindow();
+    }
+
+    async upload(file: File): Promise<string> {
+        // 实现文件上传逻辑
+        return Promise.resolve('');
     }
 }
