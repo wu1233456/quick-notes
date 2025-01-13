@@ -529,8 +529,8 @@ export default class PluginQuickNote extends Plugin {
                                     </div>
                                     <span class="fn__flex-1"></span>
                                     <button style="border: none; background: none; padding: 4px; cursor: pointer;"  aria-label="同步flomo">
-                                        <svg  style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_note_btn" >
-                                            <use xlink:href="#iconFlomo"></use>
+                                        <svg  style="height: 16px; width: 16px; color: var(--b3-theme-primary);" class="sync_note_btn b3-button__icon" >
+                                            <use xlink:href="#iconCloud"></use>
                                         </svg>
                                     </button>
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
@@ -651,7 +651,6 @@ export default class PluginQuickNote extends Plugin {
     private bindDockerToolbarEvents() {
         let element = this.element;
 
-
         // 添加批量选择相关的事件处理
         const container = element.querySelector('.toolbar-container');
         const filterMenuBtn = container.querySelector('.filter-menu-btn');
@@ -661,15 +660,17 @@ export default class PluginQuickNote extends Plugin {
         const syncBtn = element.querySelector('.sync_note_btn');
         syncBtn.addEventListener('click', async () => {
             const icon = syncBtn.querySelector('use');
+            // 添加旋转动画样式
+            syncBtn.style.animation = 'rotate 1s linear infinite';
             icon.setAttribute('xlink:href', '#iconRefresh');
-            syncBtn.classList.add('fn__loading');
 
             try {
                 await this.flomoService.sync();
                 this.renderDockHistory();
             } finally {
-                icon.setAttribute('xlink:href', '#iconFlomo');
-                syncBtn.classList.remove('fn__loading');
+                // 停止旋转动画并恢复图标
+                syncBtn.style.animation = '';
+                icon.setAttribute('xlink:href', '#iconCloud');
             }
         });
         
