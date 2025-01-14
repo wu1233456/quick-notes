@@ -244,6 +244,10 @@ export default class PluginQuickNote extends Plugin {
         await this.settingUtils.load();
         this.initDefaultData();
         this.loadNoteData();
+        if(isMobile()){
+            console.log("手机端需要直接打开tab页面")
+            return
+        }
         this.initComponents();
         console.log("onload");
     }
@@ -403,8 +407,8 @@ export default class PluginQuickNote extends Plugin {
         });
         this.initDock();
         initMardownStyle();
-
     }
+    
     private addMobileFloatingButton() {
         // 检查是否已存在按钮，避免重复添加
         const existingButton = document.querySelector('.mobile-quick-note-btn');
@@ -439,7 +443,7 @@ export default class PluginQuickNote extends Plugin {
             align-items: center;
             justify-content: center;
             box-shadow: var(--b3-dialog-shadow);
-            z-index: 100;
+            z-index: 5;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(8px);
@@ -1988,24 +1992,12 @@ export default class PluginQuickNote extends Plugin {
                 ${this.i18n.note.noMore}
             </div>`;
     }
-
-    // 创建新笔记
-    private async createNewNote() {
-        // 如果已经有窗口在打开中,则返回
-        if (this.isCreatingNote) {
-            return false;
-        }
-
-        try {
-            this.isCreatingNote = true; // 设置标志位
-
-            // 判断是否为移动端
-            if (isMobile()) {
-                return new Promise((resolve) => {
-                    // 创建底部弹出层容器
-                    const bottomSheet = document.createElement('div');
-                    bottomSheet.className = 'quick-note-bottom-sheet';
-                    bottomSheet.style.cssText = `
+    private async createMobileQuickNote() {
+        return new Promise((resolve) => {
+            // 创建底部弹出层容器
+            const bottomSheet = document.createElement('div');
+            bottomSheet.className = 'quick-note-bottom-sheet';
+            bottomSheet.style.cssText = `
                         position: fixed;
                         bottom: -100%;
                         left: 0;
@@ -2013,7 +2005,7 @@ export default class PluginQuickNote extends Plugin {
                         background: var(--b3-theme-background);
                         border-radius: 16px 16px 0 0;
                         box-shadow: var(--b3-dialog-shadow);
-                        z-index: 205;
+                        z-index: 5;
                         transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         padding: 16px;
                         max-height: 80vh;
@@ -2021,8 +2013,8 @@ export default class PluginQuickNote extends Plugin {
                         flex-direction: column;
                     `;
 
-                    // 添加顶部拖动条
-                    bottomSheet.innerHTML = `
+            // 添加顶部拖动条
+            bottomSheet.innerHTML = `
                         <div class="bottom-sheet-drag-handle" style="
                             width: 32px;
                             height: 4px;
@@ -2042,83 +2034,167 @@ export default class PluginQuickNote extends Plugin {
                         </div>
                     `;
 
-                    document.body.appendChild(bottomSheet);
+            document.body.appendChild(bottomSheet);
 
-                    // 添加触摸拖动关闭功能
-                    let startY = 0;
-                    let currentY = 0;
-                    let initialBottom = 0;
+            // 添加触摸拖动关闭功能
+            let startY = 0;
+            let currentY = 0;
+            let initialBottom = 0;
 
-                    const handleTouchStart = (e: TouchEvent) => {
-                        startY = e.touches[0].clientY;
-                        initialBottom = parseInt(bottomSheet.style.bottom);
-                        bottomSheet.style.transition = 'none';
-                    };
+            const handleTouchStart = (e: TouchEvent) => {
+                startY = e.touches[0].clientY;
+                initialBottom = parseInt(bottomSheet.style.bottom);
+                bottomSheet.style.transition = 'none';
+            };
 
-                    const handleTouchMove = (e: TouchEvent) => {
-                        currentY = e.touches[0].clientY;
-                        const deltaY = currentY - startY;
-                        if (deltaY > 0) { // 只允许向下拖动
-                            bottomSheet.style.bottom = `${initialBottom - deltaY}px`;
-                        }
-                    };
+            const handleTouchMove = (e: TouchEvent) => {
+                currentY = e.touches[0].clientY;
+                const deltaY = currentY - startY;
+                if (deltaY > 0) { // 只允许向下拖动
+                    bottomSheet.style.bottom = `${initialBottom - deltaY}px`;
+                }
+            };
 
-                    const handleTouchEnd = () => {
-                        bottomSheet.style.transition = 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                        if (currentY - startY > 100) { // 如果拖动距离超过100px，则关闭
+            const handleTouchEnd = () => {
+                bottomSheet.style.transition = 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                if (currentY - startY > 100) { // 如果拖动距离超过100px，则关闭
+                    closeBottomSheet();
+                } else {
+                    bottomSheet.style.bottom = '0';
+                }
+            };
+
+            const dragHandle = bottomSheet.querySelector('.bottom-sheet-drag-handle');
+            dragHandle.addEventListener('touchstart', handleTouchStart);
+            dragHandle.addEventListener('touchmove', handleTouchMove);
+            dragHandle.addEventListener('touchend', handleTouchEnd);
+
+            // 关闭底部弹出层的函数
+            const closeBottomSheet = () => {
+                bottomSheet.style.bottom = '-100%';
+                setTimeout(() => {
+                    document.body.removeChild(bottomSheet);
+                    this.isCreatingNote = false;
+                    resolve(false);
+                }, 300);
+            };
+
+            // 绑定关闭按钮事件
+            const closeBtn = bottomSheet.querySelector('[data-type="close"]');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeBottomSheet);
+            }
+
+            // 在下一帧显示底部弹出层
+            requestAnimationFrame(() => {
+                bottomSheet.style.bottom = '0';
+            });
+
+            // 设置编辑器和标签功能
+            const textarea = bottomSheet.querySelector('textarea');
+            if (textarea) {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+                // 添加快捷键事件监听
+                textarea.addEventListener('keydown', async (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        if (textarea.value.trim()) {
+                            const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
+                                .map(tag => tag.getAttribute('data-tag'));
+                            await this.saveContent(textarea.value, tags);
                             closeBottomSheet();
-                        } else {
-                            bottomSheet.style.bottom = '0';
+                            resolve(true);
                         }
-                    };
-
-                    const dragHandle = bottomSheet.querySelector('.bottom-sheet-drag-handle');
-                    dragHandle.addEventListener('touchstart', handleTouchStart);
-                    dragHandle.addEventListener('touchmove', handleTouchMove);
-                    dragHandle.addEventListener('touchend', handleTouchEnd);
-
-                    // 关闭底部弹出层的函数
-                    const closeBottomSheet = () => {
-                        bottomSheet.style.bottom = '-100%';
-                        setTimeout(() => {
-                            document.body.removeChild(bottomSheet);
-                            this.isCreatingNote = false;
-                            resolve(false);
-                        }, 300);
-                    };
-
-                    // 绑定关闭按钮事件
-                    const closeBtn = bottomSheet.querySelector('[data-type="close"]');
-                    if (closeBtn) {
-                        closeBtn.addEventListener('click', closeBottomSheet);
                     }
+                    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                        e.preventDefault();
+                        const addTagBtn = bottomSheet.querySelector('.add-tag-btn') as HTMLElement;
+                        if (addTagBtn) {
+                            addTagBtn.click();
+                        }
+                    }
+                });
+            }
 
-                    // 在下一帧显示底部弹出层
-                    requestAnimationFrame(() => {
-                        bottomSheet.style.bottom = '0';
-                    });
+            // 设置标签功能
+            this.setupTagsFeature(bottomSheet);
 
-                    // 设置编辑器和标签功能
-                    const textarea = bottomSheet.querySelector('textarea');
+            // 设置图片上传功能
+            this.imageService.setupImageUpload({
+                container: bottomSheet,
+                i18n: this.i18n
+            });
+
+            // 绑定保存按钮事件
+            const saveBtn = bottomSheet.querySelector('.main_save_btn');
+            if (saveBtn && textarea) {
+                saveBtn.addEventListener('click', async () => {
+                    if (textarea.value.trim()) {
+                        const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
+                        await this.saveContent(textarea.value, tags);
+                        closeBottomSheet();
+                        resolve(true);
+                    }
+                });
+            }
+        });
+    }
+    // 创建新笔记
+    private async createNewNote() {
+        // 如果已经有窗口在打开中,则返回
+        if (this.isCreatingNote) {
+            return false;
+        }
+        
+        try {
+            this.isCreatingNote = true; // 设置标志位
+            if (isMobile()) {
+                return this.createMobileQuickNote();
+            }
+            // 桌面端的原有实现
+            return new Promise((resolve) => {
+                const dialog = new Dialog({
+                    title: this.i18n.note.title,
+                    content: `
+                            <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
+                                ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
+                            </div>`,
+                    width: "520px",
+                    height: "400px",
+                    transparent: false,
+                    disableClose: false,
+                    disableAnimation: false,
+                    destroyCallback: () => {
+                        const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
+                        if (textarea && textarea.value.trim()) {
+                            this.tempNoteContent = textarea.value;
+                            this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                                .map(tag => tag.getAttribute('data-tag'))
+                                .filter(tag => tag !== null) as string[];
+                        }
+                        this.isCreatingNote = false;
+                        resolve(false);
+                    }
+                });
+
+                // 在对话框创建后立即聚焦到文本框
+                setTimeout(() => {
+                    const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
                     if (textarea) {
                         textarea.focus();
                         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
-                        // 添加快捷键事件监听
                         textarea.addEventListener('keydown', async (e) => {
                             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                                 e.preventDefault();
-                                if (textarea.value.trim()) {
-                                    const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
-                                        .map(tag => tag.getAttribute('data-tag'));
-                                    await this.saveContent(textarea.value, tags);
-                                    closeBottomSheet();
-                                    resolve(true);
-                                }
+                                dialog.element.querySelector('[data-type="save"]')?.click();
                             }
                             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
                                 e.preventDefault();
-                                const addTagBtn = bottomSheet.querySelector('.add-tag-btn') as HTMLElement;
+                                const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
                                 if (addTagBtn) {
                                     addTagBtn.click();
                                 }
@@ -2126,134 +2202,62 @@ export default class PluginQuickNote extends Plugin {
                         });
                     }
 
-                    // 设置标签功能
-                    this.setupTagsFeature(bottomSheet);
-
-                    // 设置图片上传功能
-                    this.imageService.setupImageUpload({
-                        container: bottomSheet,
-                        i18n: this.i18n
-                    });
-
-                    // 绑定保存按钮事件
-                    const saveBtn = bottomSheet.querySelector('.main_save_btn');
-                    if (saveBtn && textarea) {
-                        saveBtn.addEventListener('click', async () => {
-                            if (textarea.value.trim()) {
-                                const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
-                                    .map(tag => tag.getAttribute('data-tag'));
-                                await this.saveContent(textarea.value, tags);
-                                closeBottomSheet();
-                                resolve(true);
-                            }
-                        });
-                    }
-                });
-            } else {
-                // 桌面端的原有实现
-                return new Promise((resolve) => {
-                    const dialog = new Dialog({
-                        title: this.i18n.note.title,
-                        content: `
-                            <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
-                                ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
-                            </div>`,
-                        width: "520px",
-                        height: "400px",
-                        transparent: false,
-                        disableClose: false,
-                        disableAnimation: false,
-                        destroyCallback: () => {
-                            const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
-                            if (textarea && textarea.value.trim()) {
-                                this.tempNoteContent = textarea.value;
-                                this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
-                                    .map(tag => tag.getAttribute('data-tag'))
-                                    .filter(tag => tag !== null) as string[];
-                            }
-                            this.isCreatingNote = false;
-                            resolve(false);
-                        }
-                    });
-
-                    // 在对话框创建后立即聚焦到文本框
-                    setTimeout(() => {
-                        const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
-                        if (textarea) {
-                            textarea.focus();
-                            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-
-                            textarea.addEventListener('keydown', async (e) => {
-                                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                                    e.preventDefault();
-                                    dialog.element.querySelector('[data-type="save"]')?.click();
-                                }
-                                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-                                    e.preventDefault();
-                                    const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
-                                    if (addTagBtn) {
-                                        addTagBtn.click();
-                                    }
-                                }
-                            });
-                        }
-
-                        if (this.tempNoteTags.length > 0) {
-                            const tagsList = dialog.element.querySelector('.tags-list');
-                            if (tagsList) {
-                                this.tempNoteTags.forEach(tagText => {
-                                    const tagElement = document.createElement('span');
-                                    tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                                    tagElement.setAttribute('data-tag', tagText);
-                                    tagElement.setAttribute('aria-label', tagText);
-                                    tagElement.style.cursor = 'default';
-                                    tagElement.innerHTML = `
+                    if (this.tempNoteTags.length > 0) {
+                        const tagsList = dialog.element.querySelector('.tags-list');
+                        if (tagsList) {
+                            this.tempNoteTags.forEach(tagText => {
+                                const tagElement = document.createElement('span');
+                                tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                                tagElement.setAttribute('data-tag', tagText);
+                                tagElement.setAttribute('aria-label', tagText);
+                                tagElement.style.cursor = 'default';
+                                tagElement.innerHTML = `
                                         <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
                                         <svg class="b3-chip__close" style="cursor: pointer;">
                                             <use xlink:href="#iconClose"></use>
                                         </svg>
                                     `;
-                                    tagsList.appendChild(tagElement);
+                                tagsList.appendChild(tagElement);
 
-                                    tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                                        tagElement.remove();
-                                    });
+                                tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                    tagElement.remove();
                                 });
-                            }
+                            });
                         }
-                    }, 100);
-
-                    // 绑定保存按钮事件
-                    const saveBtn = dialog.element.querySelector('[data-type="save"]');
-                    const textarea = dialog.element.querySelector('textarea');
-                    if (saveBtn && textarea) {
-                        saveBtn.onclick = async () => {
-                            const text = textarea.value;
-                            const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
-                                .map(tag => tag.getAttribute('data-tag'));
-
-                            if (text.trim()) {
-                                await this.saveContent(text, tags);
-                                dialog.destroy();
-                                this.tempNoteContent = '';
-                                this.tempNoteTags = [];
-                                resolve(true);
-                                return;
-                            }
-                            resolve(false);
-                        };
                     }
+                }, 100);
 
-                    this.setupTagsFeature(dialog.element);
+                // 绑定保存按钮事件
+                const saveBtn = dialog.element.querySelector('[data-type="save"]');
+                const textarea = dialog.element.querySelector('textarea');
+                if (saveBtn && textarea) {
+                    saveBtn.onclick = async () => {
+                        const text = textarea.value;
+                        const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
 
-                    setTimeout(() => {
-                        this.imageService.setupImageUpload({
-                            container: dialog.element,
-                            i18n: this.i18n
-                        });
-                    }, 100);
-                });
-            }
+                        if (text.trim()) {
+                            await this.saveContent(text, tags);
+                            dialog.destroy();
+                            this.tempNoteContent = '';
+                            this.tempNoteTags = [];
+                            resolve(true);
+                            return;
+                        }
+                        resolve(false);
+                    };
+                }
+
+                this.setupTagsFeature(dialog.element);
+
+                setTimeout(() => {
+                    this.imageService.setupImageUpload({
+                        container: dialog.element,
+                        i18n: this.i18n
+                    });
+                }, 100);
+            });
+
         } catch (error) {
             console.error('Error creating new note:', error);
             return false;
@@ -2370,7 +2374,7 @@ export default class PluginQuickNote extends Plugin {
                 tagPanel.className = 'tag-panel';
                 tagPanel.style.cssText = `
             position: fixed;
-            z-index: 205;
+            z-index: 204;
             width: 133px;
             height: 150px; // 固定高度
             background: var(--b3-menu-background);
