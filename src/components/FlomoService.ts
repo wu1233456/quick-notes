@@ -17,13 +17,14 @@ export class FlomoService {
         this.plugin = plugin;
         this.historyService = historyService;
         this.i18n = i18n;
-        // this.initAutoSync();
+        this.initAutoSync();
     }
 
-    private initAutoSync() {
+    public initAutoSync() {
         // 检查是否启用了自动同步
         const isAutoSyncEnabled = this.plugin.settingUtils.get("flomoAutoSync");
         if (isAutoSyncEnabled) {
+            console.log("准备开始同步啦")
             this.startAutoSync();
         }
     }
@@ -56,7 +57,10 @@ export class FlomoService {
             
             if (isFlomoEnabled && isAutoSyncEnabled) {
                 console.log(this.i18n.note.flomoSync.autoSyncStart);
-                await this.sync();
+                const count = await this.sync();
+                if (count == 0) {
+                    this.plugin.renderDockHistory();
+                }
             }
         }, syncInterval * 1000);
     }
@@ -357,7 +361,7 @@ export class FlomoService {
         const isFlomoEnabled = this.plugin.settingUtils.get("flomoEnabled");
         if (!isFlomoEnabled) {
             showMessage(this.i18n.note.flomoSync.needEnable);
-            return false;
+            return 0;
         }
 
         try {
@@ -419,11 +423,11 @@ export class FlomoService {
             config.lastSyncTime = nowTimeText;
             await this.saveConfig(config);
             showMessage(this.i18n.note.flomoSync.syncSuccess.replace('${count}', memos.length.toString()));
-            return true;
+            return memos.length;
         } catch (error) {
             console.error(error);
             // await this.pushErrMsg(this.i18n.note.flomoSync.checkError.replace('${error}', error.toString()));
-            return false;
+            return 0;
         }
     }
 } 

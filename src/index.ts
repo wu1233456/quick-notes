@@ -187,22 +187,22 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.flomoEnabledDesc
         });
 
-        // // 添加自动同步设置
-        // this.settingUtils.addItem({
-        //     key: "flomoAutoSync",
-        //     value: false,
-        //     type: "checkbox",
-        //     title: this.i18n.note.flomoAutoSync,
-        //     description: this.i18n.note.flomoAutoSyncDesc
-        // });
+        // 添加自动同步设置
+        this.settingUtils.addItem({
+            key: "flomoAutoSync",
+            value: false,
+            type: "checkbox",
+            title: this.i18n.note.flomoAutoSync,
+            description: this.i18n.note.flomoAutoSyncDesc
+        });
 
-        // this.settingUtils.addItem({
-        //     key: "flomoSyncInterval",
-        //     value: 60,
-        //     type: "number",
-        //     title: this.i18n.note.flomoSyncInterval,
-        //     description: this.i18n.note.flomoSyncIntervalDesc
-        // });
+        this.settingUtils.addItem({
+            key: "flomoSyncInterval",
+            value: 60,
+            type: "number",
+            title: this.i18n.note.flomoSyncInterval,
+            description: this.i18n.note.flomoSyncIntervalDesc
+        });
 
         // 添加flomo同步配置
         this.settingUtils.addItem({
@@ -304,6 +304,7 @@ export default class PluginQuickNote extends Plugin {
             this.i18n,
             this.settingUtils,
             () => {
+                this.onSettingChanged();
                 this.renderDockHistory();
             },
             this,
@@ -1233,72 +1234,69 @@ export default class PluginQuickNote extends Plugin {
             historyHtml += this.renderUnpinnedHistory(displayedUnpinnedItems, filteredHistory.pinnedItems.length > 0);
         }
 
-        // 添加加载更多按钮
+        // 添加加载状态指示器
         const totalUnpinnedCount = filteredHistory.unpinnedItems.length;
-        // console.log("totalUnpinnedCount", totalUnpinnedCount);
         if (totalUnpinnedCount > this.currentDisplayCount) {
-            historyHtml += this.renderLoadMoreButton(this.currentDisplayCount, totalUnpinnedCount);
+            historyHtml += `
+                <div class="loading-indicator fn__flex-center" style="padding: 16px 0; color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                    ${this.i18n.note.loading}
+                </div>`;
         } else if (displayedUnpinnedItems.length > 0) {
             historyHtml += this.renderNoMoreItems();
         }
 
         let historyContent = `<div class="history-content">${historyHtml}</div>`;
-        element.querySelector('.history-list').innerHTML = historyContent;
+        const historyList = element.querySelector('.history-list');
+        historyList.innerHTML = historyContent;
 
+        // 添加滚动监听器
+        const handleScroll = () => {
+            const scrollContainer = historyList;
+            const scrollPosition = scrollContainer.scrollTop + scrollContainer.clientHeight;
+            const scrollHeight = scrollContainer.scrollHeight;
+            const threshold = 100; // 距离底部多少像素时触发加载
 
-        const loadMoreBtn = element.querySelector('.load-more-btn');
-        if (loadMoreBtn) {
-            loadMoreBtn.onclick = () => {
+            if (scrollHeight - scrollPosition <= threshold && totalUnpinnedCount > this.currentDisplayCount) {
+                // 移除滚动监听器，防止重复触发
+                scrollContainer.removeEventListener('scroll', handleScroll);
+
                 // 使用设置中的值增加显示数量
                 const itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
                 this.currentDisplayCount += itemsPerPage;
 
-                // 获取历史内容容器
-                const historyContent = element.querySelector('.history-content');
-                if (historyContent) {
-                    // 获取新的要显示的记录
-                    const newItems = filteredHistory.unpinnedItems.slice(
-                        this.currentDisplayCount - this.itemsPerPage,
-                        this.currentDisplayCount
-                    );
+                // 获取新的要显示的记录
+                const newItems = filteredHistory.unpinnedItems.slice(
+                    this.currentDisplayCount - itemsPerPage,
+                    this.currentDisplayCount
+                );
 
-                    // 渲染并追加新的记录
-                    if (newItems.length > 0) {
+                // 渲染并追加新的记录
+                if (newItems.length > 0) {
+                    const loadingIndicator = scrollContainer.querySelector('.loading-indicator');
+                    if (loadingIndicator) {
                         const newContent = this.renderUnpinnedHistory(newItems, false);
-                        // 将新内容插入到加载更多按钮之前
-                        loadMoreBtn.parentElement.insertAdjacentHTML('beforebegin', newContent);
+                        loadingIndicator.insertAdjacentHTML('beforebegin', newContent);
                     }
 
-                    // 更新加载更多按钮的文本和显示状态
-                    const loadMoreContainer = loadMoreBtn.parentElement;
-                    const noMoreContainer = element.querySelector('.no-more-container');
-
-                    if (totalUnpinnedCount > this.currentDisplayCount) {
-                        // 还有更多内容可以加载
-                        loadMoreBtn.textContent = `${this.i18n.note.loadMore} (${this.i18n.note.showing
-                            .replace('${num}', (totalUnpinnedCount - this.currentDisplayCount).toString())})`;
-                        loadMoreContainer.style.display = ''
-                        if (noMoreContainer) noMoreContainer.style.display = 'none';
-                    } else {
+                    // 更新加载状态
+                    if (totalUnpinnedCount <= this.currentDisplayCount) {
                         // 没有更多内容了
-                        loadMoreContainer.style.display = 'none';
-                        if (noMoreContainer) {
-                            noMoreContainer.style.display = '';
-                        } else {
-                            // 如果没有"没有更多"提示元素，则创建一个
-                            historyContent.insertAdjacentHTML('beforeend', `
-                                <div class="fn__flex-center no-more-container" style="padding: 16px 0; color: var(--b3-theme-on-surface-light); font-size: 12px;">
-                                    ${this.i18n.note.noMore}
-                                </div>`
-                            );
-                        }
+                        loadingIndicator.outerHTML = this.renderNoMoreItems();
+                    } else {
+                        // 重新添加滚动监听器
+                        setTimeout(() => {
+                            scrollContainer.addEventListener('scroll', handleScroll);
+                        }, 100);
                     }
 
                     // 重新绑定新添加内容的事件处理
                     this.bindHistoryListEvents();
                 }
-            };
-        }
+            }
+        };
+
+        // 添加滚动监听器
+        historyList.addEventListener('scroll', handleScroll);
 
         // 监听历史记录点击事件
         this.bindHistoryListEvents();
@@ -2184,8 +2182,8 @@ export default class PluginQuickNote extends Plugin {
                         ${allTags.length > 0 ?
                     allTags
                         .sort((a, b) => {
-                            const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
-                            const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
+                            const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                            const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
                             return countB - countA;
                         })
                         .map(tag => `
