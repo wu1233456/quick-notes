@@ -74,6 +74,7 @@ export default class PluginQuickNote extends Plugin {
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
 
     async onload() {
+        console.log("onload start");
         // 初始化设置
         this.settingUtils = new SettingUtils({
             plugin: this,
@@ -249,7 +250,7 @@ export default class PluginQuickNote extends Plugin {
             return
         }
         this.initComponents();
-        console.log("onload");
+        console.log("onload end");
     }
 
     async onLayoutReady() {
