@@ -248,7 +248,12 @@ export default class PluginQuickNote extends Plugin {
 
         await this.settingUtils.load();
         this.loadNoteData();
-        console.log("onload end");
+        if(isMobile()){
+            console.log("手机端需要直接打开tab页面")
+            return
+        }
+        this.initComponents();
+        console.log("onload");
     }
 
     async onLayoutReady() {
