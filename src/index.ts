@@ -253,7 +253,7 @@ export default class PluginQuickNote extends Plugin {
             return
         }
         this.initComponents();
-        console.log("onload");
+        console.log("onload end");
     }
 
     async onLayoutReady() {
