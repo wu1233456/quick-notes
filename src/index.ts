@@ -5,7 +5,8 @@ import {
     Dialog,
     Menu,
     getFrontend,
-    adaptHotkey
+    adaptHotkey,
+    getFrontend
 } from "siyuan";
 import "@/index.scss";
 import { lsNotebooks, appendBlock, createDailyNote } from "./api";
@@ -33,9 +34,12 @@ interface IHistoryItem {
     tags?: string[];
     isPinned?: boolean; // 添加isPinned可选属性
 }
+export const isMobile = () => {
+    return getFrontend().endsWith('mobile');
+}
+
 
 export interface IPlugin {
-    // ... existing interface members ...
     saveContent(content: string): Promise<void>;
     upload(file: File): Promise<string>;
 }
@@ -208,7 +212,7 @@ export default class PluginQuickNote extends Plugin {
         this.settingUtils.addItem({
             key: "flomoUsername",
             value: "",
-            type: "textinput", 
+            type: "textinput",
             title: this.i18n.note.flomoUsername,
             description: this.i18n.note.flomoUsernameDesc
         });
@@ -245,6 +249,10 @@ export default class PluginQuickNote extends Plugin {
     }
 
     async onLayoutReady() {
+        if (isMobile()) {
+            console.log("isMobile");
+            this.addMobileFloatingButton();
+        }
         console.log("onLayoutReady");
     }
 
@@ -270,7 +278,7 @@ export default class PluginQuickNote extends Plugin {
         console.log("uninstall");
     }
 
-    private async loadNoteData(){
+    private async loadNoteData() {
         // 初始化未归档小记数据
         let unarchive_history = await this.loadData(DOCK_STORAGE_NAME) || {
             history: []
@@ -319,7 +327,7 @@ export default class PluginQuickNote extends Plugin {
         // 初始化flomo服务
         this.flomoService = new FlomoService(this, this.historyService, this.i18n);
 
-        if(this.element){
+        if (this.element) {
             this.initDockPanel();
         }
         // 添加提醒完成事件监听
@@ -336,13 +344,13 @@ export default class PluginQuickNote extends Plugin {
         this.frontend = getFrontend();
 
         // 初始化配置数据
-        this.data[CONFIG_DATA_NAME] =  {
+        this.data[CONFIG_DATA_NAME] = {
             editorVisible: true,
         }
 
         const historyData: HistoryData = {
             history: [],
-            archivedHistory:  []
+            archivedHistory: []
         };
 
         this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
@@ -368,7 +376,7 @@ export default class PluginQuickNote extends Plugin {
 
         // 初始化提醒服务
         this.reminderService = await ReminderService.create(this.i18n, this);
-      
+
     }
     private initComponents() {
         this.addIcons(iconsSVG);
@@ -397,6 +405,93 @@ export default class PluginQuickNote extends Plugin {
         initMardownStyle();
 
     }
+    private addMobileFloatingButton() {
+        // 检查是否已存在按钮，避免重复添加
+        const existingButton = document.querySelector('.mobile-quick-note-btn');
+        if (existingButton) {
+            console.log("existingButton");
+            return;
+        }
+
+        // 创建浮动按钮
+        const floatingButton = document.createElement('div');
+        floatingButton.className = 'mobile-quick-note-btn';
+        floatingButton.innerHTML = `
+            <div class="button-content">
+                <svg class="b3-button__icon">
+                    <use xlink:href="#iconAdd"></use>
+                </svg>
+                <span class="button-label">小记</span>
+            </div>
+        `;
+
+        // 设置按钮样式，使用思源的主题变量
+        floatingButton.style.cssText = `
+            position: fixed;
+            bottom: 80px;
+            left: 16px;
+            height: 40px;
+            padding: 0 16px;
+            border-radius: 20px;
+            background-color: var(--b3-theme-surface);
+            color: var(--b3-theme-on-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--b3-dialog-shadow);
+            z-index: 100;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--b3-theme-surface-lighter);
+        `;
+
+        // 添加内部内容样式
+        const buttonContent = floatingButton.querySelector('.button-content') as HTMLElement;
+        if (buttonContent) {
+            buttonContent.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            `;
+        }
+
+        // 设置图标样式
+        const icon = floatingButton.querySelector('.b3-button__icon') as HTMLElement;
+        if (icon) {
+            icon.style.cssText = `
+                height: 18px;
+                width: 18px;
+                color: var(--b3-theme-primary);
+            `;
+        }
+
+        // 设置文字标签样式
+        const label = floatingButton.querySelector('.button-label') as HTMLElement;
+        if (label) {
+            label.style.cssText = `
+                font-size: 14px;
+                font-weight: 500;
+                letter-spacing: 0.3px;
+                color: var(--b3-theme-on-surface);
+            `;
+        }
+
+        // 添加触摸反馈效果
+        floatingButton.addEventListener('touchstart', () => {
+            floatingButton.style.transform = 'scale(0.95) translateY(1px)';
+            floatingButton.style.backgroundColor = 'var(--b3-theme-surface-lighter)';
+        });
+
+        floatingButton.addEventListener('touchend', () => {
+            floatingButton.style.transform = 'scale(1) translateY(0)';
+            floatingButton.style.backgroundColor = 'var(--b3-theme-surface)';
+            this.createNewNote();
+        });
+
+        // 将按钮直接添加到 body
+        document.body.appendChild(floatingButton);
+    }
     private initDock() {
         // 创建 dock 时读取保存的位置
         this.addDock({
@@ -420,7 +515,7 @@ export default class PluginQuickNote extends Plugin {
             }
         });
     }
-    
+
 
     private initDockPanel() {
         console.log("initDockPanel");
@@ -562,13 +657,13 @@ export default class PluginQuickNote extends Plugin {
                                     </div>
                                     <span class="fn__flex-1"></span>
                                     ${(() => {
-                                        const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
-                                        return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
+                const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+                return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
                                             <svg style="height: 16px; width: 16px; color: ${isFlomoEnabled ? 'var(--b3-theme-primary)' : 'var(--b3-theme-on-surface-light)'};" class="sync_note_btn b3-button__icon" >
                                                 <use xlink:href="#icon${isFlomoEnabled ? 'Cloud' : 'CloudOff'}"></use>
                                             </svg>
                                         </button>`;
-                                    })()}
+            })()}
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
                                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
                                             <use xlink:href="#iconFilter"></use>
@@ -700,7 +795,7 @@ export default class PluginQuickNote extends Plugin {
                 showMessage(this.i18n.note.flomoSync.needEnable);
                 return;
             }
-            
+
             const icon = syncBtn.querySelector('use');
             // 添加旋转动画样式
             syncBtn.style.animation = 'rotate 1s linear infinite';
@@ -714,7 +809,7 @@ export default class PluginQuickNote extends Plugin {
                 icon.setAttribute('xlink:href', isFlomoEnabled ? '#iconCloud' : '#iconCloudOff');
             }
         });
-        
+
 
         filterMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1903,118 +1998,262 @@ export default class PluginQuickNote extends Plugin {
 
         try {
             this.isCreatingNote = true; // 设置标志位
-            return new Promise((resolve) => {
-                const dialog = new Dialog({
-                    title: this.i18n.note.new,
-                    content: `
-                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
-                            ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
-                        </div>`,
-                    width: "520px",
-                    height: "400px",
-                    transparent: false,
-                    disableClose: false,
-                    disableAnimation: false,
-                    destroyCallback: () => {
-                        // 只有在没有成功保存的情况下才保存临时内容
-                        const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
-                        if (textarea && textarea.value.trim()) {
-                            this.tempNoteContent = textarea.value;
-                            // 保存标签
-                            this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
-                                .map(tag => tag.getAttribute('data-tag'))
-                                .filter(tag => tag !== null) as string[];
-                        }
-                        this.isCreatingNote = false; // 重置标志位
-                        resolve(false);
-                    }
-                });
 
-                // 在对话框创建后立即聚焦到文本框
-                setTimeout(() => {
-                    const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
+            // 判断是否为移动端
+            if (isMobile()) {
+                return new Promise((resolve) => {
+                    // 创建底部弹出层容器
+                    const bottomSheet = document.createElement('div');
+                    bottomSheet.className = 'quick-note-bottom-sheet';
+                    bottomSheet.style.cssText = `
+                        position: fixed;
+                        bottom: -100%;
+                        left: 0;
+                        right: 0;
+                        background: var(--b3-theme-background);
+                        border-radius: 16px 16px 0 0;
+                        box-shadow: var(--b3-dialog-shadow);
+                        z-index: 205;
+                        transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        padding: 16px;
+                        max-height: 80vh;
+                        display: flex;
+                        flex-direction: column;
+                    `;
+
+                    // 添加顶部拖动条
+                    bottomSheet.innerHTML = `
+                        <div class="bottom-sheet-drag-handle" style="
+                            width: 32px;
+                            height: 4px;
+                            background: var(--b3-theme-background-light);
+                            border-radius: 2px;
+                            margin: 0 auto 16px;
+                        "></div>
+                        <div class="b3-dialog__header">
+                            <span class="b3-dialog__title">${this.i18n.note.new}</span>
+                            <span class="fn__flex-1"></span>
+                            <button class="b3-button b3-button--text" data-type="close">
+                                <svg class="b3-button__icon"><use xlink:href="#iconClose"></use></svg>
+                            </button>
+                        </div>
+                        <div class="b3-dialog__content" style="flex: 1; overflow: auto; padding: 16px 0;">
+                            ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
+                        </div>
+                    `;
+
+                    document.body.appendChild(bottomSheet);
+
+                    // 添加触摸拖动关闭功能
+                    let startY = 0;
+                    let currentY = 0;
+                    let initialBottom = 0;
+
+                    const handleTouchStart = (e: TouchEvent) => {
+                        startY = e.touches[0].clientY;
+                        initialBottom = parseInt(bottomSheet.style.bottom);
+                        bottomSheet.style.transition = 'none';
+                    };
+
+                    const handleTouchMove = (e: TouchEvent) => {
+                        currentY = e.touches[0].clientY;
+                        const deltaY = currentY - startY;
+                        if (deltaY > 0) { // 只允许向下拖动
+                            bottomSheet.style.bottom = `${initialBottom - deltaY}px`;
+                        }
+                    };
+
+                    const handleTouchEnd = () => {
+                        bottomSheet.style.transition = 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                        if (currentY - startY > 100) { // 如果拖动距离超过100px，则关闭
+                            closeBottomSheet();
+                        } else {
+                            bottomSheet.style.bottom = '0';
+                        }
+                    };
+
+                    const dragHandle = bottomSheet.querySelector('.bottom-sheet-drag-handle');
+                    dragHandle.addEventListener('touchstart', handleTouchStart);
+                    dragHandle.addEventListener('touchmove', handleTouchMove);
+                    dragHandle.addEventListener('touchend', handleTouchEnd);
+
+                    // 关闭底部弹出层的函数
+                    const closeBottomSheet = () => {
+                        bottomSheet.style.bottom = '-100%';
+                        setTimeout(() => {
+                            document.body.removeChild(bottomSheet);
+                            this.isCreatingNote = false;
+                            resolve(false);
+                        }, 300);
+                    };
+
+                    // 绑定关闭按钮事件
+                    const closeBtn = bottomSheet.querySelector('[data-type="close"]');
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', closeBottomSheet);
+                    }
+
+                    // 在下一帧显示底部弹出层
+                    requestAnimationFrame(() => {
+                        bottomSheet.style.bottom = '0';
+                    });
+
+                    // 设置编辑器和标签功能
+                    const textarea = bottomSheet.querySelector('textarea');
                     if (textarea) {
                         textarea.focus();
-                        // 将光标移到文本末尾
                         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
                         // 添加快捷键事件监听
                         textarea.addEventListener('keydown', async (e) => {
-                            // 保存快捷键 (Cmd/Ctrl + Enter)
                             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                                 e.preventDefault();
-                                dialog.element.querySelector('[data-type="save"]')?.click();
+                                if (textarea.value.trim()) {
+                                    const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
+                                        .map(tag => tag.getAttribute('data-tag'));
+                                    await this.saveContent(textarea.value, tags);
+                                    closeBottomSheet();
+                                    resolve(true);
+                                }
                             }
-                            // 添加标签快捷键 (Cmd/Ctrl + K)
                             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
                                 e.preventDefault();
-                                const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
+                                const addTagBtn = bottomSheet.querySelector('.add-tag-btn') as HTMLElement;
                                 if (addTagBtn) {
                                     addTagBtn.click();
                                 }
                             }
                         });
                     }
-                    // 恢复之前保存的标签
-                    if (this.tempNoteTags.length > 0) {
-                        const tagsList = dialog.element.querySelector('.tags-list');
-                        if (tagsList) {
-                            this.tempNoteTags.forEach(tagText => {
-                                const tagElement = document.createElement('span');
-                                tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                                tagElement.setAttribute('data-tag', tagText);
-                                tagElement.setAttribute('aria-label', tagText);
-                                tagElement.style.cursor = 'default';
-                                tagElement.innerHTML = `
-                                    <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
-                                    <svg class="b3-chip__close" style="cursor: pointer;">
-                                        <use xlink:href="#iconClose"></use>
-                                    </svg>
-                                `;
-                                tagsList.appendChild(tagElement);
 
-                                // 添加删除标签的事件
-                                tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                                    tagElement.remove();
-                                });
-                            });
-                        }
-                    }
-                }, 100);
+                    // 设置标签功能
+                    this.setupTagsFeature(bottomSheet);
 
-                // 绑定保存按钮事件
-                const saveBtn = dialog.element.querySelector('[data-type="save"]');
-                const textarea = dialog.element.querySelector('textarea');
-                if (saveBtn && textarea) {
-                    saveBtn.onclick = async () => {
-                        const text = textarea.value;
-                        const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
-                            .map(tag => tag.getAttribute('data-tag'));
-
-                        if (text.trim()) {
-                            await this.saveContent(text, tags);
-                            dialog.destroy();
-                            // 清空临时内容和标签
-                            this.tempNoteContent = '';
-                            this.tempNoteTags = [];
-                            resolve(true);
-                            return;
-                        }
-                        resolve(false);
-                    };
-                }
-
-                // 设置标签功能
-                this.setupTagsFeature(dialog.element);
-
-                // 在对话框创建后设置图片上传功能
-                setTimeout(() => {
+                    // 设置图片上传功能
                     this.imageService.setupImageUpload({
-                        container: dialog.element,
+                        container: bottomSheet,
                         i18n: this.i18n
                     });
-                }, 100);
-            });
+
+                    // 绑定保存按钮事件
+                    const saveBtn = bottomSheet.querySelector('.main_save_btn');
+                    if (saveBtn && textarea) {
+                        saveBtn.addEventListener('click', async () => {
+                            if (textarea.value.trim()) {
+                                const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
+                                    .map(tag => tag.getAttribute('data-tag'));
+                                await this.saveContent(textarea.value, tags);
+                                closeBottomSheet();
+                                resolve(true);
+                            }
+                        });
+                    }
+                });
+            } else {
+                // 桌面端的原有实现
+                return new Promise((resolve) => {
+                    const dialog = new Dialog({
+                        title: this.i18n.note.title,
+                        content: `
+                            <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
+                                ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
+                            </div>`,
+                        width: "520px",
+                        height: "400px",
+                        transparent: false,
+                        disableClose: false,
+                        disableAnimation: false,
+                        destroyCallback: () => {
+                            const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
+                            if (textarea && textarea.value.trim()) {
+                                this.tempNoteContent = textarea.value;
+                                this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                                    .map(tag => tag.getAttribute('data-tag'))
+                                    .filter(tag => tag !== null) as string[];
+                            }
+                            this.isCreatingNote = false;
+                            resolve(false);
+                        }
+                    });
+
+                    // 在对话框创建后立即聚焦到文本框
+                    setTimeout(() => {
+                        const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
+                        if (textarea) {
+                            textarea.focus();
+                            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+                            textarea.addEventListener('keydown', async (e) => {
+                                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                    e.preventDefault();
+                                    dialog.element.querySelector('[data-type="save"]')?.click();
+                                }
+                                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                                    e.preventDefault();
+                                    const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
+                                    if (addTagBtn) {
+                                        addTagBtn.click();
+                                    }
+                                }
+                            });
+                        }
+
+                        if (this.tempNoteTags.length > 0) {
+                            const tagsList = dialog.element.querySelector('.tags-list');
+                            if (tagsList) {
+                                this.tempNoteTags.forEach(tagText => {
+                                    const tagElement = document.createElement('span');
+                                    tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                                    tagElement.setAttribute('data-tag', tagText);
+                                    tagElement.setAttribute('aria-label', tagText);
+                                    tagElement.style.cursor = 'default';
+                                    tagElement.innerHTML = `
+                                        <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
+                                        <svg class="b3-chip__close" style="cursor: pointer;">
+                                            <use xlink:href="#iconClose"></use>
+                                        </svg>
+                                    `;
+                                    tagsList.appendChild(tagElement);
+
+                                    tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                        tagElement.remove();
+                                    });
+                                });
+                            }
+                        }
+                    }, 100);
+
+                    // 绑定保存按钮事件
+                    const saveBtn = dialog.element.querySelector('[data-type="save"]');
+                    const textarea = dialog.element.querySelector('textarea');
+                    if (saveBtn && textarea) {
+                        saveBtn.onclick = async () => {
+                            const text = textarea.value;
+                            const tags = Array.from(dialog.element.querySelectorAll('.tag-item'))
+                                .map(tag => tag.getAttribute('data-tag'));
+
+                            if (text.trim()) {
+                                await this.saveContent(text, tags);
+                                dialog.destroy();
+                                this.tempNoteContent = '';
+                                this.tempNoteTags = [];
+                                resolve(true);
+                                return;
+                            }
+                            resolve(false);
+                        };
+                    }
+
+                    this.setupTagsFeature(dialog.element);
+
+                    setTimeout(() => {
+                        this.imageService.setupImageUpload({
+                            container: dialog.element,
+                            i18n: this.i18n
+                        });
+                    }, 100);
+                });
+            }
         } catch (error) {
             console.error('Error creating new note:', error);
             return false;
@@ -2110,26 +2349,26 @@ export default class PluginQuickNote extends Plugin {
         }
     }
 
-   // 设置标签功能
-   private setupTagsFeature(container: HTMLElement) {
-    const tagsList = container.querySelector('.tags-list');
-    const addTagBtn = container.querySelector('.add-tag-btn');
+    // 设置标签功能
+    private setupTagsFeature(container: HTMLElement) {
+        const tagsList = container.querySelector('.tags-list');
+        const addTagBtn = container.querySelector('.add-tag-btn');
 
-    if (tagsList && addTagBtn) {
-        addTagBtn.onclick = (e) => {
-            e.stopPropagation();
+        if (tagsList && addTagBtn) {
+            addTagBtn.onclick = (e) => {
+                e.stopPropagation();
 
 
-            // 获取所有标签并去重
-            const allTags = Array.from(new Set(this.historyService.getCurrentData()
-                ?.filter(item => item && Array.isArray(item.tags))
-                .flatMap(item => item.tags || [])
-            ));
+                // 获取所有标签并去重
+                const allTags = Array.from(new Set(this.historyService.getCurrentData()
+                    ?.filter(item => item && Array.isArray(item.tags))
+                    .flatMap(item => item.tags || [])
+                ));
 
-            // 创建标签选择面板
-            const tagPanel = document.createElement('div');
-            tagPanel.className = 'tag-panel';
-            tagPanel.style.cssText = `
+                // 创建标签选择面板
+                const tagPanel = document.createElement('div');
+                tagPanel.className = 'tag-panel';
+                tagPanel.style.cssText = `
             position: fixed;
             z-index: 205;
             width: 133px;
@@ -2144,29 +2383,29 @@ export default class PluginQuickNote extends Plugin {
             overflow: hidden; // 防止内容溢出
         `;
 
-            // 修改位置计算逻辑
-            const btnRect = addTagBtn.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const panelHeight = 150; // 面板高度
-            const margin = 8; // 边距
+                // 修改位置计算逻辑
+                const btnRect = addTagBtn.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const panelHeight = 150; // 面板高度
+                const margin = 8; // 边距
 
-            // 判断是否有足够空间在上方显示
-            const showAbove = btnRect.top > panelHeight + margin;
-            // 如果上方空间不够，就显示在下方
-            const top = showAbove ?
-                btnRect.top - panelHeight - margin :
-                btnRect.bottom + margin;
+                // 判断是否有足够空间在上方显示
+                const showAbove = btnRect.top > panelHeight + margin;
+                // 如果上方空间不够，就显示在下方
+                const top = showAbove ?
+                    btnRect.top - panelHeight - margin :
+                    btnRect.bottom + margin;
 
-            tagPanel.style.top = `${top}px`;
-            tagPanel.style.left = `${btnRect.left}px`;
+                tagPanel.style.top = `${top}px`;
+                tagPanel.style.left = `${btnRect.left}px`;
 
-            // 如果面板会超出视口右侧，则向左对齐
-            if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
-                tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
-            }
+                // 如果面板会超出视口右侧，则向左对齐
+                if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
+                    tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
+                }
 
-            // 修改面板内容结构
-            tagPanel.innerHTML = `
+                // 修改面板内容结构
+                tagPanel.innerHTML = `
             <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
                 <input type="text" 
                     class="b3-text-field fn__flex-1 tag-input" 
@@ -2180,13 +2419,13 @@ export default class PluginQuickNote extends Plugin {
                 <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         ${allTags.length > 0 ?
-                    allTags
-                        .sort((a, b) => {
-                            const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
-                            const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
-                            return countB - countA;
-                        })
-                        .map(tag => `
+                        allTags
+                            .sort((a, b) => {
+                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
+                                return countB - countA;
+                            })
+                            .map(tag => `
                                     <div class="history-tag b3-chip b3-chip--middle" 
                                         style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
                                         data-tag="${tag}">
@@ -2198,119 +2437,230 @@ export default class PluginQuickNote extends Plugin {
                                         </span>
                                     </div>
                                 `).join('')
-                    : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
                         ${this.i18n.note.noTags}
                        </div>`
-                }
+                    }
                     </div>
                 </div>
             </div>
         `;
 
-            // 将面板添加到文档根节点
-            document.body.appendChild(tagPanel);
+                // 将面板添加到文档根节点
+                document.body.appendChild(tagPanel);
 
-            // 获取输入框元素
-            const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
-            tagInput.focus();
+                // 获取输入框元素
+                const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
+                tagInput.focus();
 
-            // 添加标签的函数
-            const addTag = (tagText: string) => {
-                if (tagText.trim()) {
-                    const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
-                        .map(tag => tag.getAttribute('data-tag'));
+                // 添加标签的函数
+                const addTag = (tagText: string) => {
+                    if (tagText.trim()) {
+                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
 
-                    if (!existingTags.includes(tagText)) {
-                        const tagElement = document.createElement('span');
-                        tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                        tagElement.setAttribute('data-tag', tagText);
-                        tagElement.setAttribute('aria-label', tagText);
-                        tagElement.style.cursor = 'default';
-                        tagElement.innerHTML = `
+                        if (!existingTags.includes(tagText)) {
+                            const tagElement = document.createElement('span');
+                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                            tagElement.setAttribute('data-tag', tagText);
+                            tagElement.setAttribute('aria-label', tagText);
+                            tagElement.style.cursor = 'default';
+                            tagElement.innerHTML = `
                         <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
                         <svg class="b3-chip__close" style="cursor: pointer;">
                             <use xlink:href="#iconClose"></use>
                         </svg>
                     `;
-                        tagsList.appendChild(tagElement);
+                            tagsList.appendChild(tagElement);
 
-                        // 添加删除标签的事件
-                        tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                            tagElement.remove();
-                        });
+                            // 添加删除标签的事件
+                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                tagElement.remove();
+                            });
+                        }
+                        tagInput.value = '';
+                        // 添加标签后关闭面板
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
-                    tagInput.value = '';
-                    // 添加标签后关闭面板
-                    tagPanel.remove();
-                    document.removeEventListener('click', closePanel);
-                }
-            };
+                };
 
-            // 回车添加标签
-            tagInput.addEventListener('keydown', (e) => {
-                const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
-                const currentSelected = tagPanel.querySelector('.history-tag.selected');
-                let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
+                // 回车添加标签
+                tagInput.addEventListener('keydown', (e) => {
+                    const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
+                    const currentSelected = tagPanel.querySelector('.history-tag.selected');
+                    let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
 
-                switch (e.key) {
-                    case 'ArrowDown':
-                        e.preventDefault();
-                        if (historyTags.length > 0) {
-                            // 移除当前选中项的样式
-                            if (currentSelected) {
-                                currentSelected.classList.remove('selected');
-                                currentSelected.style.backgroundColor = '';
+                    switch (e.key) {
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            if (historyTags.length > 0) {
+                                // 移除当前选中项的样式
+                                if (currentSelected) {
+                                    currentSelected.classList.remove('selected');
+                                    currentSelected.style.backgroundColor = '';
+                                }
+                                // 计算下一个索引
+                                currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
+                                // 添加新选中项的样式
+                                const nextTag = historyTags[currentIndex] as HTMLElement;
+                                nextTag.classList.add('selected');
+                                nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                                // 确保选中项可见
+                                nextTag.scrollIntoView({ block: 'nearest' });
                             }
-                            // 计算下一个索引
-                            currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
-                            // 添加新选中项的样式
-                            const nextTag = historyTags[currentIndex] as HTMLElement;
-                            nextTag.classList.add('selected');
-                            nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                            // 确保选中项可见
-                            nextTag.scrollIntoView({ block: 'nearest' });
-                        }
-                        break;
+                            break;
 
-                    case 'ArrowUp':
-                        e.preventDefault();
-                        if (historyTags.length > 0) {
-                            // 移除当前选中项的样式
-                            if (currentSelected) {
-                                currentSelected.classList.remove('selected');
-                                currentSelected.style.backgroundColor = '';
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            if (historyTags.length > 0) {
+                                // 移除当前选中项的样式
+                                if (currentSelected) {
+                                    currentSelected.classList.remove('selected');
+                                    currentSelected.style.backgroundColor = '';
+                                }
+                                // 计算上一个索引
+                                currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
+                                // 添加新选中项的样式
+                                const prevTag = historyTags[currentIndex] as HTMLElement;
+                                prevTag.classList.add('selected');
+                                prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                                // 确保选中项可见
+                                prevTag.scrollIntoView({ block: 'nearest' });
                             }
-                            // 计算上一个索引
-                            currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
-                            // 添加新选中项的样式
-                            const prevTag = historyTags[currentIndex] as HTMLElement;
-                            prevTag.classList.add('selected');
-                            prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                            // 确保选中项可见
-                            prevTag.scrollIntoView({ block: 'nearest' });
-                        }
-                        break;
+                            break;
 
-                    case 'Enter':
+                        case 'Enter':
+                            e.preventDefault();
+                            const searchText = tagInput.value.trim();
+                            if (currentSelected) {
+                                // 如果有选中的标签，使用该标签
+                                addTag(currentSelected.getAttribute('data-tag'));
+                                const textarea = container.querySelector('textarea');
+                                if (textarea) {
+                                    textarea.focus();
+                                }
+                            } else if (searchText) {
+                                // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
+                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+
+                                if (matchingTag) {
+                                    // 如果有完全匹配的标签，使用该标签
+                                    addTag(matchingTag.getAttribute('data-tag'));
+                                } else {
+                                    // 如果没有匹配的标签，创建新标签
+                                    addTag(searchText);
+                                }
+
+                                const textarea = container.querySelector('textarea');
+                                if (textarea) {
+                                    textarea.focus();
+                                }
+                            }
+                            break;
+                    }
+                });
+
+                // 修改鼠标悬停事件处理，避免与键盘选择冲突
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        if (!tag.classList.contains('selected')) {
+                            tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                        }
+                    });
+
+                    tag.addEventListener('mouseleave', () => {
+                        if (!tag.classList.contains('selected')) {
+                            tag.style.backgroundColor = '';
+                        }
+                    });
+                });
+
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
+                    }
+                    const textarea = container.querySelector('textarea');
+                    if (textarea) {
+                        // 将焦点设置到编辑框上
+                        textarea.focus();
+                    }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签点击事件
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        const tagText = tag.getAttribute('data-tag');
+                        if (tagText) {
+                            addTag(tagText);
+                        }
+                    });
+
+                    // 添加悬停效果
+                    tag.addEventListener('mouseenter', () => {
+                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        tag.style.backgroundColor = '';
+                    });
+                });
+
+                // 添加搜索功能
+                tagInput.addEventListener('input', (e) => {
+                    const searchText = (e.target as HTMLInputElement).value.toLowerCase();
+                    const historyTags = tagPanel.querySelectorAll('.history-tag');
+
+                    historyTags.forEach(tag => {
+                        const tagText = tag.getAttribute('data-tag').toLowerCase();
+                        if (tagText.includes(searchText)) {
+                            (tag as HTMLElement).style.display = 'flex';
+                        } else {
+                            (tag as HTMLElement).style.display = 'none';
+                        }
+                    });
+
+                    // 如果没有匹配的标签，显示"无匹配标签"提示
+                    const visibleTags = Array.from(historyTags).filter(tag =>
+                        (tag as HTMLElement).style.display !== 'none'
+                    );
+
+                    const noMatchMessage = tagPanel.querySelector('.no-match-message');
+                    if (visibleTags.length === 0 && searchText) {
+                        if (!noMatchMessage) {
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'no-match-message';
+                            messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
+                            messageDiv.textContent = this.i18n.note.noMatchingTags;
+                            tagPanel.querySelector('.history-tags').appendChild(messageDiv);
+                        }
+                    } else if (noMatchMessage) {
+                        noMatchMessage.remove();
+                    }
+                });
+
+                // 修改回车键处理逻辑
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
                         e.preventDefault();
                         const searchText = tagInput.value.trim();
-                        if (currentSelected) {
-                            // 如果有选中的标签，使用该标签
-                            addTag(currentSelected.getAttribute('data-tag'));
-                            const textarea = container.querySelector('textarea');
-                            if (textarea) {
-                                textarea.focus();
-                            }
-                        } else if (searchText) {
-                            // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
                             const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
                                 .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
 
                             if (matchingTag) {
-                                // 如果有完全匹配的标签，使用该标签
+                                // 如果有完全匹配的标签，直接使用该标签
                                 addTag(matchingTag.getAttribute('data-tag'));
                             } else {
-                                // 如果没有匹配的标签，创建新标签
+                                // 如果没有完全匹配的标签，创建新标签
                                 addTag(searchText);
                             }
 
@@ -2319,123 +2669,12 @@ export default class PluginQuickNote extends Plugin {
                                 textarea.focus();
                             }
                         }
-                        break;
-                }
-            });
-
-            // 修改鼠标悬停事件处理，避免与键盘选择冲突
-            tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                tag.addEventListener('mouseenter', () => {
-                    if (!tag.classList.contains('selected')) {
-                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
                     }
                 });
-
-                tag.addEventListener('mouseleave', () => {
-                    if (!tag.classList.contains('selected')) {
-                        tag.style.backgroundColor = '';
-                    }
-                });
-            });
-
-            // 点击其他地方关闭面板
-            const closePanel = (e: MouseEvent) => {
-                if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
-                    tagPanel.remove();
-                    document.removeEventListener('click', closePanel);
-                }
-                const textarea = container.querySelector('textarea');
-                if (textarea) {
-                    // 将焦点设置到编辑框上
-                    textarea.focus();
-                }
             };
-
-            // 延迟添加点击事件，避免立即触发
-            setTimeout(() => {
-                document.addEventListener('click', closePanel);
-            }, 0);
-
-            // 添加标签点击事件
-            tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                tag.addEventListener('click', () => {
-                    const tagText = tag.getAttribute('data-tag');
-                    if (tagText) {
-                        addTag(tagText);
-                    }
-                });
-
-                // 添加悬停效果
-                tag.addEventListener('mouseenter', () => {
-                    tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                });
-                tag.addEventListener('mouseleave', () => {
-                    tag.style.backgroundColor = '';
-                });
-            });
-
-            // 添加搜索功能
-            tagInput.addEventListener('input', (e) => {
-                const searchText = (e.target as HTMLInputElement).value.toLowerCase();
-                const historyTags = tagPanel.querySelectorAll('.history-tag');
-
-                historyTags.forEach(tag => {
-                    const tagText = tag.getAttribute('data-tag').toLowerCase();
-                    if (tagText.includes(searchText)) {
-                        (tag as HTMLElement).style.display = 'flex';
-                    } else {
-                        (tag as HTMLElement).style.display = 'none';
-                    }
-                });
-
-                // 如果没有匹配的标签，显示"无匹配标签"提示
-                const visibleTags = Array.from(historyTags).filter(tag =>
-                    (tag as HTMLElement).style.display !== 'none'
-                );
-
-                const noMatchMessage = tagPanel.querySelector('.no-match-message');
-                if (visibleTags.length === 0 && searchText) {
-                    if (!noMatchMessage) {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = 'no-match-message';
-                        messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
-                        messageDiv.textContent = this.i18n.note.noMatchingTags;
-                        tagPanel.querySelector('.history-tags').appendChild(messageDiv);
-                    }
-                } else if (noMatchMessage) {
-                    noMatchMessage.remove();
-                }
-            });
-
-            // 修改回车键处理逻辑
-            tagInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const searchText = tagInput.value.trim();
-                    if (searchText) {
-                        // 检查是否有匹配的已有标签
-                        const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                            .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                        if (matchingTag) {
-                            // 如果有完全匹配的标签，直接使用该标签
-                            addTag(matchingTag.getAttribute('data-tag'));
-                        } else {
-                            // 如果没有完全匹配的标签，创建新标签
-                            addTag(searchText);
-                        }
-
-                        const textarea = container.querySelector('textarea');
-                        if (textarea) {
-                            textarea.focus();
-                        }
-                    }
-                }
-            });
-        };
-      }
+        }
     }
- 
+
 
     // 设置搜索功能
     private setupSearchFeature(container: HTMLElement) {
