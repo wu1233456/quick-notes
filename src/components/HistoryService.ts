@@ -1,5 +1,6 @@
 import { Dialog, Plugin } from "siyuan";
 import { DOCK_STORAGE_NAME, ARCHIVE_STORAGE_NAME } from '../libs/const';
+import { StorageService } from './StorageService';
 
 export interface HistoryItem {
     text: string;
@@ -42,6 +43,7 @@ export class HistoryService {
     private itemsPerPage: number;
     private parent: Plugin;
     private currentTimestamp: number | null = null;
+    public storageService: StorageService;
 
     constructor(parent: Plugin, data: HistoryData, itemsPerPage: number = 10, i18n: any) {
         this.parent = parent;
@@ -49,6 +51,7 @@ export class HistoryService {
         this.itemsPerPage = itemsPerPage;
         this.currentDisplayCount = itemsPerPage;
         this.i18n = i18n;
+        this.storageService = new StorageService(parent);
     }
     public setItemsPerPage(itemsPerPage: number) {
         this.itemsPerPage = itemsPerPage;
@@ -419,7 +422,7 @@ export class HistoryService {
         }
     }
     public async saveData(storageKey: string, data: HistoryItem[]) {
-        await this.parent.saveData(storageKey, { 'history': data });
+        await this.storageService.saveData<HistoryItem>(storageKey, { history: data });
     }
 
     public async openEditDialog(

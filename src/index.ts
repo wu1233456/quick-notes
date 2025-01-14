@@ -270,67 +270,82 @@ export default class PluginQuickNote extends Plugin {
         console.log("uninstall");
     }
 
-    private async loadNoteData(){
-        // 初始化未归档小记数据
-        let unarchive_history = await this.loadData(DOCK_STORAGE_NAME) || {
-            history: []
-        };
+    private async loadNoteData() {
+        try {
+            // 初始化未归档小记数据
+            let unarchive_history = await this.loadData(DOCK_STORAGE_NAME) || {
+                history: []
+            };
 
-        // 初始化归档数据
-        let archive_history = await this.loadData(ARCHIVE_STORAGE_NAME) || {
-            history: []
-        };
+            // 初始化归档数据
+            let archive_history = await this.loadData(ARCHIVE_STORAGE_NAME) || {
+                history: []
+            };
 
-        // 获取设置的每页显示数量，如果没有设置则使用默认值
-        this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
-        this.currentDisplayCount = this.itemsPerPage;
+            // 获取设置的每页显示数量，如果没有设置则使用默认值
+            this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
+            this.currentDisplayCount = this.itemsPerPage;
 
-        // 初始化历史服务
-        const historyData: HistoryData = {
-            history: unarchive_history.history || [],
-            archivedHistory: archive_history.history || []
-        };
+            // 初始化历史服务
+            const historyData: HistoryData = {
+                history: unarchive_history.history || [],
+                archivedHistory: archive_history.history || []
+            };
 
-        this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
+            this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
 
-        // 初始化编辑器服务
-        this.editorService = new EditorService(this.i18n);
+            // 尝试迁移数据到新的存储位置
+            const mainData = await this.historyService.storageService.migrateDataIfNeeded(DOCK_STORAGE_NAME);
+            const archiveData = await this.historyService.storageService.migrateDataIfNeeded(ARCHIVE_STORAGE_NAME);
 
-        // 初始化图片服务
-        this.imageService = new ImageService(this.i18n);
-
-        // 初始化文档服务
-        this.documentService = new DocumentService(
-            this.i18n,
-            this.settingUtils,
-            () => {
-                this.renderDockHistory();
-            },
-            this,
-            this.historyService
-        );
-
-        // 初始化提醒服务
-        this.reminderService = await ReminderService.create(this.i18n, this);
-        //初始化分享服务
-        this.shareService = new ShareService(this, this.historyService);
-
-        // 初始化flomo服务
-        this.flomoService = new FlomoService(this, this.historyService, this.i18n);
-
-        if(this.element){
-            this.initDockPanel();
-        }
-        // 添加提醒完成事件监听
-        window.addEventListener('reminder-completed', ((event: CustomEvent) => {
-            const { timestamp, snoozeCount } = event.detail;
-            if (snoozeCount === 0) {
-                // 如果没有设置延迟提醒,更新历史记录显示
-                this.renderDockHistory();
+            if (mainData) {
+                this.historyService.getHistoryData().splice(0, this.historyService.getHistoryData().length, ...mainData.history);
             }
-        }) as EventListener);
+            
+            if (archiveData) {
+                const archivedHistory = this.historyService.getArchivedData();
+                archivedHistory.splice(0, archivedHistory.length, ...archiveData.history);
+            }
+
+            // 初始化其他服务
+            this.editorService = new EditorService(this.i18n);
+            this.imageService = new ImageService(this.i18n);
+            this.documentService = new DocumentService(
+                this.i18n,
+                this.settingUtils,
+                () => {
+                    this.renderDockHistory();
+                },
+                this,
+                this.historyService
+            );
+
+            // 初始化提醒服务
+            this.reminderService = await ReminderService.create(this.i18n, this);
+            //初始化分享服务
+            this.shareService = new ShareService(this, this.historyService);
+
+            // 初始化flomo服务
+            this.flomoService = new FlomoService(this, this.historyService, this.i18n);
+
+            if(this.element){
+                this.initDockPanel();
+            }
+
+            // 添加提醒完成事件监听
+            window.addEventListener('reminder-completed', ((event: CustomEvent) => {
+                const { timestamp, snoozeCount } = event.detail;
+                if (snoozeCount === 0) {
+                    // 如果没有设置延迟提醒,更新历史记录显示
+                    this.renderDockHistory();
+                }
+            }) as EventListener);
+
+        } catch (error) {
+            console.error('Failed to load note data:', error);
+        }
     }
-    //设置默认值
+
     private async initDefaultData() {
         this.frontend = getFrontend();
 
@@ -2184,8 +2199,8 @@ export default class PluginQuickNote extends Plugin {
                         ${allTags.length > 0 ?
                     allTags
                         .sort((a, b) => {
-                            const countA = this.historyService.getCurrentData().filter(item => item.tags?.includes(a)).length;
-                            const countB = this.historyService.getCurrentData().filter(item => item.tags?.includes(b)).length;
+                            const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                            const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
                             return countB - countA;
                         })
                         .map(tag => `

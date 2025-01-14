@@ -1,4 +1,5 @@
 import { Dialog, showMessage, getFrontend } from "siyuan";
+import { StorageService } from './StorageService';
 
 interface ReminderData {
     timestamp: number;
@@ -8,6 +9,10 @@ interface ReminderData {
     snoozeCount?: number;
 }
 
+interface ReminderStorageData {
+    history: ReminderData[];
+}
+
 export class ReminderService {
     private static STORAGE_KEY = "quicknote-reminders";
     private reminders: ReminderData[] = [];
@@ -15,11 +20,13 @@ export class ReminderService {
     private i18n: any;
     private plugin: any;
     private frontend: string;
+    private storageService: StorageService;
 
     private constructor(i18n: any, plugin: any) {
         this.i18n = i18n;
         this.plugin = plugin;
         this.frontend = getFrontend();
+        this.storageService = new StorageService(plugin);
     }
 
     public static async create(i18n: any, plugin: any): Promise<ReminderService> {
@@ -32,8 +39,8 @@ export class ReminderService {
     // 加载保存的提醒
     private async loadReminders() {
         try {
-            const stored = await this.plugin.loadData(ReminderService.STORAGE_KEY);
-            this.reminders = stored || [];
+            const stored = await this.storageService.loadData<ReminderData>(ReminderService.STORAGE_KEY);
+            this.reminders = stored?.history || [];
             // 清理过期的已完成提醒
             this.cleanupCompletedReminders();
         } catch (error) {
@@ -45,9 +52,9 @@ export class ReminderService {
     // 保存提醒到插件数据
     private async saveReminders() {
         try {
-            // console.log('Saving reminders:', this.reminders);
-            await this.plugin.saveData(ReminderService.STORAGE_KEY, this.reminders);
-            // console.log('Reminders saved successfully');
+            await this.storageService.saveData<ReminderData>(ReminderService.STORAGE_KEY, {
+                history: this.reminders
+            });
         } catch (error) {
             console.error('Error saving reminders:', error);
         }
