@@ -4,7 +4,6 @@ import {
     confirm,
     Dialog,
     Menu,
-    getFrontend,
     adaptHotkey,
     getFrontend
 } from "siyuan";
@@ -618,11 +617,28 @@ export default class PluginQuickNote extends Plugin {
                                     </div>
                                 </div>
                             </div>`;
-        this.renderDockerTopbar();
-        this.renderDockerEditor();
+        if(!isMobile()){
+            this.renderDockerTopbar();
+            this.renderDockerEditor();
+        }
         this.renderDockHistory();
         this.renderDockerToolbar();
         this.bindDockPanelEvents();
+    }
+    private renderMobileTopbar() {
+        this.element.querySelector('.topbar-container').innerHTML = ` <div class="block__icons">
+                <div class="block__logo">
+                    <svg class="block__logoicon">
+                        <use xlink:href="#iconSmallNote"></use>
+                    </svg>
+                    ${this.i18n.note.title}
+                </div>
+                <span data-type="refresh" class="block__icon b3-tooltips b3-tooltips__sw refresh_btn" aria-label="Refresh">
+                    <svg class="block__logoicon">
+                        <use xlink:href="#iconRefresh"></use>
+                    </svg>
+                </span>
+         </div>`;
     }
 
     private renderDockerTopbar() {
@@ -1800,6 +1816,17 @@ export default class PluginQuickNote extends Plugin {
                     });
 
                 }
+                if(isMobile()){
+                    menu.addItem({
+                        icon: "iconEdit",
+                        label: this.i18n.note.edit,
+                        click: async () => {
+                            menu.close();
+                            await this.editHistoryItem(timestamp)
+                            // this.generateShareImage(timestamp);
+                        }
+                    });
+                }
                 // 添加分享选项
                 menu.addItem({
                     icon: "iconCustomShare",
@@ -2142,32 +2169,6 @@ export default class PluginQuickNote extends Plugin {
                 ` : ''}
                 <div class="fn__flex" style="margin-top: 4px; justify-content: flex-end;">
                     <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
-                        <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconCopy"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconEdit"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text insert-daily-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${insertBtnLabel}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#${insertBtnIcon}"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text create-doc-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${this.i18n.note.createDoc}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconFile"></use>
-                            </svg>
-                        </button>
                         <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                             style="padding: 4px; height: 20px; width: 20px;" 
                             aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}">
@@ -2175,13 +2176,7 @@ export default class PluginQuickNote extends Plugin {
                                 <use xlink:href="#iconPin"></use>
                             </svg>
                         </button>
-                        <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconArchive"></use>
-                            </svg>
-                        </button>
+                       
                         <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
                             style="padding: 4px; height: 20px; width: 20px;">
                             <svg class="b3-button__icon" style="height: 14px; width: 14px;">
