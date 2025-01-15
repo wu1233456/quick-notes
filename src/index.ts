@@ -436,82 +436,130 @@ export default class PluginQuickNote extends Plugin {
 
         // 创建浮动按钮
         const floatingButton = document.createElement('div');
-        floatingButton.className = 'mobile-quick-note-btn';
+        floatingButton.className = 'mobile-quick-note-btn collapsed';
         floatingButton.innerHTML = `
             <div class="button-content">
                 <svg class="b3-button__icon">
-                    <use xlink:href="#iconAdd"></use>
+                    <use xlink:href="#iconSmallNote"></use>
                 </svg>
                 <span class="button-label">小记</span>
             </div>
         `;
 
-        // 设置按钮样式，使用思源的主题变量
-        floatingButton.style.cssText = `
-            position: fixed;
-            bottom: 80px;
-            left: 16px;
-            height: 40px;
-            padding: 0 16px;
-            border-radius: 20px;
-            background-color: var(--b3-theme-surface);
-            color: var(--b3-theme-on-surface);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--b3-dialog-shadow);
-            z-index: 5;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--b3-theme-surface-lighter);
-        `;
+        // 添加点击事件处理
+        floatingButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            if (floatingButton.classList.contains('collapsed')) {
+                floatingButton.classList.remove('collapsed');
+                floatingButton.classList.add('expanded');
+            } else {
+                this.createMobileQuickNote();
+            }
+        });
 
-        // 添加内部内容样式
-        const buttonContent = floatingButton.querySelector('.button-content') as HTMLElement;
-        if (buttonContent) {
-            buttonContent.style.cssText = `
+        // 添加触摸事件处理，防止滑动时触发点击
+        let touchStartX = 0;
+        let touchStartY = 0;
+        floatingButton.addEventListener('touchstart', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        floatingButton.addEventListener('touchend', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaX = Math.abs(touchEndX - touchStartX);
+            const deltaY = Math.abs(touchEndY - touchStartY);
+            
+            // 如果移动距离小于10px，认为是点击而不是滑动
+            if (deltaX < 10 && deltaY < 10) {
+                if (floatingButton.classList.contains('collapsed')) {
+                    floatingButton.classList.remove('collapsed');
+                    floatingButton.classList.add('expanded');
+                } else {
+                    this.createMobileQuickNote();
+                }
+            }
+        });
+
+        // 添加点击外部区域收起按钮的处理
+        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+            if (!floatingButton.contains(e.target as Node) && floatingButton.classList.contains('expanded')) {
+                floatingButton.classList.remove('expanded');
+                floatingButton.classList.add('collapsed');
+            }
+        };
+
+        // 添加全局点击和触摸事件监听
+        document.addEventListener('click', handleOutsideClick);
+        document.addEventListener('touchend', handleOutsideClick);
+
+        // 在组件卸载时移除事件监听
+        this.addCommand({
+            langKey: '',
+            hotkey: '',
+            callback: () => {
+                document.removeEventListener('click', handleOutsideClick);
+                document.removeEventListener('touchend', handleOutsideClick);
+            }
+        });
+
+        // 添加到body
+        document.body.appendChild(floatingButton);
+
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .mobile-quick-note-btn {
+                position: fixed;
+                right: 0;
+                top: 70%;
+                transform: translateY(-50%);
+                z-index: 5;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+                background-color: var(--b3-theme-surface);
+                color: var(--b3-theme-on-surface);
+                box-shadow: var(--b3-dialog-shadow);
+                backdrop-filter: blur(8px);
+                border: 1px solid var(--b3-theme-surface-lighter);
+                border-radius: 12px 0 0 12px;
+                padding: 8px 16px 8px 4px;
+            }
+
+            .mobile-quick-note-btn.collapsed {
+                opacity: 0.6;
+                transform: translateY(-50%) translateX(60%);
+            }
+
+            .mobile-quick-note-btn.expanded {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0);
+            }
+
+            .mobile-quick-note-btn .button-content {
                 display: flex;
                 align-items: center;
                 gap: 6px;
-            `;
-        }
+            }
 
-        // 设置图标样式
-        const icon = floatingButton.querySelector('.b3-button__icon') as HTMLElement;
-        if (icon) {
-            icon.style.cssText = `
-                height: 18px;
-                width: 18px;
+            .mobile-quick-note-btn .b3-button__icon {
+                height: 20px;
+                width: 20px;
                 color: var(--b3-theme-primary);
-            `;
-        }
+            }
 
-        // 设置文字标签样式
-        const label = floatingButton.querySelector('.button-label') as HTMLElement;
-        if (label) {
-            label.style.cssText = `
+            .mobile-quick-note-btn .button-label {
                 font-size: 14px;
                 font-weight: 500;
                 letter-spacing: 0.3px;
                 color: var(--b3-theme-on-surface);
-            `;
-        }
-
-        // 添加触摸反馈效果
-        floatingButton.addEventListener('touchstart', () => {
-            floatingButton.style.transform = 'scale(0.95) translateY(1px)';
-            floatingButton.style.backgroundColor = 'var(--b3-theme-surface-lighter)';
-        });
-
-        floatingButton.addEventListener('touchend', () => {
-            floatingButton.style.transform = 'scale(1) translateY(0)';
-            floatingButton.style.backgroundColor = 'var(--b3-theme-surface)';
-            this.createNewNote();
-        });
-
-        // 将按钮直接添加到 body
-        document.body.appendChild(floatingButton);
+                white-space: nowrap;
+            }
+        `;
+        document.head.appendChild(style);
     }
     private initDock() {
         console.log("initDock start");
