@@ -70,11 +70,14 @@ export default class PluginQuickNote extends Plugin {
     private reminderService: ReminderService;
     private flomoService: FlomoService;
 
+    private isInitDefaultData: boolean = false;
+
     // 在类定义开始处添加属性
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
 
     async onload() {
         console.log("onload start");
+        this.initDefaultData();
         // 初始化设置
         this.settingUtils = new SettingUtils({
             plugin: this,
@@ -243,25 +246,23 @@ export default class PluginQuickNote extends Plugin {
         });
 
         await this.settingUtils.load();
-        this.initDefaultData();
         this.loadNoteData();
-        if(isMobile()){
-            console.log("手机端需要直接打开tab页面")
-            return
-        }
-        this.initComponents();
         console.log("onload end");
     }
 
     async onLayoutReady() {
+        console.log("onLayoutReady start");
+        this.initDefaultData();
+        this.initComponents();
         if (isMobile()) {
             console.log("isMobile");
             this.addMobileFloatingButton();
         }
-        console.log("onLayoutReady");
+        console.log("onLayoutReady end");
     }
 
     async onunload() {
+        console.log("onunload start");
         this.cleanupEventListeners();
         if (this.reminderService) {
             this.reminderService.destroy();
@@ -270,6 +271,7 @@ export default class PluginQuickNote extends Plugin {
             this.flomoService.stopAutoSync();
         }
         console.log(this.i18n.byePlugin);
+        console.log("onunload end");
     }
 
     // 添加设置变化的监听
@@ -346,6 +348,11 @@ export default class PluginQuickNote extends Plugin {
     }
     //设置默认值
     private async initDefaultData() {
+        console.log("initDefaultData start");
+        if(this.isInitDefaultData){
+            return;
+        }
+        this.isInitDefaultData = true;
         this.frontend = getFrontend();
 
         // 初始化配置数据
@@ -381,9 +388,11 @@ export default class PluginQuickNote extends Plugin {
 
         // 初始化提醒服务
         this.reminderService = await ReminderService.create(this.i18n, this);
+        console.log("initDefaultData end");
 
     }
     private initComponents() {
+        console.log("initComponents start");
         this.addIcons(iconsSVG);
         // 添加顶部栏按钮
         this.addTopBar({
@@ -394,6 +403,12 @@ export default class PluginQuickNote extends Plugin {
                 this.createNewNote();
             }
         });
+        this.initDock();
+        initMardownStyle();
+        if(isMobile()){
+            console.log("手机端需要直接打开tab页面")
+            return
+        }
         // 添加快捷键命令
         this.addCommand({
             langKey: this.i18n.note.createNewSmallNote,
@@ -406,8 +421,6 @@ export default class PluginQuickNote extends Plugin {
                 }
             }
         });
-        this.initDock();
-        initMardownStyle();
     }
     
     private addMobileFloatingButton() {
@@ -498,6 +511,7 @@ export default class PluginQuickNote extends Plugin {
         document.body.appendChild(floatingButton);
     }
     private initDock() {
+        console.log("initDock start");
         // 创建 dock 时读取保存的位置
         this.addDock({
             config: {
@@ -519,6 +533,7 @@ export default class PluginQuickNote extends Plugin {
                 console.log("destroy dock:", DOCK_TYPE);
             }
         });
+        console.log("initDock end");
     }
 
 
