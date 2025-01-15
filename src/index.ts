@@ -170,80 +170,82 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.itemsPerPageDesc
         });
 
-        this.settingUtils.addItem({
-            key: "quickWindowWidth",
-            value: 250,
-            type: "number",
-            title: this.i18n.note.quickWindowWidth,
-            description: this.i18n.note.quickWindowWidthDesc
-        });
+        // // 添加自动同步设置
+        // this.settingUtils.addItem({
+        //     key: "flomoAutoSync",
+        //     value: false,
+        //     type: "checkbox",
+        //     title: this.i18n.note.flomoAutoSync,
+        //     description: this.i18n.note.flomoAutoSyncDesc
+        // });
 
-        this.settingUtils.addItem({
-            key: "quickWindowHeight",
-            value: 300,
-            type: "number",
-            title: this.i18n.note.quickWindowHeight,
-            description: this.i18n.note.quickWindowHeightDesc
-        });
+        // this.settingUtils.addItem({
+        //     key: "flomoSyncInterval",
+        //     value: 60,
+        //     type: "number",
+        //     title: this.i18n.note.flomoSyncInterval,
+        //     description: this.i18n.note.flomoSyncIntervalDesc
+        // });
+        if (!isMobile()) {
+            this.settingUtils.addItem({
+                key: "quickWindowWidth",
+                value: 250,
+                type: "number",
+                title: this.i18n.note.quickWindowWidth,
+                description: this.i18n.note.quickWindowWidthDesc
+            });
+    
+            this.settingUtils.addItem({
+                key: "quickWindowHeight",
+                value: 300,
+                type: "number",
+                title: this.i18n.note.quickWindowHeight,
+                description: this.i18n.note.quickWindowHeightDesc
+            });
 
-        // 添加flomo同步配置
-        this.settingUtils.addItem({
-            key: "flomoEnabled",
-            value: false,
-            type: "checkbox",
-            title: this.i18n.note.flomoEnabled,
-            description: this.i18n.note.flomoEnabledDesc
-        });
+            // 添加flomo同步配置
+            this.settingUtils.addItem({
+                key: "flomoEnabled",
+                value: false,
+                type: "checkbox",
+                title: this.i18n.note.flomoEnabled,
+                description: this.i18n.note.flomoEnabledDesc
+            });
 
-        // 添加自动同步设置
-        this.settingUtils.addItem({
-            key: "flomoAutoSync",
-            value: false,
-            type: "checkbox",
-            title: this.i18n.note.flomoAutoSync,
-            description: this.i18n.note.flomoAutoSyncDesc
-        });
+            // 添加flomo同步配置
+            this.settingUtils.addItem({
+                key: "flomoUsername",
+                value: "",
+                type: "textinput",
+                title: this.i18n.note.flomoUsername,
+                description: this.i18n.note.flomoUsernameDesc
+            });
 
-        this.settingUtils.addItem({
-            key: "flomoSyncInterval",
-            value: 60,
-            type: "number",
-            title: this.i18n.note.flomoSyncInterval,
-            description: this.i18n.note.flomoSyncIntervalDesc
-        });
+            this.settingUtils.addItem({
+                key: "flomoPassword",
+                value: "",
+                type: "textinput",
+                title: this.i18n.note.flomoPassword,
+                description: this.i18n.note.flomoPasswordDesc
+            });
 
-        // 添加flomo同步配置
-        this.settingUtils.addItem({
-            key: "flomoUsername",
-            value: "",
-            type: "textinput",
-            title: this.i18n.note.flomoUsername,
-            description: this.i18n.note.flomoUsernameDesc
-        });
+            this.settingUtils.addItem({
+                key: "flomoLastSyncTime",
+                value: moment().format("YYYY-MM-DD 00:00:00"),
+                type: "textinput",
+                title: this.i18n.note.flomoLastSyncTime,
+                description: this.i18n.note.flomoLastSyncTimeDesc
+            });
 
-        this.settingUtils.addItem({
-            key: "flomoPassword",
-            value: "",
-            type: "textinput",
-            title: this.i18n.note.flomoPassword,
-            description: this.i18n.note.flomoPasswordDesc
-        });
+            this.settingUtils.addItem({
+                key: "flomoAccessToken",
+                value: "",
+                type: "textinput",
+                title: this.i18n.note.flomoAccessToken,
+                description: this.i18n.note.flomoAccessTokenDesc
+            });
 
-        this.settingUtils.addItem({
-            key: "flomoLastSyncTime",
-            value: moment().format("YYYY-MM-DD 00:00:00"),
-            type: "textinput",
-            title: this.i18n.note.flomoLastSyncTime,
-            description: this.i18n.note.flomoLastSyncTimeDesc
-        });
-
-        this.settingUtils.addItem({
-            key: "flomoAccessToken",
-            value: "",
-            type: "textinput",
-            title: this.i18n.note.flomoAccessToken,
-            description: this.i18n.note.flomoAccessTokenDesc
-        });
+        }
 
         await this.settingUtils.load();
         this.loadNoteData();
@@ -276,9 +278,10 @@ export default class PluginQuickNote extends Plugin {
 
     // 添加设置变化的监听
     async onSettingChanged() {
-        if (this.flomoService) {
-            this.flomoService.handleSettingChanged();
-        }
+        //关闭自动同步功能，适配移动端后，感觉这里就没有必要了
+        // if (this.flomoService) {
+        //     this.flomoService.handleSettingChanged();
+        // }
     }
 
     uninstall() {
@@ -396,18 +399,18 @@ export default class PluginQuickNote extends Plugin {
     private initComponents() {
         console.log("initComponents start");
         this.addIcons(iconsSVG);
-        // 添加顶部栏按钮
-        this.addTopBar({
-            icon: "iconSmallNote",
-            title: this.i18n.note.title,
-            position: "right",
-            callback: () => {
-                this.createNewNote();
-            }
-        });
         this.initDock();
         initMardownStyle();
         if (!isMobile()) {
+            // 添加顶部栏按钮
+            this.addTopBar({
+                icon: "iconSmallNote",
+                title: this.i18n.note.title,
+                position: "right",
+                callback: () => {
+                    this.createNewNote();
+                }
+            });
             // 添加快捷键命令
             this.addCommand({
                 langKey: this.i18n.note.createNewSmallNote,

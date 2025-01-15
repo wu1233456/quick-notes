@@ -17,7 +17,7 @@ export class FlomoService {
         this.plugin = plugin;
         this.historyService = historyService;
         this.i18n = i18n;
-        this.initAutoSync();
+        // this.initAutoSync();
     }
 
     public initAutoSync() {
