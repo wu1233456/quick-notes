@@ -325,31 +325,31 @@ export default class PluginQuickNote extends Plugin {
             this,
             this.historyService
         );
-
-        // 初始化提醒服务
-        this.reminderService = await ReminderService.create(this.i18n, this);
+        if (!isMobile()) {
+            // 初始化提醒服务
+            this.reminderService = await ReminderService.create(this.i18n, this);
+            // 初始化flomo服务
+            this.flomoService = new FlomoService(this, this.historyService, this.i18n);
+            // 添加提醒完成事件监听
+            window.addEventListener('reminder-completed', ((event: CustomEvent) => {
+                const { timestamp, snoozeCount } = event.detail;
+                if (snoozeCount === 0) {
+                    // 如果没有设置延迟提醒,更新历史记录显示
+                    this.renderDockHistory();
+                }
+            }) as EventListener);
+        }
         //初始化分享服务
         this.shareService = new ShareService(this, this.historyService);
-
-        // 初始化flomo服务
-        this.flomoService = new FlomoService(this, this.historyService, this.i18n);
 
         if (this.element) {
             this.initDockPanel();
         }
-        // 添加提醒完成事件监听
-        window.addEventListener('reminder-completed', ((event: CustomEvent) => {
-            const { timestamp, snoozeCount } = event.detail;
-            if (snoozeCount === 0) {
-                // 如果没有设置延迟提醒,更新历史记录显示
-                this.renderDockHistory();
-            }
-        }) as EventListener);
     }
     //设置默认值
     private async initDefaultData() {
         console.log("initDefaultData start");
-        if(this.isInitDefaultData){
+        if (this.isInitDefaultData) {
             return;
         }
         this.isInitDefaultData = true;
@@ -387,7 +387,9 @@ export default class PluginQuickNote extends Plugin {
         this.shareService = new ShareService(this, this.historyService);
 
         // 初始化提醒服务
-        this.reminderService = await ReminderService.create(this.i18n, this);
+        if (!isMobile()) {
+            this.reminderService = await ReminderService.create(this.i18n, this);
+        }
         console.log("initDefaultData end");
 
     }
@@ -405,24 +407,22 @@ export default class PluginQuickNote extends Plugin {
         });
         this.initDock();
         initMardownStyle();
-        if(isMobile()){
-            console.log("手机端需要直接打开tab页面")
-            return
-        }
-        // 添加快捷键命令
-        this.addCommand({
-            langKey: this.i18n.note.createNewSmallNote,
-            hotkey: "⇧⌘Y",
-            globalCallback: () => {
-                if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
-                    this.createNewNote();
-                } else {
-                    this.createQuickInputWindow();
+        if (!isMobile()) {
+            // 添加快捷键命令
+            this.addCommand({
+                langKey: this.i18n.note.createNewSmallNote,
+                hotkey: "⇧⌘Y",
+                globalCallback: () => {
+                    if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
+                        this.createNewNote();
+                    } else {
+                        this.createQuickInputWindow();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
-    
+
     private addMobileFloatingButton() {
         // 检查是否已存在按钮，避免重复添加
         const existingButton = document.querySelector('.mobile-quick-note-btn');
@@ -668,22 +668,15 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private renderDockerToolbar() {
-        this.element.querySelector('.toolbar-container').innerHTML =
-            `
+        if (isMobile()) {
+            this.element.querySelector('.toolbar-container').innerHTML =
+                `
                                 <div class="fn__flex fn__flex-center" style="padding: 8px;">
                                     <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
                                         ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() ||
-                []).length.toString())}
+                    []).length.toString())}
                                     </div>
                                     <span class="fn__flex-1"></span>
-                                    ${(() => {
-                const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
-                return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
-                                            <svg style="height: 16px; width: 16px; color: ${isFlomoEnabled ? 'var(--b3-theme-primary)' : 'var(--b3-theme-on-surface-light)'};" class="sync_note_btn b3-button__icon" >
-                                                <use xlink:href="#icon${isFlomoEnabled ? 'Cloud' : 'CloudOff'}"></use>
-                                            </svg>
-                                        </button>`;
-            })()}
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
                                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
                                             <use xlink:href="#iconFilter"></use>
@@ -779,9 +772,9 @@ export default class PluginQuickNote extends Plugin {
                                     </div>
                                     <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
                                         ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
-                .map(tag => {
-                    const isSelected = this.selectedTags.includes(tag);
-                    return `
+                    .map(tag => {
+                        const isSelected = this.selectedTags.includes(tag);
+                        return `
                                         <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" style="cursor: pointer; 
                                                                                 background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
                                                                                 color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
@@ -794,9 +787,140 @@ export default class PluginQuickNote extends Plugin {
                                                 ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
                                             </span>
                                         </span>`;
-                }).join('')}
+                    }).join('')}
                                     </div>
                                 </div>`;
+        } else {
+            this.element.querySelector('.toolbar-container').innerHTML =
+                `
+                                <div class="fn__flex fn__flex-center" style="padding: 8px;">
+                                    <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                                        ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() ||
+                    []).length.toString())}
+                                    </div>
+                                    <span class="fn__flex-1"></span>
+                                    ${(() => {
+                    const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+                    return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
+                                            <svg style="height: 16px; width: 16px; color: ${isFlomoEnabled ? 'var(--b3-theme-primary)' : 'var(--b3-theme-on-surface-light)'};" class="sync_note_btn b3-button__icon" >
+                                                <use xlink:href="#icon${isFlomoEnabled ? 'Cloud' : 'CloudOff'}"></use>
+                                            </svg>
+                                        </button>`;
+                })()}
+                                    <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
+                                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                            <use xlink:href="#iconFilter"></use>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
+                                    <!-- 批量操作工具栏，默认隐藏 -->
+                                    <div class="batch-toolbar fn__none fn__flex-column" style="gap: 8px; margin-right: auto;">
+                                        <div class="fn__flex" style="gap: 8px;">
+                                            <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconCopy"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-tag-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.tag}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconTags"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;"
+                                                aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconArchive"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconTrashcan"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-merge-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.merge}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconMerge"></use>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="fn__flex" style="gap: 8px;">
+                                            <button class="b3-button b3-button--outline select-all-btn"
+                                                style="padding: 4px 8px; font-size: 12px;">
+                                                ${this.i18n.note.selectAll}
+                                            </button>
+                                            <button class="b3-button b3-button--cancel cancel-select-btn"
+                                                style="padding: 4px 8px; font-size: 12px;">
+                                                ${this.i18n.note.cancelSelect}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- 常规工具栏 -->
+                                    <div class="normal-toolbar fn__flex" style="gap: 8px;">
+                                        <div class="search-container fn__flex">
+                                            <div class="search-wrapper" style="position: relative;">
+                                                <input type="text" class="search-input b3-text-field" placeholder="${this.i18n.note.search}"
+                                                    style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
+                                                <button class="search-btn"
+                                                    style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
+                                                    <svg class="b3-button__icon"
+                                                        style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                        <use xlink:href="#iconSearch"></use>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button class="filter-btn"
+                                            style="border: none; background: none; padding: 4px; cursor: pointer; position: relative;"
+                                            title="${this.i18n.note.tagFilter}">
+                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                <use xlink:href="#iconTags"></use>
+                                            </svg>
+                                            ${this.selectedTags.length > 0 ? `
+                                            <div
+                                                style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);">
+                                            </div>
+                                            ` : ''}
+                                        </button>
+                                        <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;"
+                                            title="${this.i18n.note.sort}">
+                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                <use xlink:href="#iconSort"></use>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="filter-panel"
+                                    style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
+                                    <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                                        ${this.i18n.note.tagFilter}
+                                    </div>
+                                    <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
+                    .map(tag => {
+                        const isSelected = this.selectedTags.includes(tag);
+                        return `
+                                        <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" style="cursor: pointer; 
+                                                                                background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
+                                                                                color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
+                                                                                border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
+                                                                                transition: all 0.2s ease;" data-tag="${tag}"
+                                            aria-label="${tag}" data-selected="${isSelected}">
+                                            <span class="b3-chip__content"
+                                                style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                            <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                                ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
+                                            </span>
+                                        </span>`;
+                    }).join('')}
+                                    </div>
+                                </div>`;
+        }
         this.bindDockerToolbarEvents();
     }
     private bindDockerToolbarEvents() {
@@ -807,29 +931,31 @@ export default class PluginQuickNote extends Plugin {
         const filterMenuBtn = container.querySelector('.filter-menu-btn');
         const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
         const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
-        // 添加同步按钮事件
-        const syncBtn = element.querySelector('.sync_note_btn');
-        syncBtn.addEventListener('click', async () => {
-            const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
-            if (!isFlomoEnabled) {
-                showMessage(this.i18n.note.flomoSync.needEnable);
-                return;
-            }
 
-            const icon = syncBtn.querySelector('use');
-            // 添加旋转动画样式
-            syncBtn.style.animation = 'rotate 1s linear infinite';
-            icon.setAttribute('xlink:href', '#iconRefresh');
+        if (!(isMobile())) {
+            // 添加同步按钮事件
+            const syncBtn = element.querySelector('.sync_note_btn');
+            syncBtn.addEventListener('click', async () => {
+                const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+                if (!isFlomoEnabled) {
+                    showMessage(this.i18n.note.flomoSync.needEnable);
+                    return;
+                }
 
-            try {
-                await this.flomoService.sync();
-            } finally {
-                // 停止旋转动画并恢复图标
-                syncBtn.style.animation = '';
-                icon.setAttribute('xlink:href', isFlomoEnabled ? '#iconCloud' : '#iconCloudOff');
-            }
-        });
+                const icon = syncBtn.querySelector('use');
+                // 添加旋转动画样式
+                syncBtn.style.animation = 'rotate 1s linear infinite';
+                icon.setAttribute('xlink:href', '#iconRefresh');
 
+                try {
+                    await this.flomoService.sync();
+                } finally {
+                    // 停止旋转动画并恢复图标
+                    syncBtn.style.animation = '';
+                    icon.setAttribute('xlink:href', isFlomoEnabled ? '#iconCloud' : '#iconCloudOff');
+                }
+            });
+        }
 
         filterMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1533,19 +1659,21 @@ export default class PluginQuickNote extends Plugin {
                 return;
             }
 
-            // 添加提醒按钮点击处理
-            const reminderBtn = target.closest('.reminder-btn');
-            if (reminderBtn) {
-                e.stopPropagation();
-                const timestamp = Number(reminderBtn.getAttribute('data-timestamp'));
-                const success = await this.reminderService.updateReminderTime(timestamp);
-                if (success) {
-                    this.renderDockHistory();
+            if (!isMobile()) {
+                // 添加提醒按钮点击处理
+                const reminderBtn = target.closest('.reminder-btn');
+                if (reminderBtn) {
+                    e.stopPropagation();
+                    const timestamp = Number(reminderBtn.getAttribute('data-timestamp'));
+                    const success = await this.reminderService.updateReminderTime(timestamp);
+                    if (success) {
+                        this.renderDockHistory();
+                    }
+                    return;
                 }
-                return;
             }
 
-            // 其他现有的事件处理代码...
+            // 其他现有的事件处理代码.
             const moreBtn = target.closest('.more-btn') as HTMLElement;
             const copyBtn = target.closest('.copy-btn') as HTMLElement;
             const editBtn = target.closest('.edit-btn') as HTMLElement;
@@ -1582,26 +1710,27 @@ export default class PluginQuickNote extends Plugin {
                     return;
                 }
 
-
-                // 添加提醒选项
-                const existingReminder = this.reminderService.getReminder(timestamp);
-                menu.addItem({
-                    icon: "iconClock",
-                    label: existingReminder ? this.i18n.note.deleteReminder : this.i18n.note.setReminder,
-                    click: async () => {
-                        menu.close();
-                        if (existingReminder) {
-                            this.reminderService.deleteReminder(timestamp);
-                            this.renderDockHistory();
-                        } else {
-                            const success = await this.reminderService.setReminder(timestamp, currentItem.text);
-                            if (success) {
+                if (!isMobile()) {
+                    // 添加提醒选项
+                    const existingReminder = this.reminderService.getReminder(timestamp);
+                    menu.addItem({
+                        icon: "iconClock",
+                        label: existingReminder ? this.i18n.note.deleteReminder : this.i18n.note.setReminder,
+                        click: async () => {
+                            menu.close();
+                            if (existingReminder) {
+                                this.reminderService.deleteReminder(timestamp);
                                 this.renderDockHistory();
+                            } else {
+                                const success = await this.reminderService.setReminder(timestamp, currentItem.text);
+                                if (success) {
+                                    this.renderDockHistory();
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
+                }
                 // 添加分享选项
                 menu.addItem({
                     icon: "iconCustomShare",
@@ -1871,9 +2000,12 @@ export default class PluginQuickNote extends Plugin {
             console.error('Markdown rendering failed:', error);
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
         }
-        // 在 action-buttons div 中添加提醒按钮（如果存在提醒）
-        const existingReminder = this.reminderService.getReminder(item.timestamp);
-        const reminderButton = existingReminder ? `
+
+        let reminderButton = '';
+        if (!isMobile()) {
+            // 在 action-buttons div 中添加提醒按钮（如果存在提醒）
+            const existingReminder = this.reminderService.getReminder(item.timestamp);
+            reminderButton = existingReminder ? `
             <button class="b3-button b3-button--text reminder-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                 style="padding: 4px; height: 20px; width: 20px;" 
                 aria-label="${new Date(existingReminder.reminderTime).toLocaleString()}">
@@ -1882,12 +2014,115 @@ export default class PluginQuickNote extends Plugin {
                 </svg>
             </button>
         ` : '';
+        }
 
         // 修改插入按钮的文本和提示
         const insertMode = this.settingUtils.get("insertMode");
         const insertBtnLabel = insertMode === "doc" ? this.i18n.note.insertToDoc : this.i18n.note.insertToDaily;
         const insertBtnIcon = insertMode === "doc" ? "iconInsertDoc" : "iconCalendar";
 
+        if (isMobile()) {
+
+            return `
+        <div class="fn__flex" style="gap: 8px;">
+            <!-- 添加复选框，默认隐藏 -->
+            <div class="${this.isBatchSelect ? 'batch-checkbox' : 'batch-checkbox fn__none'}" style="padding-top: 2px;">
+                <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
+            </div>
+            <div class="fn__flex-1">
+                <!-- 移动时间到头部 -->
+                <div class="fn__flex" style="margin-bottom: 4px; justify-content: space-between; align-items: center;">
+                    <div class="fn__flex" style="align-items: center; gap: 4px;">
+                        <span style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-content" data-text="${encodeText(displayText)}" >
+                    ${item.text.length > maxTextLength ?
+                    `<div style="word-break: break-word;">
+                            <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
+                                ${window.Lute.New().Md2HTML(displayText.substring(0, maxTextLength))}...
+                            </div>
+                            <div class="expanded-text markdown-content" style="display: none; color: var(--b3-theme-on-surface);">
+                                ${renderedContent}
+                            </div>
+                            <button class="b3-button b3-button--text toggle-text" 
+                                style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                                ${this.i18n.note.expand}
+                                <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                                    <use xlink:href="#iconDown"></use>
+                                </svg>
+                            </button>
+                        </div>`
+                    : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                            ${renderedContent}
+                        </div>`}
+                </div>
+                ${item.tags && item.tags.length > 0 ? `
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                        ${item.tags.map(tag => `
+                            <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
+                                style="padding: 0 6px; height: 18px; font-size: 10px;"
+                                aria-label="${tag}">
+                                <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                            </span>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                <div class="fn__flex" style="margin-top: 4px; justify-content: flex-end;">
+                    <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
+                        <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconCopy"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconEdit"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text insert-daily-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${insertBtnLabel}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#${insertBtnIcon}"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text create-doc-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${this.i18n.note.createDoc}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconFile"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px; ${item.isPinned ? 'color: var(--b3-theme-primary);' : ''}">
+                                <use xlink:href="#iconPin"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconArchive"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconMore"></use>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        }
         return `
             <div class="fn__flex" style="gap: 8px;">
                 <!-- 添加复选框，默认隐藏 -->
@@ -1987,17 +2222,6 @@ export default class PluginQuickNote extends Plugin {
                         </div>
                     </div>
                 </div>
-            </div>`;
-    }
-
-    // 渲染加载更多按钮
-    private renderLoadMoreButton(shown: number, total: number) {
-        return `
-            <div class="fn__flex-center" style="padding: 8px 8px 0;">
-                <button class="b3-button b3-button--outline load-more-btn">
-                    ${this.i18n.note.loadMore} (${this.i18n.note.showing
-                .replace('${num}', (total - shown).toString())}
-                </button>
             </div>`;
     }
 
@@ -2164,7 +2388,7 @@ export default class PluginQuickNote extends Plugin {
         if (this.isCreatingNote) {
             return false;
         }
-        
+
         try {
             this.isCreatingNote = true; // 设置标志位
             if (isMobile()) {
