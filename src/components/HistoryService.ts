@@ -439,8 +439,6 @@ export class HistoryService {
     }
     public async saveData(storageKey: string, data: HistoryItem[]) {
         await this.storageService.saveData<HistoryItem>(storageKey, { history: data });
-        // 异步调用同步方法
-        this.sync().catch(console.error);
     }
 
     public async openEditDialog(
@@ -629,8 +627,8 @@ export class HistoryService {
             this.data.archivedHistory.push(...itemsToArchive);
 
             // 保存两个存储位置的数据
-            await this.parent.saveData(DOCK_STORAGE_NAME, { history: this.data.history });
-            await this.parent.saveData(ARCHIVE_STORAGE_NAME, { history: this.data.archivedHistory });
+            await this.saveData(DOCK_STORAGE_NAME, this.data.history);
+            await this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
             // 异步调用同步方法
             this.sync().catch(console.error);
             return true;
@@ -661,8 +659,8 @@ export class HistoryService {
             this.data.history.unshift(...itemsToUnarchive);
 
             // 保存更改
-            await this.parent.saveData(DOCK_STORAGE_NAME, { history: this.data.history });
-            await this.parent.saveData(ARCHIVE_STORAGE_NAME, { history: this.data.archivedHistory });
+            await this.saveData(DOCK_STORAGE_NAME, this.data.history);
+            await this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
             // 异步调用同步方法
             this.sync().catch(console.error);
             return true;
