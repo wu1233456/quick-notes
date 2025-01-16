@@ -1931,7 +1931,7 @@ export default class PluginQuickNote extends Plugin {
             ${pinnedHistory.map(item => `
                 <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
                     border: 1px solid var(--b3-theme-primary); 
-                    border-radius: 4px; 
+                    border-radius: 8px; 
                     background: var(--b3-theme-background); 
                     transition: all 0.2s ease; 
                     user-select: text;
@@ -1960,10 +1960,11 @@ export default class PluginQuickNote extends Plugin {
             ${displayHistory.map(item => `
                 <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
                     border: 1px solid var(--b3-border-color); 
-                    border-radius: 4px; 
+                    border-radius: 8px; 
                     transition: all 0.2s ease; 
                     user-select: text;
-                    position: relative;" 
+                    position: relative;
+                     background-color: var(--b3-theme-background);" 
                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; 
                                 this.style.borderColor='var(--b3-theme-primary-light)';
                                 this.querySelector('.action-buttons').style.opacity='1';" 

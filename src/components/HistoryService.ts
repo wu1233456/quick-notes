@@ -1,6 +1,6 @@
 import { Dialog, Plugin } from "siyuan";
 import { DOCK_STORAGE_NAME, ARCHIVE_STORAGE_NAME } from '../libs/const';
-
+import { isMobile } from '../index';
 export interface HistoryItem {
     text: string;
     timestamp: number;
