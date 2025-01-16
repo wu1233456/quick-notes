@@ -481,3 +481,4 @@ export async function createDailyNote(notebook: NotebookId): Promise<{ id: Block
     let url = '/api/filetree/createDailyNote';
     return request(url, { notebook: notebook });
 }
+

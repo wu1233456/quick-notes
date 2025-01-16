@@ -179,10 +179,8 @@ export class HistoryService {
             this.data.history.splice(itemIndex, 1);
 
             // 保存两个存储位置的数据
-            await this.parent.saveData(DOCK_STORAGE_NAME, { history: this.data.history });
-            await this.parent.saveData(ARCHIVE_STORAGE_NAME, { history: this.data.archivedHistory });
-            // 异步调用同步方法
-            this.sync().catch(console.error);
+            this.saveData(DOCK_STORAGE_NAME,  this.data.history );
+            this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory );
             return true;
         } catch (error) {
             console.error('Archive failed:', error);
@@ -204,8 +202,6 @@ export class HistoryService {
             // 保存更改
             await this.saveData(DOCK_STORAGE_NAME, this.data.history);
             await this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Unarchive failed:', error);
@@ -220,8 +216,6 @@ export class HistoryService {
 
             this.getCurrentData().splice(itemIndex, 1);
             await this.saveData(this.getStorageKey(), this.getCurrentData());
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Delete failed:', error);
@@ -236,8 +230,6 @@ export class HistoryService {
 
             item.tags = tags;
             await this.saveData(this.getStorageKey(), this.getCurrentData());
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Update tags failed:', error);
@@ -335,8 +327,6 @@ export class HistoryService {
 
             item.isPinned = !item.isPinned;
             await this.saveData(this.getStorageKey(), this.getCurrentData());
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Toggle pin failed:', error);
@@ -351,8 +341,6 @@ export class HistoryService {
             this.getCurrentData().splice(itemIndex, 1);
 
             await this.saveData(this.getStorageKey(), this.getCurrentData());
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Delete failed:', error);
@@ -373,8 +361,6 @@ export class HistoryService {
             });
 
             await this.saveData(this.getStorageKey(), sourceData);
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Batch delete failed:', error);
@@ -429,16 +415,104 @@ export class HistoryService {
             // 添加新条目
             this.getCurrentData().unshift(newItem);
             await this.saveCurrentData(this.getCurrentData());
-            // 异步调用同步方法
-            this.sync().catch(console.error);
             return true;
         } catch (error) {
             console.error('Merge items failed:', error);
             return false;
         }
     }
+    //注意这个方法耗时会比较久，因为为了确保数据一致性，需要先同步，再保存，所以会比较慢
     public async saveData(storageKey: string, data: HistoryItem[]) {
-        await this.storageService.saveData<HistoryItem>(storageKey, { history: data });
+        try {
+            // 从 utils 导入同步状态检查函数
+            const { getSyncEnabled } = await import('../libs/utils');
+            const isSyncEnabled = await getSyncEnabled();
+            console.log("isSyncEnabled", isSyncEnabled);
+
+            if (!isSyncEnabled) {
+                // 如果没有开启同步，直接保存
+                await this.storageService.saveData<HistoryItem>(storageKey, { history: data });
+                return;
+            }
+
+            // 如果开启了同步，执行原有的同步逻辑
+            await this.sync();
+            
+            // 从存储服务加载最新数据
+            const latestData = await this.storageService.loadData<HistoryItem>(storageKey);
+            
+            // 比对数据
+            const hasChanges = await this.compareAndMergeData(data, latestData?.history || []);
+            
+            if (hasChanges) {
+                // 如果有变化，保存合并后的数据
+                await this.storageService.saveData<HistoryItem>(storageKey, { history: this.data.history });
+                // 再次同步
+                await this.sync();
+            } else {
+                // 如果没有变化，直接保存并同步
+                await this.storageService.saveData<HistoryItem>(storageKey, { history: data });
+                await this.sync();
+            }
+        } catch (error) {
+            console.error('保存数据失败:', error);
+            // 如果出错，尝试直接保存数据
+            await this.storageService.saveData<HistoryItem>(storageKey, { history: data });
+        }
+    }
+
+    private async compareAndMergeData(localData: HistoryItem[], syncedData: HistoryItem[]): Promise<boolean> {
+        let hasChanges = false;
+        
+        // 创建时间戳映射以便快速查找
+        const localMap = new Map(localData.map(item => [item.timestamp, item]));
+        const syncedMap = new Map(syncedData.map(item => [item.timestamp, item]));
+        
+        // 检查新增的条目
+        for (const [timestamp, item] of localMap) {
+            if (!syncedMap.has(timestamp)) {
+                // 本地新增的条目，保留
+                hasChanges = true;
+            }
+        }
+        
+        // 检查同步下来的新条目
+        for (const [timestamp, syncedItem] of syncedMap) {
+            if (!localMap.has(timestamp)) {
+                // 远程新增的条目，添加到本地
+                localData.push(syncedItem);
+                hasChanges = true;
+            }
+        }
+        
+        // 更新本地数据
+        if (hasChanges) {
+            if (this.showArchived) {
+                this.data.archivedHistory = localData;
+            } else {
+                this.data.history = localData;
+            }
+        }
+        
+        return hasChanges;
+    }
+
+    private async sync(): Promise<boolean> {
+        try {
+            console.log("siyuan sync");
+            const response = await fetch("http://127.0.0.1:6806/api/sync/performSync", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ "upload": true })
+            });
+            const result = await response.json();
+            return result.code === 0;
+        } catch (error) {
+            console.error("Error during sync:", error);
+            return false;
+        }
     }
 
     public async openEditDialog(
@@ -586,9 +660,7 @@ export class HistoryService {
             const activeItem = this.getCurrentData().find(item => item.timestamp === timestamp);
             if (activeItem) {
                 activeItem.text = newText;
-                await this.saveData(this.getStorageKey(), this.getCurrentData());
-                // 异步调用同步方法
-                this.sync().catch(console.error);
+                this.saveData(this.getStorageKey(), this.getCurrentData());
                 return true;
             }
 
@@ -627,10 +699,8 @@ export class HistoryService {
             this.data.archivedHistory.push(...itemsToArchive);
 
             // 保存两个存储位置的数据
-            await this.saveData(DOCK_STORAGE_NAME, this.data.history);
-            await this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
-            // 异步调用同步方法
-            this.sync().catch(console.error);
+            this.saveData(DOCK_STORAGE_NAME, this.data.history);
+            this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
             return true;
         } catch (error) {
             console.error('Batch archive failed:', error);
@@ -659,8 +729,8 @@ export class HistoryService {
             this.data.history.unshift(...itemsToUnarchive);
 
             // 保存更改
-            await this.saveData(DOCK_STORAGE_NAME, this.data.history);
-            await this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
+            this.saveData(DOCK_STORAGE_NAME, this.data.history);
+            this.saveData(ARCHIVE_STORAGE_NAME, this.data.archivedHistory);
             // 异步调用同步方法
             this.sync().catch(console.error);
             return true;
@@ -671,9 +741,7 @@ export class HistoryService {
     }
 
     private async saveCurrentData(data: HistoryItem[]): Promise<void> {
-        await this.saveData(this.getStorageKey(), data);
-        // 异步调用同步方法
-        this.sync().catch(console.error);
+        this.saveData(this.getStorageKey(), data);
     }
 
     public async batchUpdateTags(
@@ -693,32 +761,13 @@ export class HistoryService {
             });
 
             if (updateCount > 0) {
-                await this.saveData(this.getStorageKey(), sourceData);
-                // 异步调用同步方法
-                this.sync().catch(console.error);
+                this.saveData(this.getStorageKey(), sourceData);
                 return true;
             }
             return false;
         } catch (error) {
             console.error('批量更新标签失败:', error);
             return false;
-        }
-    }
-
-    private async sync() {
-        try {
-            console.log("siyuan sync");
-            const response = await fetch("http://127.0.0.1:6806/api/sync/performSync", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ "upload": true })
-            });
-            const result = await response.json();
-            if (result.code === 0) { /* empty */ }
-        } catch (error) {
-            console.error("Error during sync:", error);
         }
     }
 } 
