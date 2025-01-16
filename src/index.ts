@@ -5,7 +5,8 @@ import {
     Dialog,
     Menu,
     getFrontend,
-    adaptHotkey
+    adaptHotkey,
+    getFrontend
 } from "siyuan";
 import "@/index.scss";
 import { lsNotebooks, appendBlock, createDailyNote } from "./api";
@@ -33,9 +34,12 @@ interface IHistoryItem {
     tags?: string[];
     isPinned?: boolean; // 添加isPinned可选属性
 }
+export const isMobile = () => {
+    return getFrontend().endsWith('mobile');
+}
+
 
 export interface IPlugin {
-    // ... existing interface members ...
     saveContent(content: string): Promise<void>;
     upload(file: File): Promise<string>;
 }
@@ -66,10 +70,14 @@ export default class PluginQuickNote extends Plugin {
     private reminderService: ReminderService;
     private flomoService: FlomoService;
 
+    private isInitDefaultData: boolean = false;
+
     // 在类定义开始处添加属性
     private historyClickHandler: (e: MouseEvent) => Promise<void>;
 
     async onload() {
+        console.log("onload start");
+        this.initDefaultData();
         // 初始化设置
         this.settingUtils = new SettingUtils({
             plugin: this,
@@ -162,31 +170,6 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.itemsPerPageDesc
         });
 
-        this.settingUtils.addItem({
-            key: "quickWindowWidth",
-            value: 250,
-            type: "number",
-            title: this.i18n.note.quickWindowWidth,
-            description: this.i18n.note.quickWindowWidthDesc
-        });
-
-        this.settingUtils.addItem({
-            key: "quickWindowHeight",
-            value: 300,
-            type: "number",
-            title: this.i18n.note.quickWindowHeight,
-            description: this.i18n.note.quickWindowHeightDesc
-        });
-
-        // 添加flomo同步配置
-        this.settingUtils.addItem({
-            key: "flomoEnabled",
-            value: false,
-            type: "checkbox",
-            title: this.i18n.note.flomoEnabled,
-            description: this.i18n.note.flomoEnabledDesc
-        });
-
         // // 添加自动同步设置
         // this.settingUtils.addItem({
         //     key: "flomoAutoSync",
@@ -203,52 +186,85 @@ export default class PluginQuickNote extends Plugin {
         //     title: this.i18n.note.flomoSyncInterval,
         //     description: this.i18n.note.flomoSyncIntervalDesc
         // });
+        if (!isMobile()) {
+            this.settingUtils.addItem({
+                key: "quickWindowWidth",
+                value: 250,
+                type: "number",
+                title: this.i18n.note.quickWindowWidth,
+                description: this.i18n.note.quickWindowWidthDesc
+            });
+    
+            this.settingUtils.addItem({
+                key: "quickWindowHeight",
+                value: 300,
+                type: "number",
+                title: this.i18n.note.quickWindowHeight,
+                description: this.i18n.note.quickWindowHeightDesc
+            });
 
-        // 添加flomo同步配置
-        this.settingUtils.addItem({
-            key: "flomoUsername",
-            value: "",
-            type: "textinput", 
-            title: this.i18n.note.flomoUsername,
-            description: this.i18n.note.flomoUsernameDesc
-        });
+            // 添加flomo同步配置
+            this.settingUtils.addItem({
+                key: "flomoEnabled",
+                value: false,
+                type: "checkbox",
+                title: this.i18n.note.flomoEnabled,
+                description: this.i18n.note.flomoEnabledDesc
+            });
 
-        this.settingUtils.addItem({
-            key: "flomoPassword",
-            value: "",
-            type: "textinput",
-            title: this.i18n.note.flomoPassword,
-            description: this.i18n.note.flomoPasswordDesc
-        });
+            // 添加flomo同步配置
+            this.settingUtils.addItem({
+                key: "flomoUsername",
+                value: "",
+                type: "textinput",
+                title: this.i18n.note.flomoUsername,
+                description: this.i18n.note.flomoUsernameDesc
+            });
 
-        this.settingUtils.addItem({
-            key: "flomoLastSyncTime",
-            value: moment().format("YYYY-MM-DD 00:00:00"),
-            type: "textinput",
-            title: this.i18n.note.flomoLastSyncTime,
-            description: this.i18n.note.flomoLastSyncTimeDesc
-        });
+            this.settingUtils.addItem({
+                key: "flomoPassword",
+                value: "",
+                type: "textinput",
+                title: this.i18n.note.flomoPassword,
+                description: this.i18n.note.flomoPasswordDesc
+            });
 
-        this.settingUtils.addItem({
-            key: "flomoAccessToken",
-            value: "",
-            type: "textinput",
-            title: this.i18n.note.flomoAccessToken,
-            description: this.i18n.note.flomoAccessTokenDesc
-        });
+            this.settingUtils.addItem({
+                key: "flomoLastSyncTime",
+                value: moment().format("YYYY-MM-DD 00:00:00"),
+                type: "textinput",
+                title: this.i18n.note.flomoLastSyncTime,
+                description: this.i18n.note.flomoLastSyncTimeDesc
+            });
+
+            this.settingUtils.addItem({
+                key: "flomoAccessToken",
+                value: "",
+                type: "textinput",
+                title: this.i18n.note.flomoAccessToken,
+                description: this.i18n.note.flomoAccessTokenDesc
+            });
+
+        }
 
         await this.settingUtils.load();
-        this.initDefaultData();
         this.loadNoteData();
-        this.initComponents();
-        console.log("onload");
+        console.log("onload end");
     }
 
     async onLayoutReady() {
-        console.log("onLayoutReady");
+        console.log("onLayoutReady start");
+        this.initDefaultData();
+        this.initComponents();
+        if (isMobile()) {
+            console.log("isMobile");
+            this.addMobileFloatingButton();
+        }
+        console.log("onLayoutReady end");
     }
 
     async onunload() {
+        console.log("onunload start");
         this.cleanupEventListeners();
         if (this.reminderService) {
             this.reminderService.destroy();
@@ -257,13 +273,15 @@ export default class PluginQuickNote extends Plugin {
             this.flomoService.stopAutoSync();
         }
         console.log(this.i18n.byePlugin);
+        console.log("onunload end");
     }
 
     // 添加设置变化的监听
     async onSettingChanged() {
-        if (this.flomoService) {
-            this.flomoService.handleSettingChanged();
-        }
+        //关闭自动同步功能，适配移动端后，感觉这里就没有必要了
+        // if (this.flomoService) {
+        //     this.flomoService.handleSettingChanged();
+        // }
     }
 
     uninstall() {
@@ -319,27 +337,31 @@ export default class PluginQuickNote extends Plugin {
                 this,
                 this.historyService
             );
+            if (!isMobile()) {
+                // 初始化提醒服务
+                this.reminderService = await ReminderService.create(this.i18n, this);
+                // 初始化flomo服务
+                this.flomoService = new FlomoService(this, this.historyService, this.i18n);
 
-            // 初始化提醒服务
-            this.reminderService = await ReminderService.create(this.i18n, this);
-            //初始化分享服务
+                if(this.element){
+                    this.initDockPanel();
+                }
+
+                // 添加提醒完成事件监听
+                window.addEventListener('reminder-completed', ((event: CustomEvent) => {
+                    const { timestamp, snoozeCount } = event.detail;
+                    if (snoozeCount === 0) {
+                        // 如果没有设置延迟提醒,更新历史记录显示
+                        this.renderDockHistory();
+                    }
+                }) as EventListener);
+            }
+             //初始化分享服务
             this.shareService = new ShareService(this, this.historyService);
 
-            // 初始化flomo服务
-            this.flomoService = new FlomoService(this, this.historyService, this.i18n);
-
-            if(this.element){
+            if (this.element) {
                 this.initDockPanel();
             }
-
-            // 添加提醒完成事件监听
-            window.addEventListener('reminder-completed', ((event: CustomEvent) => {
-                const { timestamp, snoozeCount } = event.detail;
-                if (snoozeCount === 0) {
-                    // 如果没有设置延迟提醒,更新历史记录显示
-                    this.renderDockHistory();
-                }
-            }) as EventListener);
 
         } catch (error) {
             console.error('Failed to load note data:', error);
@@ -347,16 +369,21 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private async initDefaultData() {
+        console.log("initDefaultData start");
+        if (this.isInitDefaultData) {
+            return;
+        }
+        this.isInitDefaultData = true;
         this.frontend = getFrontend();
 
         // 初始化配置数据
-        this.data[CONFIG_DATA_NAME] =  {
+        this.data[CONFIG_DATA_NAME] = {
             editorVisible: true,
         }
 
         const historyData: HistoryData = {
             history: [],
-            archivedHistory:  []
+            archivedHistory: []
         };
 
         this.historyService = new HistoryService(this, historyData, this.itemsPerPage, this.i18n);
@@ -381,37 +408,179 @@ export default class PluginQuickNote extends Plugin {
         this.shareService = new ShareService(this, this.historyService);
 
         // 初始化提醒服务
-        this.reminderService = await ReminderService.create(this.i18n, this);
-      
+        if (!isMobile()) {
+            this.reminderService = await ReminderService.create(this.i18n, this);
+        }
+        console.log("initDefaultData end");
+
     }
     private initComponents() {
+        console.log("initComponents start");
         this.addIcons(iconsSVG);
-        // 添加顶部栏按钮
-        this.addTopBar({
-            icon: "iconSmallNote",
-            title: this.i18n.note.title,
-            position: "right",
-            callback: () => {
-                this.createNewNote();
+        this.initDock();
+        initMardownStyle();
+        if (!isMobile()) {
+            // 添加顶部栏按钮
+            this.addTopBar({
+                icon: "iconSmallNote",
+                title: this.i18n.note.title,
+                position: "right",
+                callback: () => {
+                    this.createNewNote();
+                }
+            });
+            // 添加快捷键命令
+            this.addCommand({
+                langKey: this.i18n.note.createNewSmallNote,
+                hotkey: "⇧⌘Y",
+                globalCallback: () => {
+                    if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
+                        this.createNewNote();
+                    } else {
+                        this.createQuickInputWindow();
+                    }
+                }
+            });
+        }
+    }
+
+    private addMobileFloatingButton() {
+        // 检查是否已存在按钮，避免重复添加
+        const existingButton = document.querySelector('.mobile-quick-note-btn');
+        if (existingButton) {
+            console.log("existingButton");
+            return;
+        }
+
+        // 创建浮动按钮
+        const floatingButton = document.createElement('div');
+        floatingButton.className = 'mobile-quick-note-btn collapsed';
+        floatingButton.innerHTML = `
+            <div class="button-content">
+                <svg class="b3-button__icon">
+                    <use xlink:href="#iconSmallNote"></use>
+                </svg>
+                <span class="button-label">小记</span>
+            </div>
+        `;
+
+        // 添加点击事件处理
+        floatingButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            if (floatingButton.classList.contains('collapsed')) {
+                floatingButton.classList.remove('collapsed');
+                floatingButton.classList.add('expanded');
+            } else {
+                this.createMobileQuickNote();
             }
         });
-        // 添加快捷键命令
-        this.addCommand({
-            langKey: this.i18n.note.createNewSmallNote,
-            hotkey: "⇧⌘Y",
-            globalCallback: () => {
-                if (this.frontend === 'browser-desktop' || this.frontend === 'browser-mobile') {
-                    this.createNewNote();
+
+        // 添加触摸事件处理，防止滑动时触发点击
+        let touchStartX = 0;
+        let touchStartY = 0;
+        floatingButton.addEventListener('touchstart', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        floatingButton.addEventListener('touchend', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaX = Math.abs(touchEndX - touchStartX);
+            const deltaY = Math.abs(touchEndY - touchStartY);
+            
+            // 如果移动距离小于10px，认为是点击而不是滑动
+            if (deltaX < 10 && deltaY < 10) {
+                if (floatingButton.classList.contains('collapsed')) {
+                    floatingButton.classList.remove('collapsed');
+                    floatingButton.classList.add('expanded');
                 } else {
-                    this.createQuickInputWindow();
+                    this.createMobileQuickNote();
                 }
             }
         });
-        this.initDock();
-        initMardownStyle();
 
+        // 添加点击外部区域收起按钮的处理
+        const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+            if (!floatingButton.contains(e.target as Node) && floatingButton.classList.contains('expanded')) {
+                floatingButton.classList.remove('expanded');
+                floatingButton.classList.add('collapsed');
+            }
+        };
+
+        // 添加全局点击和触摸事件监听
+        document.addEventListener('click', handleOutsideClick);
+        document.addEventListener('touchend', handleOutsideClick);
+
+        // 在组件卸载时移除事件监听
+        this.addCommand({
+            langKey: '',
+            hotkey: '',
+            callback: () => {
+                document.removeEventListener('click', handleOutsideClick);
+                document.removeEventListener('touchend', handleOutsideClick);
+            }
+        });
+
+        // 添加到body
+        document.body.appendChild(floatingButton);
+
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .mobile-quick-note-btn {
+                position: fixed;
+                right: 0;
+                top: 70%;
+                transform: translateY(-50%);
+                z-index: 5;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+                background-color: var(--b3-theme-surface);
+                color: var(--b3-theme-on-surface);
+                box-shadow: var(--b3-dialog-shadow);
+                backdrop-filter: blur(8px);
+                border: 1px solid var(--b3-theme-surface-lighter);
+                border-radius: 12px 0 0 12px;
+                padding: 8px 16px 8px 4px;
+            }
+
+            .mobile-quick-note-btn.collapsed {
+                opacity: 0.6;
+                transform: translateY(-50%) translateX(60%);
+            }
+
+            .mobile-quick-note-btn.expanded {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0);
+            }
+
+            .mobile-quick-note-btn .button-content {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .mobile-quick-note-btn .b3-button__icon {
+                height: 20px;
+                width: 20px;
+                color: var(--b3-theme-primary);
+            }
+
+            .mobile-quick-note-btn .button-label {
+                font-size: 14px;
+                font-weight: 500;
+                letter-spacing: 0.3px;
+                color: var(--b3-theme-on-surface);
+                white-space: nowrap;
+            }
+        `;
+        document.head.appendChild(style);
     }
     private initDock() {
+        console.log("initDock start");
         // 创建 dock 时读取保存的位置
         this.addDock({
             config: {
@@ -433,8 +602,9 @@ export default class PluginQuickNote extends Plugin {
                 console.log("destroy dock:", DOCK_TYPE);
             }
         });
+        console.log("initDock end");
     }
-    
+
 
     private initDockPanel() {
         console.log("initDockPanel");
@@ -567,22 +737,15 @@ export default class PluginQuickNote extends Plugin {
     }
 
     private renderDockerToolbar() {
-        this.element.querySelector('.toolbar-container').innerHTML =
-            `
+        if (isMobile()) {
+            this.element.querySelector('.toolbar-container').innerHTML =
+                `
                                 <div class="fn__flex fn__flex-center" style="padding: 8px;">
                                     <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
                                         ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() ||
-                []).length.toString())}
+                    []).length.toString())}
                                     </div>
                                     <span class="fn__flex-1"></span>
-                                    ${(() => {
-                                        const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
-                                        return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
-                                            <svg style="height: 16px; width: 16px; color: ${isFlomoEnabled ? 'var(--b3-theme-primary)' : 'var(--b3-theme-on-surface-light)'};" class="sync_note_btn b3-button__icon" >
-                                                <use xlink:href="#icon${isFlomoEnabled ? 'Cloud' : 'CloudOff'}"></use>
-                                            </svg>
-                                        </button>`;
-                                    })()}
                                     <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
                                         <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
                                             <use xlink:href="#iconFilter"></use>
@@ -678,9 +841,9 @@ export default class PluginQuickNote extends Plugin {
                                     </div>
                                     <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
                                         ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
-                .map(tag => {
-                    const isSelected = this.selectedTags.includes(tag);
-                    return `
+                    .map(tag => {
+                        const isSelected = this.selectedTags.includes(tag);
+                        return `
                                         <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" style="cursor: pointer; 
                                                                                 background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
                                                                                 color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
@@ -693,9 +856,140 @@ export default class PluginQuickNote extends Plugin {
                                                 ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
                                             </span>
                                         </span>`;
-                }).join('')}
+                    }).join('')}
                                     </div>
                                 </div>`;
+        } else {
+            this.element.querySelector('.toolbar-container').innerHTML =
+                `
+                                <div class="fn__flex fn__flex-center" style="padding: 8px;">
+                                    <div style="color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                                        ${this.i18n.note.total.replace('${count}', (this.historyService.getCurrentData() ||
+                    []).length.toString())}
+                                    </div>
+                                    <span class="fn__flex-1"></span>
+                                    ${(() => {
+                    const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+                    return `<button class="b3-tooltips b3-tooltips__n" style="border: none; background: none; padding: 4px; cursor: ${isFlomoEnabled ? 'pointer' : 'not-allowed'};" aria-label="${this.i18n.note.syncNote}">
+                                            <svg style="height: 16px; width: 16px; color: ${isFlomoEnabled ? 'var(--b3-theme-primary)' : 'var(--b3-theme-on-surface-light)'};" class="sync_note_btn b3-button__icon" >
+                                                <use xlink:href="#icon${isFlomoEnabled ? 'Cloud' : 'CloudOff'}"></use>
+                                            </svg>
+                                        </button>`;
+                })()}
+                                    <button class="filter-menu-btn" style="border: none; background: none; padding: 4px; cursor: pointer;">
+                                        <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                            <use xlink:href="#iconFilter"></use>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="fn__flex fn__flex-end" style="padding: 0 8px 8px 8px; gap: 8px;">
+                                    <!-- 批量操作工具栏，默认隐藏 -->
+                                    <div class="batch-toolbar fn__none fn__flex-column" style="gap: 8px; margin-right: auto;">
+                                        <div class="fn__flex" style="gap: 8px;">
+                                            <button class="b3-button b3-button--text batch-copy-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.copy}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconCopy"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-tag-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.tag}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconTags"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-archive-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;"
+                                                aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconArchive"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-delete-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.delete}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconTrashcan"></use>
+                                                </svg>
+                                            </button>
+                                            <button class="b3-button b3-button--text batch-merge-btn b3-tooltips b3-tooltips__n"
+                                                style="padding: 2px 2px; font-size: 12px;" aria-label="${this.i18n.note.merge}">
+                                                <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                                    <use xlink:href="#iconMerge"></use>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="fn__flex" style="gap: 8px;">
+                                            <button class="b3-button b3-button--outline select-all-btn"
+                                                style="padding: 4px 8px; font-size: 12px;">
+                                                ${this.i18n.note.selectAll}
+                                            </button>
+                                            <button class="b3-button b3-button--cancel cancel-select-btn"
+                                                style="padding: 4px 8px; font-size: 12px;">
+                                                ${this.i18n.note.cancelSelect}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- 常规工具栏 -->
+                                    <div class="normal-toolbar fn__flex" style="gap: 8px;">
+                                        <div class="search-container fn__flex">
+                                            <div class="search-wrapper" style="position: relative;">
+                                                <input type="text" class="search-input b3-text-field" placeholder="${this.i18n.note.search}"
+                                                    style="width: 0; padding: 4px 8px; transition: all 0.3s ease; opacity: 0;">
+                                                <button class="search-btn"
+                                                    style="position: absolute; right: 0; top: 0; border: none; background: none; padding: 4px; cursor: pointer;">
+                                                    <svg class="b3-button__icon"
+                                                        style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                        <use xlink:href="#iconSearch"></use>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button class="filter-btn"
+                                            style="border: none; background: none; padding: 4px; cursor: pointer; position: relative;"
+                                            title="${this.i18n.note.tagFilter}">
+                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                <use xlink:href="#iconTags"></use>
+                                            </svg>
+                                            ${this.selectedTags.length > 0 ? `
+                                            <div
+                                                style="position: absolute; top: 0; right: 0; width: 6px; height: 6px; border-radius: 50%; background-color: var(--b3-theme-primary);">
+                                            </div>
+                                            ` : ''}
+                                        </button>
+                                        <button class="sort-btn" style="border: none; background: none; padding: 4px; cursor: pointer;"
+                                            title="${this.i18n.note.sort}">
+                                            <svg class="b3-button__icon" style="height: 16px; width: 16px; color: var(--b3-theme-primary);">
+                                                <use xlink:href="#iconSort"></use>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="filter-panel"
+                                    style="display: none; padding: 8px; border-top: 1px solid var(--b3-border-color);">
+                                    <div style="font-size: 12px; color: var(--b3-theme-on-surface-light); margin-bottom: 8px;">
+                                        ${this.i18n.note.tagFilter}
+                                    </div>
+                                    <div class="filter-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        ${Array.from(new Set(this.historyService.getCurrentData()?.flatMap(item => item.tags || []) || []))
+                    .map(tag => {
+                        const isSelected = this.selectedTags.includes(tag);
+                        return `
+                                        <span class="b3-chip b3-chip--middle filter-tag b3-tooltips b3-tooltips__n" style="cursor: pointer; 
+                                                                                background-color: ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-theme-surface)'};
+                                                                                color: ${isSelected ? 'var(--b3-theme-on-primary)' : 'var(--b3-theme-on-surface)'};
+                                                                                border: 1px solid ${isSelected ? 'var(--b3-theme-primary)' : 'var(--b3-border-color)'};
+                                                                                transition: all 0.2s ease;" data-tag="${tag}"
+                                            aria-label="${tag}" data-selected="${isSelected}">
+                                            <span class="b3-chip__content"
+                                                style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                                            <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
+                                                ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
+                                            </span>
+                                        </span>`;
+                    }).join('')}
+                                    </div>
+                                </div>`;
+        }
         this.bindDockerToolbarEvents();
     }
     private bindDockerToolbarEvents() {
@@ -706,29 +1000,31 @@ export default class PluginQuickNote extends Plugin {
         const filterMenuBtn = container.querySelector('.filter-menu-btn');
         const batchToolbar = container.querySelector('.batch-toolbar') as HTMLElement;
         const normalToolbar = container.querySelector('.normal-toolbar') as HTMLElement;
-        // 添加同步按钮事件
-        const syncBtn = element.querySelector('.sync_note_btn');
-        syncBtn.addEventListener('click', async () => {
-            const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
-            if (!isFlomoEnabled) {
-                showMessage(this.i18n.note.flomoSync.needEnable);
-                return;
-            }
-            
-            const icon = syncBtn.querySelector('use');
-            // 添加旋转动画样式
-            syncBtn.style.animation = 'rotate 1s linear infinite';
-            icon.setAttribute('xlink:href', '#iconRefresh');
 
-            try {
-                await this.flomoService.sync();
-            } finally {
-                // 停止旋转动画并恢复图标
-                syncBtn.style.animation = '';
-                icon.setAttribute('xlink:href', isFlomoEnabled ? '#iconCloud' : '#iconCloudOff');
-            }
-        });
-        
+        if (!(isMobile())) {
+            // 添加同步按钮事件
+            const syncBtn = element.querySelector('.sync_note_btn');
+            syncBtn.addEventListener('click', async () => {
+                const isFlomoEnabled = this.settingUtils.get("flomoEnabled");
+                if (!isFlomoEnabled) {
+                    showMessage(this.i18n.note.flomoSync.needEnable);
+                    return;
+                }
+
+                const icon = syncBtn.querySelector('use');
+                // 添加旋转动画样式
+                syncBtn.style.animation = 'rotate 1s linear infinite';
+                icon.setAttribute('xlink:href', '#iconRefresh');
+
+                try {
+                    await this.flomoService.sync();
+                } finally {
+                    // 停止旋转动画并恢复图标
+                    syncBtn.style.animation = '';
+                    icon.setAttribute('xlink:href', isFlomoEnabled ? '#iconCloud' : '#iconCloudOff');
+                }
+            });
+        }
 
         filterMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1248,72 +1544,69 @@ export default class PluginQuickNote extends Plugin {
             historyHtml += this.renderUnpinnedHistory(displayedUnpinnedItems, filteredHistory.pinnedItems.length > 0);
         }
 
-        // 添加加载更多按钮
+        // 添加加载状态指示器
         const totalUnpinnedCount = filteredHistory.unpinnedItems.length;
-        // console.log("totalUnpinnedCount", totalUnpinnedCount);
         if (totalUnpinnedCount > this.currentDisplayCount) {
-            historyHtml += this.renderLoadMoreButton(this.currentDisplayCount, totalUnpinnedCount);
+            historyHtml += `
+                <div class="loading-indicator fn__flex-center" style="padding: 16px 0; color: var(--b3-theme-on-surface-light); font-size: 12px;">
+                    ${this.i18n.note.loading}
+                </div>`;
         } else if (displayedUnpinnedItems.length > 0) {
             historyHtml += this.renderNoMoreItems();
         }
 
         let historyContent = `<div class="history-content">${historyHtml}</div>`;
-        element.querySelector('.history-list').innerHTML = historyContent;
+        const historyList = element.querySelector('.history-list');
+        historyList.innerHTML = historyContent;
 
+        // 添加滚动监听器
+        const handleScroll = () => {
+            const scrollContainer = historyList;
+            const scrollPosition = scrollContainer.scrollTop + scrollContainer.clientHeight;
+            const scrollHeight = scrollContainer.scrollHeight;
+            const threshold = 100; // 距离底部多少像素时触发加载
 
-        const loadMoreBtn = element.querySelector('.load-more-btn');
-        if (loadMoreBtn) {
-            loadMoreBtn.onclick = () => {
+            if (scrollHeight - scrollPosition <= threshold && totalUnpinnedCount > this.currentDisplayCount) {
+                // 移除滚动监听器，防止重复触发
+                scrollContainer.removeEventListener('scroll', handleScroll);
+
                 // 使用设置中的值增加显示数量
                 const itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
                 this.currentDisplayCount += itemsPerPage;
 
-                // 获取历史内容容器
-                const historyContent = element.querySelector('.history-content');
-                if (historyContent) {
-                    // 获取新的要显示的记录
-                    const newItems = filteredHistory.unpinnedItems.slice(
-                        this.currentDisplayCount - this.itemsPerPage,
-                        this.currentDisplayCount
-                    );
+                // 获取新的要显示的记录
+                const newItems = filteredHistory.unpinnedItems.slice(
+                    this.currentDisplayCount - itemsPerPage,
+                    this.currentDisplayCount
+                );
 
-                    // 渲染并追加新的记录
-                    if (newItems.length > 0) {
+                // 渲染并追加新的记录
+                if (newItems.length > 0) {
+                    const loadingIndicator = scrollContainer.querySelector('.loading-indicator');
+                    if (loadingIndicator) {
                         const newContent = this.renderUnpinnedHistory(newItems, false);
-                        // 将新内容插入到加载更多按钮之前
-                        loadMoreBtn.parentElement.insertAdjacentHTML('beforebegin', newContent);
+                        loadingIndicator.insertAdjacentHTML('beforebegin', newContent);
                     }
 
-                    // 更新加载更多按钮的文本和显示状态
-                    const loadMoreContainer = loadMoreBtn.parentElement;
-                    const noMoreContainer = element.querySelector('.no-more-container');
-
-                    if (totalUnpinnedCount > this.currentDisplayCount) {
-                        // 还有更多内容可以加载
-                        loadMoreBtn.textContent = `${this.i18n.note.loadMore} (${this.i18n.note.showing
-                            .replace('${num}', (totalUnpinnedCount - this.currentDisplayCount).toString())})`;
-                        loadMoreContainer.style.display = ''
-                        if (noMoreContainer) noMoreContainer.style.display = 'none';
-                    } else {
+                    // 更新加载状态
+                    if (totalUnpinnedCount <= this.currentDisplayCount) {
                         // 没有更多内容了
-                        loadMoreContainer.style.display = 'none';
-                        if (noMoreContainer) {
-                            noMoreContainer.style.display = '';
-                        } else {
-                            // 如果没有"没有更多"提示元素，则创建一个
-                            historyContent.insertAdjacentHTML('beforeend', `
-                                <div class="fn__flex-center no-more-container" style="padding: 16px 0; color: var(--b3-theme-on-surface-light); font-size: 12px;">
-                                    ${this.i18n.note.noMore}
-                                </div>`
-                            );
-                        }
+                        loadingIndicator.outerHTML = this.renderNoMoreItems();
+                    } else {
+                        // 重新添加滚动监听器
+                        setTimeout(() => {
+                            scrollContainer.addEventListener('scroll', handleScroll);
+                        }, 100);
                     }
 
                     // 重新绑定新添加内容的事件处理
                     this.bindHistoryListEvents();
                 }
-            };
-        }
+            }
+        };
+
+        // 添加滚动监听器
+        historyList.addEventListener('scroll', handleScroll);
 
         // 监听历史记录点击事件
         this.bindHistoryListEvents();
@@ -1435,19 +1728,21 @@ export default class PluginQuickNote extends Plugin {
                 return;
             }
 
-            // 添加提醒按钮点击处理
-            const reminderBtn = target.closest('.reminder-btn');
-            if (reminderBtn) {
-                e.stopPropagation();
-                const timestamp = Number(reminderBtn.getAttribute('data-timestamp'));
-                const success = await this.reminderService.updateReminderTime(timestamp);
-                if (success) {
-                    this.renderDockHistory();
+            if (!isMobile()) {
+                // 添加提醒按钮点击处理
+                const reminderBtn = target.closest('.reminder-btn');
+                if (reminderBtn) {
+                    e.stopPropagation();
+                    const timestamp = Number(reminderBtn.getAttribute('data-timestamp'));
+                    const success = await this.reminderService.updateReminderTime(timestamp);
+                    if (success) {
+                        this.renderDockHistory();
+                    }
+                    return;
                 }
-                return;
             }
 
-            // 其他现有的事件处理代码...
+            // 其他现有的事件处理代码.
             const moreBtn = target.closest('.more-btn') as HTMLElement;
             const copyBtn = target.closest('.copy-btn') as HTMLElement;
             const editBtn = target.closest('.edit-btn') as HTMLElement;
@@ -1484,26 +1779,27 @@ export default class PluginQuickNote extends Plugin {
                     return;
                 }
 
-
-                // 添加提醒选项
-                const existingReminder = this.reminderService.getReminder(timestamp);
-                menu.addItem({
-                    icon: "iconClock",
-                    label: existingReminder ? this.i18n.note.deleteReminder : this.i18n.note.setReminder,
-                    click: async () => {
-                        menu.close();
-                        if (existingReminder) {
-                            this.reminderService.deleteReminder(timestamp);
-                            this.renderDockHistory();
-                        } else {
-                            const success = await this.reminderService.setReminder(timestamp, currentItem.text);
-                            if (success) {
+                if (!isMobile()) {
+                    // 添加提醒选项
+                    const existingReminder = this.reminderService.getReminder(timestamp);
+                    menu.addItem({
+                        icon: "iconClock",
+                        label: existingReminder ? this.i18n.note.deleteReminder : this.i18n.note.setReminder,
+                        click: async () => {
+                            menu.close();
+                            if (existingReminder) {
+                                this.reminderService.deleteReminder(timestamp);
                                 this.renderDockHistory();
+                            } else {
+                                const success = await this.reminderService.setReminder(timestamp, currentItem.text);
+                                if (success) {
+                                    this.renderDockHistory();
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
+                }
                 // 添加分享选项
                 menu.addItem({
                     icon: "iconCustomShare",
@@ -1653,7 +1949,7 @@ export default class PluginQuickNote extends Plugin {
             ${pinnedHistory.map(item => `
                 <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
                     border: 1px solid var(--b3-theme-primary); 
-                    border-radius: 4px; 
+                    border-radius: 8px; 
                     background: var(--b3-theme-background); 
                     transition: all 0.2s ease; 
                     user-select: text;
@@ -1682,10 +1978,11 @@ export default class PluginQuickNote extends Plugin {
             ${displayHistory.map(item => `
                 <div class="history-item" style="margin-bottom: 8px; padding: 8px; 
                     border: 1px solid var(--b3-border-color); 
-                    border-radius: 4px; 
+                    border-radius: 8px; 
                     transition: all 0.2s ease; 
                     user-select: text;
-                    position: relative;" 
+                    position: relative;
+                     background-color: var(--b3-theme-background);" 
                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.1)'; 
                                 this.style.borderColor='var(--b3-theme-primary-light)';
                                 this.querySelector('.action-buttons').style.opacity='1';" 
@@ -1773,9 +2070,12 @@ export default class PluginQuickNote extends Plugin {
             console.error('Markdown rendering failed:', error);
             renderedContent = `<div style="color: var(--b3-theme-on-surface); word-break: break-word; white-space: pre-wrap;">${encodeText(displayText)}</div>`;
         }
-        // 在 action-buttons div 中添加提醒按钮（如果存在提醒）
-        const existingReminder = this.reminderService.getReminder(item.timestamp);
-        const reminderButton = existingReminder ? `
+
+        let reminderButton = '';
+        if (!isMobile()) {
+            // 在 action-buttons div 中添加提醒按钮（如果存在提醒）
+            const existingReminder = this.reminderService.getReminder(item.timestamp);
+            reminderButton = existingReminder ? `
             <button class="b3-button b3-button--text reminder-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                 style="padding: 4px; height: 20px; width: 20px;" 
                 aria-label="${new Date(existingReminder.reminderTime).toLocaleString()}">
@@ -1784,12 +2084,115 @@ export default class PluginQuickNote extends Plugin {
                 </svg>
             </button>
         ` : '';
+        }
 
         // 修改插入按钮的文本和提示
         const insertMode = this.settingUtils.get("insertMode");
         const insertBtnLabel = insertMode === "doc" ? this.i18n.note.insertToDoc : this.i18n.note.insertToDaily;
         const insertBtnIcon = insertMode === "doc" ? "iconInsertDoc" : "iconCalendar";
 
+        if (isMobile()) {
+
+            return `
+        <div class="fn__flex" style="gap: 8px;">
+            <!-- 添加复选框，默认隐藏 -->
+            <div class="${this.isBatchSelect ? 'batch-checkbox' : 'batch-checkbox fn__none'}" style="padding-top: 2px;">
+                <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
+            </div>
+            <div class="fn__flex-1">
+                <!-- 移动时间到头部 -->
+                <div class="fn__flex" style="margin-bottom: 4px; justify-content: space-between; align-items: center;">
+                    <div class="fn__flex" style="align-items: center; gap: 4px;">
+                        <span style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                            ${new Date(item.timestamp).toLocaleString()}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-content" data-text="${encodeText(displayText)}" >
+                    ${item.text.length > maxTextLength ?
+                    `<div style="word-break: break-word;">
+                            <div class="collapsed-text markdown-content" style="color: var(--b3-theme-on-surface);">
+                                ${window.Lute.New().Md2HTML(displayText.substring(0, maxTextLength))}...
+                            </div>
+                            <div class="expanded-text markdown-content" style="display: none; color: var(--b3-theme-on-surface);">
+                                ${renderedContent}
+                            </div>
+                            <button class="b3-button b3-button--text toggle-text" 
+                                style="padding: 0 4px; font-size: 12px; color: var(--b3-theme-primary); display: inline-flex; align-items: center;">
+                                ${this.i18n.note.expand}
+                                <svg class="b3-button__icon" style="height: 12px; width: 12px; margin-left: 2px; transition: transform 0.2s ease;">
+                                    <use xlink:href="#iconDown"></use>
+                                </svg>
+                            </button>
+                        </div>`
+                    : `<div class="markdown-content" style="color: var(--b3-theme-on-surface); word-break: break-word;">
+                            ${renderedContent}
+                        </div>`}
+                </div>
+                ${item.tags && item.tags.length > 0 ? `
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                        ${item.tags.map(tag => `
+                            <span class="b3-chip b3-chip--small b3-tooltips b3-tooltips__n" 
+                                style="padding: 0 6px; height: 18px; font-size: 10px;"
+                                aria-label="${tag}">
+                                <span class="b3-chip__content" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tag}</span>
+                            </span>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                <div class="fn__flex" style="margin-top: 4px; justify-content: flex-end;">
+                    <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
+                        <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconCopy"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconEdit"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text insert-daily-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${insertBtnLabel}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#${insertBtnIcon}"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text create-doc-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${this.i18n.note.createDoc}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconFile"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px; ${item.isPinned ? 'color: var(--b3-theme-primary);' : ''}">
+                                <use xlink:href="#iconPin"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;" 
+                            aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconArchive"></use>
+                            </svg>
+                        </button>
+                        <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
+                            style="padding: 4px; height: 20px; width: 20px;">
+                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                                <use xlink:href="#iconMore"></use>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        }
         return `
             <div class="fn__flex" style="gap: 8px;">
                 <!-- 添加复选框，默认隐藏 -->
@@ -1892,17 +2295,6 @@ export default class PluginQuickNote extends Plugin {
             </div>`;
     }
 
-    // 渲染加载更多按钮
-    private renderLoadMoreButton(shown: number, total: number) {
-        return `
-            <div class="fn__flex-center" style="padding: 8px 8px 0;">
-                <button class="b3-button b3-button--outline load-more-btn">
-                    ${this.i18n.note.loadMore} (${this.i18n.note.showing
-                .replace('${num}', (total - shown).toString())}
-                </button>
-            </div>`;
-    }
-
     // 渲染没有更多内容提示
     private renderNoMoreItems() {
         return `
@@ -1910,7 +2302,156 @@ export default class PluginQuickNote extends Plugin {
                 ${this.i18n.note.noMore}
             </div>`;
     }
+    private async createMobileQuickNote() {
+        return new Promise((resolve) => {
+            // 创建底部弹出层容器
+            const bottomSheet = document.createElement('div');
+            bottomSheet.className = 'quick-note-bottom-sheet';
+            bottomSheet.style.cssText = `
+                        position: fixed;
+                        bottom: -100%;
+                        left: 0;
+                        right: 0;
+                        background: var(--b3-theme-background);
+                        border-radius: 16px 16px 0 0;
+                        box-shadow: var(--b3-dialog-shadow);
+                        z-index: 5;
+                        transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        padding: 16px;
+                        max-height: 80vh;
+                        display: flex;
+                        flex-direction: column;
+                    `;
 
+            // 添加顶部拖动条
+            bottomSheet.innerHTML = `
+                        <div class="bottom-sheet-drag-handle" style="
+                            width: 32px;
+                            height: 4px;
+                            background: var(--b3-theme-background-light);
+                            border-radius: 2px;
+                            margin: 0 auto 16px;
+                        "></div>
+                        <div class="b3-dialog__header">
+                            <span class="b3-dialog__title">${this.i18n.note.new}</span>
+                            <span class="fn__flex-1"></span>
+                            <button class="b3-button b3-button--text" data-type="close">
+                                <svg class="b3-button__icon"><use xlink:href="#iconClose"></use></svg>
+                            </button>
+                        </div>
+                        <div class="b3-dialog__content" style="flex: 1; overflow: auto; padding: 16px 0;">
+                            ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
+                        </div>
+                    `;
+
+            document.body.appendChild(bottomSheet);
+
+            // 添加触摸拖动关闭功能
+            let startY = 0;
+            let currentY = 0;
+            let initialBottom = 0;
+
+            const handleTouchStart = (e: TouchEvent) => {
+                startY = e.touches[0].clientY;
+                initialBottom = parseInt(bottomSheet.style.bottom);
+                bottomSheet.style.transition = 'none';
+            };
+
+            const handleTouchMove = (e: TouchEvent) => {
+                currentY = e.touches[0].clientY;
+                const deltaY = currentY - startY;
+                if (deltaY > 0) { // 只允许向下拖动
+                    bottomSheet.style.bottom = `${initialBottom - deltaY}px`;
+                }
+            };
+
+            const handleTouchEnd = () => {
+                bottomSheet.style.transition = 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                if (currentY - startY > 100) { // 如果拖动距离超过100px，则关闭
+                    closeBottomSheet();
+                } else {
+                    bottomSheet.style.bottom = '0';
+                }
+            };
+
+            const dragHandle = bottomSheet.querySelector('.bottom-sheet-drag-handle');
+            dragHandle.addEventListener('touchstart', handleTouchStart);
+            dragHandle.addEventListener('touchmove', handleTouchMove);
+            dragHandle.addEventListener('touchend', handleTouchEnd);
+
+            // 关闭底部弹出层的函数
+            const closeBottomSheet = () => {
+                bottomSheet.style.bottom = '-100%';
+                setTimeout(() => {
+                    document.body.removeChild(bottomSheet);
+                    this.isCreatingNote = false;
+                    resolve(false);
+                }, 300);
+            };
+
+            // 绑定关闭按钮事件
+            const closeBtn = bottomSheet.querySelector('[data-type="close"]');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeBottomSheet);
+            }
+
+            // 在下一帧显示底部弹出层
+            requestAnimationFrame(() => {
+                bottomSheet.style.bottom = '0';
+            });
+
+            // 设置编辑器和标签功能
+            const textarea = bottomSheet.querySelector('textarea');
+            if (textarea) {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+                // 添加快捷键事件监听
+                textarea.addEventListener('keydown', async (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        if (textarea.value.trim()) {
+                            const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
+                                .map(tag => tag.getAttribute('data-tag'));
+                            await this.saveContent(textarea.value, tags);
+                            closeBottomSheet();
+                            resolve(true);
+                        }
+                    }
+                    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                        e.preventDefault();
+                        const addTagBtn = bottomSheet.querySelector('.add-tag-btn') as HTMLElement;
+                        if (addTagBtn) {
+                            addTagBtn.click();
+                        }
+                    }
+                });
+            }
+
+            // 设置标签功能
+            this.setupTagsFeature(bottomSheet);
+
+            // 设置图片上传功能
+            this.imageService.setupImageUpload({
+                container: bottomSheet,
+                i18n: this.i18n
+            });
+
+            // 绑定保存按钮事件
+            const saveBtn = bottomSheet.querySelector('.main_save_btn');
+            if (saveBtn && textarea) {
+                saveBtn.addEventListener('click', async () => {
+                    if (textarea.value.trim()) {
+                        const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
+                        await this.saveContent(textarea.value, tags);
+                        closeBottomSheet();
+                        resolve(true);
+                    }
+                });
+            }
+        });
+    }
     // 创建新笔记
     private async createNewNote() {
         // 如果已经有窗口在打开中,则返回
@@ -1920,29 +2461,31 @@ export default class PluginQuickNote extends Plugin {
 
         try {
             this.isCreatingNote = true; // 设置标志位
+            if (isMobile()) {
+                return this.createMobileQuickNote();
+            }
+            // 桌面端的原有实现
             return new Promise((resolve) => {
                 const dialog = new Dialog({
-                    title: this.i18n.note.new,
+                    title: this.i18n.note.title,
                     content: `
-                        <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
-                            ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
-                        </div>`,
+                            <div class="b3-dialog__content" style="box-sizing: border-box; padding: 16px; height: 100%; display: flex; flex-direction: column;">
+                                ${this.editorService.getEditorTemplate({ text: this.tempNoteContent, i18n: this.i18n })}
+                            </div>`,
                     width: "520px",
                     height: "400px",
                     transparent: false,
                     disableClose: false,
                     disableAnimation: false,
                     destroyCallback: () => {
-                        // 只有在没有成功保存的情况下才保存临时内容
                         const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
                         if (textarea && textarea.value.trim()) {
                             this.tempNoteContent = textarea.value;
-                            // 保存标签
                             this.tempNoteTags = Array.from(dialog.element.querySelectorAll('.tag-item'))
                                 .map(tag => tag.getAttribute('data-tag'))
                                 .filter(tag => tag !== null) as string[];
                         }
-                        this.isCreatingNote = false; // 重置标志位
+                        this.isCreatingNote = false;
                         resolve(false);
                     }
                 });
@@ -1952,17 +2495,13 @@ export default class PluginQuickNote extends Plugin {
                     const textarea = dialog.element.querySelector('textarea') as HTMLTextAreaElement;
                     if (textarea) {
                         textarea.focus();
-                        // 将光标移到文本末尾
                         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
-                        // 添加快捷键事件监听
                         textarea.addEventListener('keydown', async (e) => {
-                            // 保存快捷键 (Cmd/Ctrl + Enter)
                             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                                 e.preventDefault();
                                 dialog.element.querySelector('[data-type="save"]')?.click();
                             }
-                            // 添加标签快捷键 (Cmd/Ctrl + K)
                             if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
                                 e.preventDefault();
                                 const addTagBtn = dialog.element.querySelector('.add-tag-btn') as HTMLElement;
@@ -1972,7 +2511,7 @@ export default class PluginQuickNote extends Plugin {
                             }
                         });
                     }
-                    // 恢复之前保存的标签
+
                     if (this.tempNoteTags.length > 0) {
                         const tagsList = dialog.element.querySelector('.tags-list');
                         if (tagsList) {
@@ -1983,14 +2522,13 @@ export default class PluginQuickNote extends Plugin {
                                 tagElement.setAttribute('aria-label', tagText);
                                 tagElement.style.cursor = 'default';
                                 tagElement.innerHTML = `
-                                    <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
-                                    <svg class="b3-chip__close" style="cursor: pointer;">
-                                        <use xlink:href="#iconClose"></use>
-                                    </svg>
-                                `;
+                                        <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
+                                        <svg class="b3-chip__close" style="cursor: pointer;">
+                                            <use xlink:href="#iconClose"></use>
+                                        </svg>
+                                    `;
                                 tagsList.appendChild(tagElement);
 
-                                // 添加删除标签的事件
                                 tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
                                     tagElement.remove();
                                 });
@@ -2011,7 +2549,6 @@ export default class PluginQuickNote extends Plugin {
                         if (text.trim()) {
                             await this.saveContent(text, tags);
                             dialog.destroy();
-                            // 清空临时内容和标签
                             this.tempNoteContent = '';
                             this.tempNoteTags = [];
                             resolve(true);
@@ -2021,10 +2558,8 @@ export default class PluginQuickNote extends Plugin {
                     };
                 }
 
-                // 设置标签功能
                 this.setupTagsFeature(dialog.element);
 
-                // 在对话框创建后设置图片上传功能
                 setTimeout(() => {
                     this.imageService.setupImageUpload({
                         container: dialog.element,
@@ -2032,6 +2567,7 @@ export default class PluginQuickNote extends Plugin {
                     });
                 }, 100);
             });
+
         } catch (error) {
             console.error('Error creating new note:', error);
             return false;
@@ -2127,28 +2663,28 @@ export default class PluginQuickNote extends Plugin {
         }
     }
 
-   // 设置标签功能
-   private setupTagsFeature(container: HTMLElement) {
-    const tagsList = container.querySelector('.tags-list');
-    const addTagBtn = container.querySelector('.add-tag-btn');
+    // 设置标签功能
+    private setupTagsFeature(container: HTMLElement) {
+        const tagsList = container.querySelector('.tags-list');
+        const addTagBtn = container.querySelector('.add-tag-btn');
 
-    if (tagsList && addTagBtn) {
-        addTagBtn.onclick = (e) => {
-            e.stopPropagation();
+        if (tagsList && addTagBtn) {
+            addTagBtn.onclick = (e) => {
+                e.stopPropagation();
 
 
-            // 获取所有标签并去重
-            const allTags = Array.from(new Set(this.historyService.getCurrentData()
-                ?.filter(item => item && Array.isArray(item.tags))
-                .flatMap(item => item.tags || [])
-            ));
+                // 获取所有标签并去重
+                const allTags = Array.from(new Set(this.historyService.getCurrentData()
+                    ?.filter(item => item && Array.isArray(item.tags))
+                    .flatMap(item => item.tags || [])
+                ));
 
-            // 创建标签选择面板
-            const tagPanel = document.createElement('div');
-            tagPanel.className = 'tag-panel';
-            tagPanel.style.cssText = `
+                // 创建标签选择面板
+                const tagPanel = document.createElement('div');
+                tagPanel.className = 'tag-panel';
+                tagPanel.style.cssText = `
             position: fixed;
-            z-index: 205;
+            z-index: 204;
             width: 133px;
             height: 150px; // 固定高度
             background: var(--b3-menu-background);
@@ -2161,29 +2697,29 @@ export default class PluginQuickNote extends Plugin {
             overflow: hidden; // 防止内容溢出
         `;
 
-            // 修改位置计算逻辑
-            const btnRect = addTagBtn.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const panelHeight = 150; // 面板高度
-            const margin = 8; // 边距
+                // 修改位置计算逻辑
+                const btnRect = addTagBtn.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const panelHeight = 150; // 面板高度
+                const margin = 8; // 边距
 
-            // 判断是否有足够空间在上方显示
-            const showAbove = btnRect.top > panelHeight + margin;
-            // 如果上方空间不够，就显示在下方
-            const top = showAbove ?
-                btnRect.top - panelHeight - margin :
-                btnRect.bottom + margin;
+                // 判断是否有足够空间在上方显示
+                const showAbove = btnRect.top > panelHeight + margin;
+                // 如果上方空间不够，就显示在下方
+                const top = showAbove ?
+                    btnRect.top - panelHeight - margin :
+                    btnRect.bottom + margin;
 
-            tagPanel.style.top = `${top}px`;
-            tagPanel.style.left = `${btnRect.left}px`;
+                tagPanel.style.top = `${top}px`;
+                tagPanel.style.left = `${btnRect.left}px`;
 
-            // 如果面板会超出视口右侧，则向左对齐
-            if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
-                tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
-            }
+                // 如果面板会超出视口右侧，则向左对齐
+                if (btnRect.left + 133 > window.innerWidth) { // 使用新的宽度
+                    tagPanel.style.left = `${btnRect.left + btnRect.width - 133}px`; // 使用新的宽度
+                }
 
-            // 修改面板内容结构
-            tagPanel.innerHTML = `
+                // 修改面板内容结构
+                tagPanel.innerHTML = `
             <div style="padding: 8px; border-bottom: 1px solid var(--b3-border-color); background: var(--b3-menu-background); flex-shrink: 0;">
                 <input type="text" 
                     class="b3-text-field fn__flex-1 tag-input" 
@@ -2197,13 +2733,13 @@ export default class PluginQuickNote extends Plugin {
                 <div class="history-tags" style="padding: 0 8px 8px 8px; overflow-y: auto; flex: 1;">
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         ${allTags.length > 0 ?
-                    allTags
-                        .sort((a, b) => {
-                            const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
-                            const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
-                            return countB - countA;
-                        })
-                        .map(tag => `
+                        allTags
+                            .sort((a, b) => {
+                                const countA = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(a)).length;
+                                const countB = this.historyService.getCurrentData()?.filter(item => item.tags?.includes(b)).length;
+                                return countB - countA;
+                            })
+                            .map(tag => `
                                     <div class="history-tag b3-chip b3-chip--middle" 
                                         style="cursor: pointer; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; background: var(--b3-menu-background);" 
                                         data-tag="${tag}">
@@ -2215,119 +2751,230 @@ export default class PluginQuickNote extends Plugin {
                                         </span>
                                     </div>
                                 `).join('')
-                    : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
+                        : `<div style="color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;">
                         ${this.i18n.note.noTags}
                        </div>`
-                }
+                    }
                     </div>
                 </div>
             </div>
         `;
 
-            // 将面板添加到文档根节点
-            document.body.appendChild(tagPanel);
+                // 将面板添加到文档根节点
+                document.body.appendChild(tagPanel);
 
-            // 获取输入框元素
-            const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
-            tagInput.focus();
+                // 获取输入框元素
+                const tagInput = tagPanel.querySelector('.tag-input') as HTMLInputElement;
+                tagInput.focus();
 
-            // 添加标签的函数
-            const addTag = (tagText: string) => {
-                if (tagText.trim()) {
-                    const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
-                        .map(tag => tag.getAttribute('data-tag'));
+                // 添加标签的函数
+                const addTag = (tagText: string) => {
+                    if (tagText.trim()) {
+                        const existingTags = Array.from(tagsList.querySelectorAll('.tag-item'))
+                            .map(tag => tag.getAttribute('data-tag'));
 
-                    if (!existingTags.includes(tagText)) {
-                        const tagElement = document.createElement('span');
-                        tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
-                        tagElement.setAttribute('data-tag', tagText);
-                        tagElement.setAttribute('aria-label', tagText);
-                        tagElement.style.cursor = 'default';
-                        tagElement.innerHTML = `
+                        if (!existingTags.includes(tagText)) {
+                            const tagElement = document.createElement('span');
+                            tagElement.className = 'tag-item b3-chip b3-chip--middle b3-tooltips b3-tooltips__n';
+                            tagElement.setAttribute('data-tag', tagText);
+                            tagElement.setAttribute('aria-label', tagText);
+                            tagElement.style.cursor = 'default';
+                            tagElement.innerHTML = `
                         <span class="b3-chip__content" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${tagText}</span>
                         <svg class="b3-chip__close" style="cursor: pointer;">
                             <use xlink:href="#iconClose"></use>
                         </svg>
                     `;
-                        tagsList.appendChild(tagElement);
+                            tagsList.appendChild(tagElement);
 
-                        // 添加删除标签的事件
-                        tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
-                            tagElement.remove();
-                        });
+                            // 添加删除标签的事件
+                            tagElement.querySelector('.b3-chip__close').addEventListener('click', () => {
+                                tagElement.remove();
+                            });
+                        }
+                        tagInput.value = '';
+                        // 添加标签后关闭面板
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
                     }
-                    tagInput.value = '';
-                    // 添加标签后关闭面板
-                    tagPanel.remove();
-                    document.removeEventListener('click', closePanel);
-                }
-            };
+                };
 
-            // 回车添加标签
-            tagInput.addEventListener('keydown', (e) => {
-                const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
-                const currentSelected = tagPanel.querySelector('.history-tag.selected');
-                let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
+                // 回车添加标签
+                tagInput.addEventListener('keydown', (e) => {
+                    const historyTags = Array.from(tagPanel.querySelectorAll('.history-tag:not([style*="display: none"])'));
+                    const currentSelected = tagPanel.querySelector('.history-tag.selected');
+                    let currentIndex = currentSelected ? historyTags.indexOf(currentSelected) : -1;
 
-                switch (e.key) {
-                    case 'ArrowDown':
-                        e.preventDefault();
-                        if (historyTags.length > 0) {
-                            // 移除当前选中项的样式
-                            if (currentSelected) {
-                                currentSelected.classList.remove('selected');
-                                currentSelected.style.backgroundColor = '';
+                    switch (e.key) {
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            if (historyTags.length > 0) {
+                                // 移除当前选中项的样式
+                                if (currentSelected) {
+                                    currentSelected.classList.remove('selected');
+                                    currentSelected.style.backgroundColor = '';
+                                }
+                                // 计算下一个索引
+                                currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
+                                // 添加新选中项的样式
+                                const nextTag = historyTags[currentIndex] as HTMLElement;
+                                nextTag.classList.add('selected');
+                                nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                                // 确保选中项可见
+                                nextTag.scrollIntoView({ block: 'nearest' });
                             }
-                            // 计算下一个索引
-                            currentIndex = currentIndex < historyTags.length - 1 ? currentIndex + 1 : 0;
-                            // 添加新选中项的样式
-                            const nextTag = historyTags[currentIndex] as HTMLElement;
-                            nextTag.classList.add('selected');
-                            nextTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                            // 确保选中项可见
-                            nextTag.scrollIntoView({ block: 'nearest' });
-                        }
-                        break;
+                            break;
 
-                    case 'ArrowUp':
-                        e.preventDefault();
-                        if (historyTags.length > 0) {
-                            // 移除当前选中项的样式
-                            if (currentSelected) {
-                                currentSelected.classList.remove('selected');
-                                currentSelected.style.backgroundColor = '';
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            if (historyTags.length > 0) {
+                                // 移除当前选中项的样式
+                                if (currentSelected) {
+                                    currentSelected.classList.remove('selected');
+                                    currentSelected.style.backgroundColor = '';
+                                }
+                                // 计算上一个索引
+                                currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
+                                // 添加新选中项的样式
+                                const prevTag = historyTags[currentIndex] as HTMLElement;
+                                prevTag.classList.add('selected');
+                                prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                                // 确保选中项可见
+                                prevTag.scrollIntoView({ block: 'nearest' });
                             }
-                            // 计算上一个索引
-                            currentIndex = currentIndex > 0 ? currentIndex - 1 : historyTags.length - 1;
-                            // 添加新选中项的样式
-                            const prevTag = historyTags[currentIndex] as HTMLElement;
-                            prevTag.classList.add('selected');
-                            prevTag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                            // 确保选中项可见
-                            prevTag.scrollIntoView({ block: 'nearest' });
-                        }
-                        break;
+                            break;
 
-                    case 'Enter':
+                        case 'Enter':
+                            e.preventDefault();
+                            const searchText = tagInput.value.trim();
+                            if (currentSelected) {
+                                // 如果有选中的标签，使用该标签
+                                addTag(currentSelected.getAttribute('data-tag'));
+                                const textarea = container.querySelector('textarea');
+                                if (textarea) {
+                                    textarea.focus();
+                                }
+                            } else if (searchText) {
+                                // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
+                                const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
+                                    .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
+
+                                if (matchingTag) {
+                                    // 如果有完全匹配的标签，使用该标签
+                                    addTag(matchingTag.getAttribute('data-tag'));
+                                } else {
+                                    // 如果没有匹配的标签，创建新标签
+                                    addTag(searchText);
+                                }
+
+                                const textarea = container.querySelector('textarea');
+                                if (textarea) {
+                                    textarea.focus();
+                                }
+                            }
+                            break;
+                    }
+                });
+
+                // 修改鼠标悬停事件处理，避免与键盘选择冲突
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('mouseenter', () => {
+                        if (!tag.classList.contains('selected')) {
+                            tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                        }
+                    });
+
+                    tag.addEventListener('mouseleave', () => {
+                        if (!tag.classList.contains('selected')) {
+                            tag.style.backgroundColor = '';
+                        }
+                    });
+                });
+
+                // 点击其他地方关闭面板
+                const closePanel = (e: MouseEvent) => {
+                    if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
+                        tagPanel.remove();
+                        document.removeEventListener('click', closePanel);
+                    }
+                    const textarea = container.querySelector('textarea');
+                    if (textarea) {
+                        // 将焦点设置到编辑框上
+                        textarea.focus();
+                    }
+                };
+
+                // 延迟添加点击事件，避免立即触发
+                setTimeout(() => {
+                    document.addEventListener('click', closePanel);
+                }, 0);
+
+                // 添加标签点击事件
+                tagPanel.querySelectorAll('.history-tag').forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        const tagText = tag.getAttribute('data-tag');
+                        if (tagText) {
+                            addTag(tagText);
+                        }
+                    });
+
+                    // 添加悬停效果
+                    tag.addEventListener('mouseenter', () => {
+                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
+                    });
+                    tag.addEventListener('mouseleave', () => {
+                        tag.style.backgroundColor = '';
+                    });
+                });
+
+                // 添加搜索功能
+                tagInput.addEventListener('input', (e) => {
+                    const searchText = (e.target as HTMLInputElement).value.toLowerCase();
+                    const historyTags = tagPanel.querySelectorAll('.history-tag');
+
+                    historyTags.forEach(tag => {
+                        const tagText = tag.getAttribute('data-tag').toLowerCase();
+                        if (tagText.includes(searchText)) {
+                            (tag as HTMLElement).style.display = 'flex';
+                        } else {
+                            (tag as HTMLElement).style.display = 'none';
+                        }
+                    });
+
+                    // 如果没有匹配的标签，显示"无匹配标签"提示
+                    const visibleTags = Array.from(historyTags).filter(tag =>
+                        (tag as HTMLElement).style.display !== 'none'
+                    );
+
+                    const noMatchMessage = tagPanel.querySelector('.no-match-message');
+                    if (visibleTags.length === 0 && searchText) {
+                        if (!noMatchMessage) {
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'no-match-message';
+                            messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
+                            messageDiv.textContent = this.i18n.note.noMatchingTags;
+                            tagPanel.querySelector('.history-tags').appendChild(messageDiv);
+                        }
+                    } else if (noMatchMessage) {
+                        noMatchMessage.remove();
+                    }
+                });
+
+                // 修改回车键处理逻辑
+                tagInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
                         e.preventDefault();
                         const searchText = tagInput.value.trim();
-                        if (currentSelected) {
-                            // 如果有选中的标签，使用该标签
-                            addTag(currentSelected.getAttribute('data-tag'));
-                            const textarea = container.querySelector('textarea');
-                            if (textarea) {
-                                textarea.focus();
-                            }
-                        } else if (searchText) {
-                            // 如果没有选中的标签但有输入文本，检查是否有匹配的标签
+                        if (searchText) {
+                            // 检查是否有匹配的已有标签
                             const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
                                 .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
 
                             if (matchingTag) {
-                                // 如果有完全匹配的标签，使用该标签
+                                // 如果有完全匹配的标签，直接使用该标签
                                 addTag(matchingTag.getAttribute('data-tag'));
                             } else {
-                                // 如果没有匹配的标签，创建新标签
+                                // 如果没有完全匹配的标签，创建新标签
                                 addTag(searchText);
                             }
 
@@ -2336,123 +2983,12 @@ export default class PluginQuickNote extends Plugin {
                                 textarea.focus();
                             }
                         }
-                        break;
-                }
-            });
-
-            // 修改鼠标悬停事件处理，避免与键盘选择冲突
-            tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                tag.addEventListener('mouseenter', () => {
-                    if (!tag.classList.contains('selected')) {
-                        tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
                     }
                 });
-
-                tag.addEventListener('mouseleave', () => {
-                    if (!tag.classList.contains('selected')) {
-                        tag.style.backgroundColor = '';
-                    }
-                });
-            });
-
-            // 点击其他地方关闭面板
-            const closePanel = (e: MouseEvent) => {
-                if (!tagPanel.contains(e.target as Node) && !addTagBtn.contains(e.target as Node)) {
-                    tagPanel.remove();
-                    document.removeEventListener('click', closePanel);
-                }
-                const textarea = container.querySelector('textarea');
-                if (textarea) {
-                    // 将焦点设置到编辑框上
-                    textarea.focus();
-                }
             };
-
-            // 延迟添加点击事件，避免立即触发
-            setTimeout(() => {
-                document.addEventListener('click', closePanel);
-            }, 0);
-
-            // 添加标签点击事件
-            tagPanel.querySelectorAll('.history-tag').forEach(tag => {
-                tag.addEventListener('click', () => {
-                    const tagText = tag.getAttribute('data-tag');
-                    if (tagText) {
-                        addTag(tagText);
-                    }
-                });
-
-                // 添加悬停效果
-                tag.addEventListener('mouseenter', () => {
-                    tag.style.backgroundColor = 'var(--b3-theme-primary-light)';
-                });
-                tag.addEventListener('mouseleave', () => {
-                    tag.style.backgroundColor = '';
-                });
-            });
-
-            // 添加搜索功能
-            tagInput.addEventListener('input', (e) => {
-                const searchText = (e.target as HTMLInputElement).value.toLowerCase();
-                const historyTags = tagPanel.querySelectorAll('.history-tag');
-
-                historyTags.forEach(tag => {
-                    const tagText = tag.getAttribute('data-tag').toLowerCase();
-                    if (tagText.includes(searchText)) {
-                        (tag as HTMLElement).style.display = 'flex';
-                    } else {
-                        (tag as HTMLElement).style.display = 'none';
-                    }
-                });
-
-                // 如果没有匹配的标签，显示"无匹配标签"提示
-                const visibleTags = Array.from(historyTags).filter(tag =>
-                    (tag as HTMLElement).style.display !== 'none'
-                );
-
-                const noMatchMessage = tagPanel.querySelector('.no-match-message');
-                if (visibleTags.length === 0 && searchText) {
-                    if (!noMatchMessage) {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = 'no-match-message';
-                        messageDiv.style.cssText = 'color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; padding: 8px;';
-                        messageDiv.textContent = this.i18n.note.noMatchingTags;
-                        tagPanel.querySelector('.history-tags').appendChild(messageDiv);
-                    }
-                } else if (noMatchMessage) {
-                    noMatchMessage.remove();
-                }
-            });
-
-            // 修改回车键处理逻辑
-            tagInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const searchText = tagInput.value.trim();
-                    if (searchText) {
-                        // 检查是否有匹配的已有标签
-                        const matchingTag = Array.from(tagPanel.querySelectorAll('.history-tag'))
-                            .find(tag => tag.getAttribute('data-tag').toLowerCase() === searchText.toLowerCase());
-
-                        if (matchingTag) {
-                            // 如果有完全匹配的标签，直接使用该标签
-                            addTag(matchingTag.getAttribute('data-tag'));
-                        } else {
-                            // 如果没有完全匹配的标签，创建新标签
-                            addTag(searchText);
-                        }
-
-                        const textarea = container.querySelector('textarea');
-                        if (textarea) {
-                            textarea.focus();
-                        }
-                    }
-                }
-            });
-        };
-      }
+        }
     }
- 
+
 
     // 设置搜索功能
     private setupSearchFeature(container: HTMLElement) {

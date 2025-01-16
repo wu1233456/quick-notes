@@ -8,12 +8,16 @@
     "windows",
     "linux",
     "darwin",
-    "docker"
+    "docker",
+    "ios",
+    "android"
   ],
   "frontends": [
     "desktop",
     "browser-desktop",
-    "desktop-window"
+    "desktop-window",
+    "mobile",
+    "browser-mobile"
   ],
   "displayName": {
     "en_US": "Quick Notes",
