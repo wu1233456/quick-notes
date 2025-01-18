@@ -591,17 +591,37 @@ export default class PluginQuickNote extends Plugin {
     private initDockPanel() {
         console.log("initDockPanel");
         let element = this.element;
-        element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="height: 100%;">
+
+        element.innerHTML = `<div id="quick_notes_dock_container" class="fn__flex-1 fn__flex-column" style="height: 100%;">
                                 <div class="fn__flex-1 plugin-sample__custom-dock fn__flex-column dock_quicknotes_container" style="align-items: center;"> 
                                     <div class="topbar-container" style="width:100%"></div>
                                     <div class="editor-container" style="${this.data[CONFIG_DATA_NAME].editorVisible ? 'width: 95%;display:block' : 'width: 95%;display:None'}" ></div>
                                     <div class="toolbar-container" style="border-bottom: 1px solid var(--b3-border-color); flex-shrink: 0; width: 95%;"></div>
                                     <div class="fn__flex-1 history-list" style="overflow: auto; ;width: 95%;">
                                     </div>
+                                    ${isMobile() ? `
+                                    <div class="mobile-add-button" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 999;">
+                                        <button class="b3-button" style="border: none; border-radius: 50%; width: 52px; height: 52px; padding: 0; display: flex; align-items: center; justify-content: center; background: var(--b3-theme-primary); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); transition: all 0.2s ease;">
+                                            <svg class="b3-button__icon" style="height: 24px; width: 24px; color: var(--b3-theme-on-primary);">
+                                                <use xlink:href="#iconAdd"></use>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             </div>`;
-        this.renderDockerTopbar();
-        this.renderDockerEditor();
+        if(!isMobile()){
+            this.renderDockerTopbar();
+            this.renderDockerEditor();
+        } else {
+            // 为移动端添加按钮添加点击事件
+            const addButton = element.querySelector('.mobile-add-button button');
+            if (addButton) {
+                addButton.addEventListener('click', () => {
+                    this.createMobileQuickNote();
+                });
+            }
+        }
         this.renderDockHistory();
         this.renderDockerToolbar();
         this.bindDockPanelEvents();
@@ -2284,8 +2304,24 @@ export default class PluginQuickNote extends Plugin {
                 ${this.i18n.note.noMore}
             </div>`;
     }
+
     private async createMobileQuickNote() {
         return new Promise((resolve) => {
+            // 创建遮罩层
+            const overlay = document.createElement('div');
+            overlay.className = 'quick-note-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.4);
+                z-index: 7;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+
             // 创建底部弹出层容器
             const bottomSheet = document.createElement('div');
             bottomSheet.className = 'quick-note-bottom-sheet';
@@ -2297,7 +2333,7 @@ export default class PluginQuickNote extends Plugin {
                         background: var(--b3-theme-background);
                         border-radius: 16px 16px 0 0;
                         box-shadow: var(--b3-dialog-shadow);
-                        z-index: 5;
+                        z-index: 8;
                         transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                         padding: 16px;
                         max-height: 80vh;
@@ -2326,7 +2362,34 @@ export default class PluginQuickNote extends Plugin {
                         </div>
                     `;
 
+            document.body.appendChild(overlay);
             document.body.appendChild(bottomSheet);
+
+            // 显示遮罩和底部面板
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                bottomSheet.style.bottom = '0';
+            });
+
+            const closeBottomSheet = () => {
+                overlay.style.opacity = '0';
+                bottomSheet.style.bottom = '-100%';
+                setTimeout(() => {
+                    document.body.removeChild(overlay);
+                    document.body.removeChild(bottomSheet);
+                    this.isCreatingNote = false;
+                    resolve(false);
+                }, 300);
+            };
+
+            // 点击遮罩关闭
+            overlay.addEventListener('click', closeBottomSheet);
+
+            // 点击关闭按钮关闭
+            const closeButton = bottomSheet.querySelector('[data-type="close"]');
+            if (closeButton) {
+                closeButton.addEventListener('click', closeBottomSheet);
+            }
 
             // 添加触摸拖动关闭功能
             let startY = 0;
@@ -2349,7 +2412,8 @@ export default class PluginQuickNote extends Plugin {
 
             const handleTouchEnd = () => {
                 bottomSheet.style.transition = 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                if (currentY - startY > 100) { // 如果拖动距离超过100px，则关闭
+                const deltaY = currentY - startY;
+                if (deltaY > 100) { // 如果拖动距离超过100px，关闭面板
                     closeBottomSheet();
                 } else {
                     bottomSheet.style.bottom = '0';
@@ -2357,30 +2421,11 @@ export default class PluginQuickNote extends Plugin {
             };
 
             const dragHandle = bottomSheet.querySelector('.bottom-sheet-drag-handle');
-            dragHandle.addEventListener('touchstart', handleTouchStart);
-            dragHandle.addEventListener('touchmove', handleTouchMove);
-            dragHandle.addEventListener('touchend', handleTouchEnd);
-
-            // 关闭底部弹出层的函数
-            const closeBottomSheet = () => {
-                bottomSheet.style.bottom = '-100%';
-                setTimeout(() => {
-                    document.body.removeChild(bottomSheet);
-                    this.isCreatingNote = false;
-                    resolve(false);
-                }, 300);
-            };
-
-            // 绑定关闭按钮事件
-            const closeBtn = bottomSheet.querySelector('[data-type="close"]');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', closeBottomSheet);
+            if (dragHandle) {
+                dragHandle.addEventListener('touchstart', handleTouchStart);
+                dragHandle.addEventListener('touchmove', handleTouchMove);
+                dragHandle.addEventListener('touchend', handleTouchEnd);
             }
-
-            // 在下一帧显示底部弹出层
-            requestAnimationFrame(() => {
-                bottomSheet.style.bottom = '0';
-            });
 
             // 设置编辑器和标签功能
             const textarea = bottomSheet.querySelector('textarea');
@@ -2395,7 +2440,7 @@ export default class PluginQuickNote extends Plugin {
                         if (textarea.value.trim()) {
                             const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
                                 .map(tag => tag.getAttribute('data-tag'));
-                            await this.saveContent(textarea.value, tags);
+                            this.saveContent(textarea.value, tags);
                             closeBottomSheet();
                             resolve(true);
                         }
@@ -2426,7 +2471,7 @@ export default class PluginQuickNote extends Plugin {
                     if (textarea.value.trim()) {
                         const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
                             .map(tag => tag.getAttribute('data-tag'));
-                        await this.saveContent(textarea.value, tags);
+                        this.saveContent(textarea.value, tags);
                         closeBottomSheet();
                         resolve(true);
                     }
@@ -2434,6 +2479,7 @@ export default class PluginQuickNote extends Plugin {
             }
         });
     }
+
     // 创建新笔记
     private async createNewNote() {
         // 如果已经有窗口在打开中,则返回

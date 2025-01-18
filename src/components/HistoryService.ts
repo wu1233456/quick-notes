@@ -705,19 +705,20 @@ export class HistoryService {
     }
 
     private async sync() {
-        try {
-            console.log("siyuan sync");
-            const response = await fetch("http://127.0.0.1:6806/api/sync/performSync", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ "upload": true })
-            });
-            const result = await response.json();
-            if (result.code === 0) { /* empty */ }
-        } catch (error) {
-            console.error("Error during sync:", error);
-        }
+        //暂时不开启，等后续找到合适的同步方案后再说
+        // try {
+        //     console.log("siyuan sync");
+        //     const response = await fetch("http://127.0.0.1:6806/api/sync/performSync", {
+        //         method: "POST",
+        //         headers: {
+        //             "Content-Type": "application/json"
+        //         },
+        //         body: JSON.stringify({ "upload": true })
+        //     });
+        //     const result = await response.json();
+        //     if (result.code === 0) { /* empty */ }
+        // } catch (error) {
+        //     console.error("Error during sync:", error);
+        // }
     }
 } 
