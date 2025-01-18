@@ -1370,7 +1370,7 @@ export default class PluginQuickNote extends Plugin {
                                             <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                                 ${tag}
                                             </span>
-                                            <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                            <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7;">
                                                 ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
                                             </span>
                                         </div>
@@ -1524,6 +1524,29 @@ export default class PluginQuickNote extends Plugin {
         const filteredHistory = this.historyService.getFilteredHistory(true);
         let historyHtml = '';
 
+        // 添加下拉刷新指示器
+        if (isMobile()) {
+            historyHtml += `
+                <div class="pull-to-refresh" style="
+                    height: 60px;
+                    margin-top: -60px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--b3-theme-on-surface-light);
+                    font-size: 14px;
+                    transition: all 0.3s;
+                    transform: translateY(0);
+                ">
+                    <div class="pull-to-refresh-content">
+                        <svg class="b3-button__icon" style="height: 20px; width: 20px; transition: all 0.3s;">
+                            <use xlink:href="#iconRefresh"></use>
+                        </svg>
+                        <span class="pull-text">${this.i18n.note.pullToRefresh || '下拉刷新'}</span>
+                    </div>
+                </div>`;
+        }
+
         // 添加归档状态指示
         if (this.historyService.isArchiveView()) {
             historyHtml += `
@@ -1560,6 +1583,71 @@ export default class PluginQuickNote extends Plugin {
         let historyContent = `<div class="history-content">${historyHtml}</div>`;
         const historyList = element.querySelector('.history-list');
         historyList.innerHTML = historyContent;
+
+        // 添加下拉刷新事件处理
+        if (isMobile()) {
+            let startY = 0;
+            let currentY = 0;
+            let isRefreshing = false;
+            const historyContent = historyList.querySelector('.history-content');
+            const pullToRefresh = historyList.querySelector('.pull-to-refresh');
+            const pullIcon = pullToRefresh?.querySelector('svg');
+            const pullText = pullToRefresh?.querySelector('.pull-text');
+
+            historyList.addEventListener('touchstart', (e: TouchEvent) => {
+                if (historyList.scrollTop === 0 && !isRefreshing) {
+                    startY = e.touches[0].clientY;
+                }
+            });
+
+            historyList.addEventListener('touchmove', (e: TouchEvent) => {
+                if (historyList.scrollTop === 0 && !isRefreshing) {
+                    currentY = e.touches[0].clientY;
+                    const distance = currentY - startY;
+                    
+                    if (distance > 0) {
+                        e.preventDefault();
+                        const pullDistance = Math.min(distance * 0.5, 60);
+                        historyContent.style.transform = `translateY(${pullDistance}px)`;
+                        pullToRefresh.style.transform = `translateY(${pullDistance}px)`;
+                        
+                        if (pullDistance >= 60) {
+                            pullIcon.style.transform = 'rotate(180deg)';
+                            pullText.textContent = this.i18n.note.releaseToRefresh || '释放刷新';
+                        } else {
+                            pullIcon.style.transform = 'rotate(0deg)';
+                            pullText.textContent = this.i18n.note.pullToRefresh || '下拉刷新';
+                        }
+                    }
+                }
+            });
+
+            historyList.addEventListener('touchend', async () => {
+                if (historyList.scrollTop === 0 && !isRefreshing) {
+                    const distance = currentY - startY;
+                    if (distance >= 60) {
+                        isRefreshing = true;
+                        pullIcon.style.transform = 'rotate(360deg)';
+                        pullText.textContent = this.i18n.note.refreshing || '正在刷新...';
+                        
+                        // 执行刷新操作
+                        this.currentDisplayCount = this.itemsPerPage;
+                        await this.loadNoteData();
+                        this.renderDockHistory();
+                        
+                        // 重置状态
+                        setTimeout(() => {
+                            historyContent.style.transform = 'translateY(0)';
+                            pullToRefresh.style.transform = 'translateY(0)';
+                            isRefreshing = false;
+                        }, 300);
+                    } else {
+                        historyContent.style.transform = 'translateY(0)';
+                        pullToRefresh.style.transform = 'translateY(0)';
+                    }
+                }
+            });
+        }
 
         // 添加滚动监听器
         const handleScroll = () => {

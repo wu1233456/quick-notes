@@ -203,5 +203,8 @@
         "flomoAccessToken": "AccessToken",
         "flomoAccessTokenDesc": "一般不填，也不修改，除非登录不起作用时可手动更改"
     },
-    "openTagPanel": "打开标签选择面板"
+    "openTagPanel": "打开标签选择面板",
+    "pullToRefresh": "下拉刷新",
+    "releaseToRefresh": "释放刷新",
+    "refreshing": "正在刷新..."
 }
