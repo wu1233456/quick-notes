@@ -15,7 +15,7 @@ export const SETTINGS_STORAGE_NAME = "settings";
 export const STORAGE_NAME = "menu-config";
 export const TAB_TYPE = "custom_tab";
 export const DOCK_TYPE = "small_notes_dock";
-export const ITEMS_PER_PAGE = 10; // 每次加载10条记录
+export const ITEMS_PER_PAGE = 30; // 每次加载10条记录
 export const MAX_TEXT_LENGTH = 250; // 超过这个长度的文本会被折叠
 
 export const BlockType2NodeType: {[key in BlockType]: string} = {

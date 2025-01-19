@@ -85,7 +85,7 @@ export default class PluginQuickNote extends Plugin {
             callback: async () => {
                 // console.log("callback");
                 if (this.element) {
-                    this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
+                    this.itemsPerPage = ITEMS_PER_PAGE;
                     // 当设置改变时，重新渲染工具栏和历史记录
                     this.renderDockerToolbar();
                     this.renderDockHistory();
@@ -162,13 +162,13 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.maxTextLengthDesc
         });
 
-        this.settingUtils.addItem({
-            key: "itemsPerPage",
-            value: 10,
-            type: "number",
-            title: this.i18n.note.itemsPerPage,
-            description: this.i18n.note.itemsPerPageDesc
-        });
+        // this.settingUtils.addItem({
+        //     key: "itemsPerPage",
+        //     value: 10,
+        //     type: "number",
+        //     title: this.i18n.note.itemsPerPage,
+        //     description: this.i18n.note.itemsPerPageDesc
+        // });
 
         // 添加移动端浮动按钮显示设置
         if (isMobile()) {
@@ -320,7 +320,7 @@ export default class PluginQuickNote extends Plugin {
         };
 
         // 获取设置的每页显示数量，如果没有设置则使用默认值
-        this.itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
+        this.itemsPerPage =  ITEMS_PER_PAGE;
         this.currentDisplayCount = this.itemsPerPage;
 
         // 初始化历史服务
@@ -1686,7 +1686,7 @@ export default class PluginQuickNote extends Plugin {
                 scrollContainer.removeEventListener('scroll', handleScroll);
 
                 // 使用设置中的值增加显示数量
-                const itemsPerPage = this.settingUtils.get("itemsPerPage") || ITEMS_PER_PAGE;
+                const itemsPerPage = ITEMS_PER_PAGE;
                 this.currentDisplayCount += itemsPerPage;
 
                 // 获取新的要显示的记录
