@@ -1863,6 +1863,11 @@ export default class PluginQuickNote extends Plugin {
                 // 获取当前记录项
                 const currentItem = this.historyService.getHistoryItem(timestamp);
 
+                // 获取插入按钮的图标和文本
+                const insertMode = this.settingUtils.get("insertMode");
+                const insertBtnLabel = insertMode === "doc" ? this.i18n.note.insertToDoc : this.i18n.note.insertToDaily;
+                const insertBtnIcon = insertMode === "doc" ? "iconInsertDoc" : "iconCalendar";
+
                 const menu = new Menu("historyItemMenu");
                 if (!menu) {
                     console.error("Failed to create menu");
@@ -1888,8 +1893,76 @@ export default class PluginQuickNote extends Plugin {
                             }
                         }
                     });
+                } else {
+                    // 移动端添加复制选项
+                    menu.addItem({
+                        icon: "iconCopy",
+                        label: this.i18n.note.copy,
+                        click: async () => {
+                            menu.close();
+                            const textContainer = moreBtn.closest('.history-item').querySelector('[data-text]');
+                            if (textContainer) {
+                                const text = textContainer.getAttribute('data-text') || '';
+                                try {
+                                    await navigator.clipboard.writeText(text);
+                                    showMessage(this.i18n.note.copySuccess);
+                                } catch (err) {
+                                    console.error('复制失败:', err);
+                                    showMessage(this.i18n.note.copyFailed);
+                                }
+                            }
+                        }
+                    });
 
+                    // 移动端添加插入到日记选项
+                    const insertInfo = this.getInsertButtonInfo();
+                    menu.addItem({
+                        icon: insertInfo.icon,
+                        label: insertInfo.label,
+                        click: async () => {
+                            menu.close();
+                            await this.insertToDaily(timestamp);
+                        }
+                    });
+
+                    // 移动端添加新建文档选项
+                    menu.addItem({
+                        icon: "iconFile",
+                        label: this.i18n.note.createDoc,
+                        click: async () => {
+                            menu.close();
+                            await this.createNoteAsDocument(timestamp);
+                        }
+                    });
+
+                    // 移动端添加置顶选项
+                    menu.addItem({
+                        icon: "iconPin",
+                        label: currentItem.isPinned ? this.i18n.note.unpin : this.i18n.note.pin,
+                        click: async () => {
+                            menu.close();
+                            await this.historyService.toggleItemPin(timestamp);
+                            this.renderDockHistory();
+                        }
+                    });
+
+                    // 移动端添加归档选项
+                    menu.addItem({
+                        icon: "iconArchive",
+                        label: this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive,
+                        click: async () => {
+                            menu.close();
+                            if (this.showArchived) {
+                                await this.historyService.unarchiveItem(timestamp);
+                            } else {
+                                await this.historyService.archiveItem(timestamp);
+                            }
+                            this.renderDockerToolbar();
+                            this.renderDockHistory();
+                        }
+                    });
                 }
+
                 // 添加分享选项
                 menu.addItem({
                     icon: "iconCustomShare",
@@ -2232,44 +2305,10 @@ export default class PluginQuickNote extends Plugin {
                 ` : ''}
                 <div class="fn__flex" style="margin-top: 4px; justify-content: flex-end;">
                     <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
-                        <button class="b3-button b3-button--text copy-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.copy}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconCopy"></use>
-                            </svg>
-                        </button>
                         <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
                             style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
                             <svg class="b3-button__icon" style="height: 14px; width: 14px;">
                                 <use xlink:href="#iconEdit"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text insert-daily-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${insertBtnLabel}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#${insertBtnIcon}"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text create-doc-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${this.i18n.note.createDoc}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconFile"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text pin-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${item.isPinned ? this.i18n.note.unpin : this.i18n.note.pin}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px; ${item.isPinned ? 'color: var(--b3-theme-primary);' : ''}">
-                                <use xlink:href="#iconPin"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text archive-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" 
-                            aria-label="${this.showArchived ? this.i18n.note.unarchive : this.i18n.note.archive}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconArchive"></use>
                             </svg>
                         </button>
                         <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
@@ -2559,7 +2598,7 @@ export default class PluginQuickNote extends Plugin {
                     if (textarea.value.trim()) {
                         const tags = Array.from(bottomSheet.querySelectorAll('.tag-item'))
                             .map(tag => tag.getAttribute('data-tag'));
-                        this.saveContent(textarea.value, tags);
+                        await this.saveContent(textarea.value, tags);
                         closeBottomSheet();
                         resolve(true);
                     }
@@ -2862,7 +2901,7 @@ export default class PluginQuickNote extends Plugin {
                                         <span class="b3-chip__content" style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                             ${tag}
                                         </span>
-                                        <span class="tag-count" style="font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
+                                        <span class="tag-count" style="margin-left: 4px; font-size: 10px; opacity: 0.7; background: var(--b3-theme-surface); padding: 2px 4px; border-radius: 8px;">
                                             ${this.historyService.getCurrentData().filter(item => item.tags?.includes(tag)).length}
                                         </span>
                                     </div>
@@ -3447,5 +3486,13 @@ export default class PluginQuickNote extends Plugin {
     async upload(file: File): Promise<string> {
         // 实现文件上传逻辑
         return Promise.resolve('');
+    }
+
+    private getInsertButtonInfo() {
+        const insertMode = this.settingUtils.get("insertMode");
+        return {
+            label: insertMode === "doc" ? this.i18n.note.insertToDoc : this.i18n.note.insertToDaily,
+            icon: insertMode === "doc" ? "iconInsertDoc" : "iconCalendar"
+        };
     }
 }
