@@ -170,6 +170,26 @@ export default class PluginQuickNote extends Plugin {
             description: this.i18n.note.itemsPerPageDesc
         });
 
+        // 添加移动端浮动按钮显示设置
+        if (isMobile()) {
+            this.settingUtils.addItem({
+                key: "showMobileFloatingButton",
+                value: true,
+                type: "checkbox",
+                title: this.i18n.note.showMobileFloatingButton,
+                description: this.i18n.note.showMobileFloatingButtonDesc,
+                action: {
+                    callback: () => {
+                        const showButton = this.settingUtils.get("showMobileFloatingButton");
+                        const floatingButton = document.querySelector('.mobile-quick-note-btn');
+                        if (floatingButton) {
+                            floatingButton.style.display = showButton ? 'block' : 'none';
+                        }
+                    }
+                }
+            });
+        }
+
         // // 添加自动同步设置
         // this.settingUtils.addItem({
         //     key: "flomoAutoSync",
@@ -437,6 +457,11 @@ export default class PluginQuickNote extends Plugin {
         // 创建浮动按钮
         const floatingButton = document.createElement('div');
         floatingButton.className = 'mobile-quick-note-btn collapsed';
+        
+        // 根据设置决定是否显示浮动按钮
+        const showButton = this.settingUtils.get("showMobileFloatingButton");
+        floatingButton.style.display = showButton ? 'block' : 'none';
+
         floatingButton.innerHTML = `
             <div class="button-content">
                 <svg class="b3-button__icon">

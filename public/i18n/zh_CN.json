@@ -201,7 +201,9 @@
         "flomoLastSyncTime": "上次同步时间",
         "flomoLastSyncTimeDesc": "为空则默认为今天0点，并会自动记录本次同步时间",
         "flomoAccessToken": "AccessToken",
-        "flomoAccessTokenDesc": "一般不填，也不修改，除非登录不起作用时可手动更改"
+        "flomoAccessTokenDesc": "一般不填，也不修改，除非登录不起作用时可手动更改",
+        "showMobileFloatingButton": "显示移动端浮动按钮",
+        "showMobileFloatingButtonDesc": "控制是否在移动端显示侧边浮动按钮"
     },
     "openTagPanel": "打开标签选择面板",
     "pullToRefresh": "下拉刷新",

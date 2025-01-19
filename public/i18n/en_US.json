@@ -205,6 +205,8 @@
         "flomoLastSyncTimeDesc": "Defaults to today 00:00:00 if empty, will automatically record sync time",
         "flomoAccessToken": "AccessToken",
         "flomoAccessTokenDesc": "Generally no need to fill or modify, unless login fails and needs manual update",
+        "showMobileFloatingButton": "Show Mobile Floating Button",
+        "showMobileFloatingButtonDesc": "Control whether to show the floating button on mobile devices",
         "pullToRefresh": "Pull to refresh",
         "releaseToRefresh": "Release to refresh",
         "refreshing": "Refreshing..."
