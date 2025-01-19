@@ -1894,6 +1894,16 @@ export default class PluginQuickNote extends Plugin {
                         }
                     });
                 } else {
+                    // 移动端添加编辑选项
+                    menu.addItem({
+                        icon: "iconEdit",
+                        label: this.i18n.note.edit,
+                        click: async () => {
+                            menu.close();
+                            await this.editHistoryItem(timestamp);
+                        }
+                    });
+
                     // 移动端添加复制选项
                     menu.addItem({
                         icon: "iconCopy",
@@ -2263,13 +2273,17 @@ export default class PluginQuickNote extends Plugin {
                 <input type="checkbox" class="b3-checkbox" data-timestamp="${item.timestamp}">
             </div>
             <div class="fn__flex-1">
-                <!-- 移动时间到头部 -->
+                <!-- 移动时间和更多按钮到头部 -->
                 <div class="fn__flex" style="margin-bottom: 4px; justify-content: space-between; align-items: center;">
-                    <div class="fn__flex" style="align-items: center; gap: 4px;">
-                        <span style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
-                            ${new Date(item.timestamp).toLocaleString()}
-                        </span>
-                    </div>
+                    <span style="font-size: 12px; color: var(--b3-theme-on-surface-light);">
+                        ${new Date(item.timestamp).toLocaleString()}
+                    </span>
+                    <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
+                        style="padding: 4px; height: 20px; width: 20px;">
+                        <svg class="b3-button__icon" style="height: 14px; width: 14px;">
+                            <use xlink:href="#iconMore"></use>
+                        </svg>
+                    </button>
                 </div>
                 <div class="text-content" data-text="${encodeText(displayText)}" >
                     ${item.text.length > maxTextLength ?
@@ -2303,22 +2317,6 @@ export default class PluginQuickNote extends Plugin {
                         `).join('')}
                     </div>
                 ` : ''}
-                <div class="fn__flex" style="margin-top: 4px; justify-content: flex-end;">
-                    <div class="fn__flex action-buttons" style="gap: 4px; opacity: 0; transition: opacity 0.2s ease;">
-                        <button class="b3-button b3-button--text edit-btn b3-tooltips b3-tooltips__n" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;" aria-label="${this.i18n.note.edit}">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconEdit"></use>
-                            </svg>
-                        </button>
-                        <button class="b3-button b3-button--text more-btn" data-timestamp="${item.timestamp}" 
-                            style="padding: 4px; height: 20px; width: 20px;">
-                            <svg class="b3-button__icon" style="height: 14px; width: 14px;">
-                                <use xlink:href="#iconMore"></use>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>`;
         }
